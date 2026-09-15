@@ -35,6 +35,14 @@ namespace SLIFNG::Skee
 	// diagnostics page compares against what we meant to write.
 	float ReadMorph(RE::Actor* a_actor, const std::string& a_sliderName);
 
+	// PROBE (PLAN P2): dump skee's own string table and one actor's morph list
+	// to the log. If VisitStrings enumerates the slider names skee learned from
+	// the loaded morphs.tri, body detection is genuinely possible and profiles
+	// could be auto-picked / validated instead of merely declared. If it only
+	// returns names something already SET, it is useless for detection and the
+	// declarative profile stands. One launch settles it.
+	void LogKnownMorphs(RE::Actor* a_actor);
+
 	// ---- main-thread only (task bodies, 3D-load hook) ----
 	void Apply(RE::Actor* a_actor, const std::string& a_lowerTarget);
 	void ApplyTargets(RE::Actor* a_actor, const std::vector<std::string>& a_lowerTargets);

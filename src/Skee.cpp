@@ -267,6 +267,65 @@ namespace SLIFNG::Skee
 		return g_bodyMorph->GetMorph(a_actor, a_sliderName.c_str(), kAppliedKey);
 	}
 
+	void LogKnownMorphs(RE::Actor* a_actor)
+	{
+		if (!g_bodyMorph) {
+			logger::warn("[Probe] BodyMorph interface unavailable");
+			return;
+		}
+
+		struct Collector : SKEE::IBodyMorphInterface::StringVisitor
+		{
+			std::vector<std::string> names;
+			void Visit(const char* a_name) override
+			{
+				if (a_name) {
+					names.emplace_back(a_name);
+				}
+			}
+		} all;
+		g_bodyMorph->VisitStrings(all);
+		std::sort(all.names.begin(), all.names.end());
+		logger::info("[Probe] VisitStrings returned {} name(s)", all.names.size());
+
+		// Are the sliders our profiles name actually among them? That is the
+		// question that decides detect-vs-declare.
+		for (const char* probe : { "PregnancyBelly", "BreastsSH", "BreastsNewSH",
+				 "DoubleMelon", "BreastsBigger", "Juicy_breasts", "BellyFatty" }) {
+			const bool known = std::find_if(all.names.begin(), all.names.end(),
+									[probe](const std::string& n) { return Lower(n) == Lower(probe); }) !=
+			                   all.names.end();
+			logger::info("[Probe]   '{}' known to skee: {}", probe, known ? "YES" : "no");
+		}
+		std::string sample;
+		for (std::size_t i = 0; i < all.names.size() && i < 60; ++i) {
+			sample += (i ? ", " : "") + all.names[i];
+		}
+		logger::info("[Probe] first names: {}", sample.empty() ? "(none)" : sample);
+
+		if (a_actor) {
+			struct ActorMorphs : SKEE::IBodyMorphInterface::MorphVisitor
+			{
+				std::vector<std::string> names;
+				void Visit(RE::TESObjectREFR*, const char* a_name) override
+				{
+					if (a_name) {
+						names.emplace_back(a_name);
+					}
+				}
+			} mine;
+			g_bodyMorph->VisitMorphs(a_actor, mine);
+			std::sort(mine.names.begin(), mine.names.end());
+			std::string list;
+			for (const auto& n : mine.names) {
+				list += (list.empty() ? "" : ", ") + n;
+			}
+			logger::info("[Probe] actor {:08X} HasMorphs={} VisitMorphs -> {} name(s): {}",
+				a_actor->GetFormID(), g_bodyMorph->HasMorphs(a_actor) ? "yes" : "no",
+				mine.names.size(), list.empty() ? "(none)" : list);
+		}
+	}
+
 	void RegisterLoadHook()
 	{
 		if (auto* holder = RE::ScriptEventSourceHolder::GetSingleton()) {

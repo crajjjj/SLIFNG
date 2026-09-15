@@ -12,6 +12,7 @@ and verified from SLIFNG.log without any consumer mod or gameplay.
   cgf "SLIFNG_Debug.Scale" 0.5
   cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
   cgf "SLIFNG_Debug.Dump"
+  cgf "SLIFNG_Debug.Probe"       ; can skee tell us the body's sliders?
   cgf "SLIFNG_Debug.Report"      ; player diagnostics
   cgf "SLIFNG_Debug.ReportX"     ; crosshair target
   cgf "SLIFNG_Debug.SmokeTest"
@@ -64,6 +65,11 @@ EndFunction
 ; Full actor diagnostics (body, contributions, applied-vs-default) to the log.
 Function Report() Global
 	SLIFNG.LogActorReport(Game.GetPlayer())
+EndFunction
+
+; Does skee know which sliders this body HAS? Run once and read SLIFNG.log.
+Function Probe() Global
+	SLIFNG.LogKnownMorphs(Game.GetPlayer())
 EndFunction
 
 Function ReportX() Global

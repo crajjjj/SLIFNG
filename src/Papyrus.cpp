@@ -265,6 +265,11 @@ namespace SLIFNG::Papyrus
 			Report::LogForActor(a_actor);
 		}
 
+		void LogKnownMorphs(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			Skee::LogKnownMorphs(a_actor);
+		}
+
 		void DumpLedger(RE::StaticFunctionTag*)
 		{
 			Ledger::GetSingleton().DumpToLog();
@@ -301,6 +306,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("SetVerboseLogging", script, SetVerboseLogging);
 		a_vm->RegisterFunction("GetActorReport", script, GetActorReport);
 		a_vm->RegisterFunction("LogActorReport", script, LogActorReport);
+		a_vm->RegisterFunction("LogKnownMorphs", script, LogKnownMorphs);
 		a_vm->RegisterFunction("DumpLedger", script, DumpLedger);
 		a_vm->RegisterFunction("DumpActor", script, DumpActor);
 		return true;

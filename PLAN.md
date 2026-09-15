@@ -157,6 +157,19 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       cleared on revert. The ledger fold resolves blends per actor too, so a
       node key drives whatever THAT actor's body uses.
 - [ ] Manual per-actor profile override in the MCM (currently automatic only).
+- [ ] **Auto-pick accuracy — the open question.** UBE resolves RELIABLY (race
+      EditorID is per-actor hard evidence). 3BA / BHUNP / plain CBBE do NOT:
+      plugin presence says a body is INSTALLED, not that BodySlide BUILT it,
+      and several can be installed at once. A probe now ships
+      (`cgf "SLIFNG_Debug.Probe"`) to settle whether skee's
+      `VisitStrings`/`VisitMorphs` enumerate the slider names learned from the
+      loaded morphs.tri:
+        * if YES -> real detection is possible: pick the profile whose sliders
+          are actually present, and warn when a profile names one that is not.
+        * if it only returns names something already SET -> useless for
+          detection, the declarative profile stands, and the remaining option is
+          parsing the body's .tri ourselves.
+      One launch decides it; do not build auto-detection before reading it.
 - [x] **Slider names verified against real slider sets** (the `<Slider name>`
       values in a body's `.osp` are what BodySlide writes into morphs.tri, which
       is what skee matches):

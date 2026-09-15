@@ -57,5 +57,9 @@ Int Function TrackedActorCount() Global Native
 String[] Function GetActorReport(Actor kActor) Global Native
 Function LogActorReport(Actor kActor) Global Native
 
+; Probe: dump skee's known morph-name table (and one actor's morphs) to the
+; log. Decides whether body detection is possible - see PLAN P2.
+Function LogKnownMorphs(Actor kActor) Global Native
+
 Function DumpLedger() Global Native
 Function DumpActor(Actor kActor) Global Native
