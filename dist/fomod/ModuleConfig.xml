@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+    <moduleName>SLIF NG 0.1.0</moduleName>
+    <requiredInstallFiles>
+        <folder source="Core" destination="" />
+    </requiredInstallFiles>
+    <installSteps order="Explicit">
+        <installStep name="Body">
+            <optionalFileGroups order="Explicit">
+                <group name="Which body did you build in BodySlide?" type="SelectExactlyOne">
+                    <plugins order="Explicit">
+                        <plugin name="CBBE 3BA (3BBB)">
+                            <description>For a body built from the CBBE 3BA / 3BBB slider set. Belly uses PregnancyBelly; breasts blend BreastsNewSH, DoubleMelon, BreastsSmall and BreastWidth for a fuller shape rather than maxing one slider. All five slider names verified against CBBE 3BA Reference.osp. Pick this if you built 3BA - it is more accurate than the generic CBBE option.</description>
+                            <files>
+                                <folder source="Bodies\CBBE 3BA" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <dependencyType>
+                                    <defaultType name="Optional"/>
+                                    <patterns>
+                                        <pattern>
+                                            <dependencies operator="Or">
+                                                <fileDependency file="3BBB.esp" state="Active"/>
+                                                <fileDependency file="CBBE 3BA.esp" state="Active"/>
+                                            </dependencies>
+                                            <type name="Recommended"/>
+                                        </pattern>
+                                    </patterns>
+                                </dependencyType>
+                            </typeDescriptor>
+                        </plugin>
+                        <plugin name="CBBE (generic)">
+                            <description>For a body built from a plain CBBE slider set, or any body whose sliders follow CBBE naming. Belly uses PregnancyBelly; breasts try BreastsSH and BreastsNewSH together, since plain CBBE sets vary in which one they ship. A slider your body lacks simply does nothing - but a body that has BOTH will grow roughly twice as much, so prefer the 3BA option if you built 3BA.</description>
+                            <files>
+                                <folder source="Bodies\CBBE" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
+                        <plugin name="BHUNP">
+                            <description>For a body built from the BHUNP (UUNP-derived) slider set. NOTE: these slider names are UNVERIFIED - no BHUNP body was available to check them against, unlike the CBBE 3BA and UBE profiles. If inflation does nothing after installing this, open your BHUNP body's .osp in a text editor and copy the exact Slider name values into Data\SLIFNG\Bodies\default.ini.</description>
+                            <files>
+                                <folder source="Bodies\BHUNP" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <dependencyType>
+                                    <defaultType name="Optional"/>
+                                    <patterns>
+                                        <pattern>
+                                            <dependencies operator="Or">
+                                                <fileDependency file="BHUNP.esp" state="Active"/>
+                                                <fileDependency file="BHUNP3BBB.esp" state="Active"/>
+                                            </dependencies>
+                                            <type name="Recommended"/>
+                                        </pattern>
+                                    </patterns>
+                                </dependencyType>
+                            </typeDescriptor>
+                        </plugin>
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+    </installSteps>
+</config>

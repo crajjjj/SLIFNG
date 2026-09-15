@@ -156,7 +156,9 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       for UBE), then plugin presence, else default.ini. Cached per FormID and
       cleared on revert. The ledger fold resolves blends per actor too, so a
       node key drives whatever THAT actor's body uses.
-- [ ] Manual per-actor profile override in the MCM (currently automatic only).
+- [ ] MCM body override (pick a different installed profile without swapping
+      files). The installer + race matching cover the common cases, so this is
+      convenience, not correctness.
 - [ ] **Auto-pick accuracy — the open question.** UBE resolves RELIABLY (race
       EditorID is per-actor hard evidence). 3BA / BHUNP / plain CBBE do NOT:
       plugin presence says a body is INSTALLED, not that BodySlide BUILT it,
@@ -206,6 +208,16 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       `UBE.ini` profile.
 
 ### P3 — Packaging
+- [x] **FOMOD asks which body you built** - the best available answer, since no
+      runtime probe beats being told. The chosen profile installs AS
+      `default.ini` ("the body this game uses"), which retires the unreliable
+      plugin matchers entirely. Options: CBBE 3BA (auto-Recommended when
+      3BBB.esp/CBBE 3BA.esp is active), CBBE generic, BHUNP (Recommended on
+      BHUNP.esp, and its description says the names are unverified).
+      **UBE ships in Core regardless** - it is race-matched per ACTOR, so a UBE
+      character and a 3BA character coexist in one save, each with the right
+      sliders. The installer answer is only the fallback for everyone else.
+      Changing body later needs no reinstall: replace that one file.
 - [x] ESP `SexLab Inflation Framework.esp`: DONE (authored clean-room via
       houseCARL, mirroring the reference record structure read from the real
       1.2.2 ESP): quest `0x800` EditorID SLIF_Menu, Flags 273

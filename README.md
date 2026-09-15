@@ -52,7 +52,9 @@ Already cloned without submodules? `git submodule update --init --recursive`
 ```
 CONTRACT.md                       frozen API contract (the spec)
 PLAN.md                           implementation plan
-dist/Core/SLIFNG/Bodies/          per-body morph profiles (.ini, per-ACTOR)
+dist/Core/SLIFNG/Bodies/          UBE profile (race-matched, always installed)
+dist/Bodies/<body>/               FOMOD-selected fallback -> SLIFNG/Bodies/default.ini
+dist/fomod/                       installer: asks which body you built
 dist/Core/source/scripts/         Papyrus sources
   SLIF_ScannerAlias.psc           mod-event surface (3 events)
   SLIF_Main.psc                   inflate / unregisterNode / unregisterActor

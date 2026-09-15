@@ -12,6 +12,16 @@
 // Why per ACTOR and not per game: UBE is race-based and coexists with 3BA/BHUNP
 // in one load order, so a single global body is wrong by construction.
 //
+// Where the answer comes from, in order of reliability:
+//   1. RACE  - hard per-actor evidence. UBE ships its own races, so this is
+//              real detection, not a guess.
+//   2. The INSTALLER - the user knows which body they built in BodySlide, and
+//      no runtime probe can beat being told. The FOMOD writes the chosen
+//      profile as default.ini, i.e. "the body this game uses".
+//   3. PLUGIN presence - still supported for hand-written profiles, but NOT
+//      used by the shipped ones: an installed plugin says a body exists, not
+//      that BodySlide built it, and several can be installed at once.
+//
 // A profile maps each vocabulary key to a morph blend. A key the profile does
 // NOT list has no usable slider on that body and falls through to the node
 // path - which is what makes the fallback reachable at all.
