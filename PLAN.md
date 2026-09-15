@@ -1,5 +1,23 @@
 # SLIF NG — Implementation Plan
 
+## Status — 2026-09-16
+
+**P1-P5 substantially done and running in a live load order.** SLIFNG.dll,
+the ESP/SEQ, the pinned shims, per-actor body profiles, the FOMOD and a two-page
+MCM all ship; BF NG, Fill Her Up and Sexlab Survival have been observed folding
+correctly together on one actor (`SLIFNG.log`, 2026-09-15).
+
+Not started: **P6 migration** and **P8 ramp**. Not run: **P7**, three of its six
+rows.
+
+Release gates, in order:
+1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
+   — the repo is already public, so this is now the pacing item.
+2. **P6 legacy-save migration** — CONTRACT sec.6 promises old SLIF saves carry
+   over; today nothing reads the legacy StorageUtil ledger, so that promise is
+   unmet.
+3. **P7 rows for Estrus, MME and an old-SLIF save** — never exercised.
+
 ## Goal
 
 A drop-in replacement for SexLab Inflation Framework SE that existing consumers
@@ -91,12 +109,13 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
 - [ ] **Arity experiment:** compile a test caller against a shortened `inflate`
       signature, run against the full 11-param implementation; confirm the VM
       rejects it (expected). Documents the "frozen signature" rule with proof.
-- [ ] **Node→morph mapping — direction chosen: morph-first, node fallback.**
+- [x] **Node→morph mapping — DONE: morph-first, node fallback.**
       Map the four live node keys onto morph blends through the body profiles
       (`slif_belly` → PregnancyBelly blend); keep the NiOverride node transform
       as fallback where the actor's body has no matching morph. The P0
-      side-by-side screenshots on 3BA + BHUNP now VALIDATE this direction
-      (revert to node-faithful only if the look regresses badly on migration).
+      side-by-side screenshots on 3BA + BHUNP would VALIDATE this direction.
+      Shipped and running in-game (SLS/FHU/BF NG all fold correctly on 3BA);
+      no formal screenshot comparison was ever made.
 - [x] **IF-NG evaluation — CLOSED: reimplement instead of depend.**
       Verified (fork == upstream, v1.1.0): thin morphs-only skee wrapper, no
       node backend, no ramp (the Nexus "Smooth Transitions" claim means "call
@@ -122,9 +141,8 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       decision. If any IF-NG-derived pattern ends up recognizable in code,
       credit Acook1e anyway as courtesy.)
 
-### P1 — MVP (native core + pinned shims, instant apply) — CODE WRITTEN,
-### needs ESP + in-game validation
-- [ ] `SLIFNG.dll` core: keyed per-mod ledger + serialization (from the P0
+### P1 — MVP (native core + pinned shims, instant apply) — DONE, RUNNING
+- [x] `SLIFNG.dll` core: keyed per-mod ledger + serialization (from the P0
       skeleton), clamp, highest-wins aggregate, vocabulary map (6 keys),
       `oldModName` legacy-key cleanup — aggregation implemented as a
       parameterized fold (mode enum: highest | additive) even though P1 ships
@@ -132,10 +150,10 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       on without touching the ledger — apply via skee morph-first with
       NiTransform node fallback — **one** apply/model-update per call, never
       per step (the reference's worst perf bug was per-step rebuilds).
-- [ ] Native Papyrus surface `SLIFNG.psc` (native functions the shims call:
+- [x] Native Papyrus surface `SLIFNG.psc` (native functions the shims call:
       `Inflate`, `Morph`, `UnregisterMod`, `UnregisterTarget`, diagnostics
       getters).
-- [ ] Pinned shims wired: `SLIF_ScannerAlias.psc` (3 events, scaffolded),
+- [x] Pinned shims wired: `SLIF_ScannerAlias.psc` (3 events),
       `SLIF_Main.psc` (`inflate`, `unregisterNode`, `unregisterActor`,
       `IsInstalled`), `SLIF_Morph.psc` (`morph`) — each shim = unchanged-value
       early-out (the reference lacks one; BF NG re-sends unchanged values every
@@ -214,20 +232,6 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       "does this body support slider X" probe, so the per-actor body PROFILE is
       the right place to answer it: a profile knows its own slider set, and a
       target with no usable slider routes to nodes. Blocked on this phase.
-- [ ] Port BF NG's `BodyMorph/*.ini` profile format (proven: default / CBBE 3BA
-      / BHUNP) as the node→morph / morph-blend tables.
-- [ ] **Per-actor profile resolution.** UBE coexists with 3BA/BHUNP in one game
-      (it is race-based), so a single global profile — SLIF's model and BF NG's
-      current model — is wrong by construction. Resolve per actor:
-      race → profile mapping first, then `NiOverride.GetMorphNames(actor)`
-      fingerprint as fallback; cache per actor; manual override in MCM.
-- [ ] **UBE profile** (UBE 2.0 — Ultimate Body Enhancer, Nexus 92989):
-      custom races via RaceCompatibility, own body model with 200+ UBE-specific
-      BodySlide sliders (RaceMenu morphs work normally), XPMSSE required so the
-      standard nodes (`NPC Belly` etc.) exist for the node keys.
-      Tasks: pull belly/breast/butt slider names from UBE's BodySlide/.tri
-      files; detect via UBE race (or a UBE-unique slider name); ship
-      `UBE.ini` profile.
 
 ### P3 — Packaging
 - [x] **FOMOD asks which body you built** - the best available answer, since no
@@ -247,11 +251,12 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       fragment alias binding `SLIF_ScannerAlias` (Local); `0x801` stub quest
       SLIF_Scanner. SEQ generated. Masters: Skyrim.esm + Update.esm.
       ESL-flag decision deferred.
-- [ ] FOMOD ships `SLIFNG.dll` + ESP + scripts together (BF NG conventions);
-      requirements stay minimal: SKSE, RaceMenu (skee), PapyrusUtil only for
-      legacy-save import.
-- [ ] FOMOD; installer text: "install INSTEAD of SLIF; load-order replace".
-- [ ] Version file + MCM version display (BF NG conventions).
+- [x] FOMOD ships `SLIFNG.dll` + ESP + SEQ + scripts together in Core;
+      requirements stay minimal: SKSE, RaceMenu (skee). info.xml states
+      "install INSTEAD of SLIF".
+- [ ] A real mod VERSION (the MCM shows the native API version, not a release
+      number) + a version line in the installer description.
+- [ ] ESL-flag decision for the ESP.
 
 ### P4 — Diagnostics ("Check my setup") — ACTOR PAGE DONE
 - [x] **MCM "Actor" page**: subject toggle (player / crosshair target),
@@ -267,18 +272,17 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       drive dozens of sliders, and a page of per-slider sliders is the exact
       complexity this framework exists to remove. `SetTargetScale` stays in the
       engine for presets (P5); the MCM shows one overall magnitude.
-- [ ] Still open: body identification is a heuristic (race + marker plugins)
-      until per-actor profiles land in P2.
-
-### P4 notes — UI split DECIDED
-- [ ] **Settings: one minimal SkyUI MCM page** (what users expect to find);
-      **diagnostics: our own SKSEMenuFramework debug window** (rich tables are
-      easy there): detected body/profile per actor, engine version, per-actor
-      contributions (mod → target → value, masked contributions marked — see
-      CONTRACT §4.3 highest-wins), last 10 API calls with outcome
-      (applied / clamped / masked / dead-key no-op / unknown-node), migration
-      status. MCM keeps a one-line health summary + "open the debug menu" hint.
-- [ ] The dead Estrus keys and unknown vocabulary log here instead of vanishing.
+- [x] Body identification: the resolved PROFILE is now shown alongside the old
+      heuristic, so the two can be compared at a glance.
+- [x] **Settings + diagnostics both landed in the SkyUI MCM**, not the
+      SKSEMenuFramework window the earlier note planned: two MCM pages turned
+      out to be enough, and it drops a dependency. Revisit only if a table
+      outgrows MCM widgets.
+- [x] Dead Estrus keys and unknown vocabulary are logged with their outcome
+      (`dead key ... bug-compatible no-op`, `unknown node key ... ignored`)
+      instead of vanishing.
+- [ ] "Last N API calls" ring buffer in the Actor page (today the log carries
+      the call history; the page shows current state only).
 
 ### P5 — Presets (user-facing)
 - [x] **Magnitude scaling DONE** (cosave v3): a master multiplier plus
@@ -298,7 +302,12 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       best-effort mapping); the `SLIF_Config` presets API itself stays
       unimplemented — no consumer calls it (CONTRACT §8).
 
-### P6 — Migration & cleanup
+### P6 — Migration & cleanup  ← RELEASE BLOCKER, nothing built yet
+CONTRACT sec.6 promises a save that ran real SLIF migrates with no user action.
+Today only HALF of that is true: the NiOverride side is handled (legacy-key
+cleanup on `oldModName`, and the SLIF_Menu/Scanner/Timer stubs that stop SkyUI's
+config manager aborting), but nothing reads the legacy StorageUtil ledger, so a
+migrating user silently loses every stored contribution.
 - [ ] On first `OnPlayerLoadGame`: read legacy StorageUtil state (same key
       names — CONTRACT §6), rebuild aggregates, remove stale
       `"SexLab Inflation Framework.esp"` NiOverride entries not owned by the new
@@ -306,14 +315,20 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
 - [ ] Uninstall path: clear our applied output for all tracked actors.
 
 ### P7 — Compatibility matrix (gate for any release)
-| Consumer | Path | Pass criteria |
-|---|---|---|
-| Beeing Female NG | `SLIF_Main.inflate`/`unregisterNode` | pregnancy belly/breast growth + reset at birth |
-| FHU Baka | event inflate + `SLIF_Morph.morph` + `unregisterNode` | inflation + deflation, legacy `sr_FillHerUp.esp`/`FHU_MODKEY` keys cleared |
-| Sexlab Survival | event inflate + `unregisterActor` | gluttony belly on player |
-| Estrus Spider | event inflate incl. dead keys | live keys scale; dead keys no-op + diagnostic line |
-| Milk Mod Economy | `unregisterActor` only | stale SLIF output cleared; MME's own scaling untouched |
-| Old-SLIF save | migration | values survive, no double-apply, no orphan transforms |
+Status from the live session logged 2026-09-15 (`SLIFNG.log`), CBBE 3BA body:
+
+| Consumer | Path | Pass criteria | State |
+|---|---|---|---|
+| Beeing Female NG | `SLIF_Morph.morph` (belly + breasts) | growth + reset at birth | **partial** — growth observed (PregnancyBelly 0.247 -> 0.495, breasts 0.330 -> 0.660) and legacy key `BeeingFemale` cleaned once; **birth reset not yet seen** |
+| FHU Baka | event inflate + `SLIF_Morph.morph` + `unregisterNode` | inflation + deflation, legacy keys cleared | **pass** — deflate sequence 0.09 -> 0.065 -> 0.025 -> 0 observed, `sr_FillHerUp.esp` cleaned once |
+| Sexlab Survival | event inflate + `unregisterActor` | gluttony belly on player | **pass** — `slif_belly` 2.2 -> PregnancyBelly 0.16, early-out on the repeat |
+| Estrus Spider | event inflate incl. dead keys | live keys scale; dead keys no-op + diagnostic | **not run** |
+| Milk Mod Economy | `unregisterActor` only | stale SLIF output cleared; MME's own scaling untouched | **not run** |
+| Old-SLIF save | migration | values survive, no double-apply, no orphan transforms | **not run** — blocked on P6, which is unbuilt |
+
+Also proved incidentally: the cross-source fold (SLS `slif_belly` + BF NG
+`morph:pregnancybelly` correctly resolved to max, 0.247 not 0.16), deferred
+threading (API and Apply on different threads), and the cosave round-trip.
 
 ### P8 — Gradual growth (native ramp in SLIFNG.dll)
 Task/timer-based interpolation toward target values, entirely off the Papyrus
