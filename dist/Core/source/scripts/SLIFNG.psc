@@ -47,6 +47,12 @@ Float Function GetMasterScale() Global Native
 Function SetTargetScale(String scaleId, Float scale) Global Native
 Float Function GetTargetScale(String scaleId) Global Native
 
+; One-shot legacy-import marker, persisted with the save (cosave v4). The
+; import walk itself lives in SLIFNG_Migrate.psc - StorageUtil is a Papyrus API
+; with no C++ interface, so the DLL cannot read the legacy keys.
+Bool Function HasMigrated() Global Native
+Function SetMigrated(Bool done) Global Native
+
 ; Engine availability + a count, for the MCM status lines.
 Bool Function IsMorphEngineReady() Global Native
 Bool Function IsNodeEngineReady() Global Native

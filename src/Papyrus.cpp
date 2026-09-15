@@ -241,6 +241,14 @@ namespace SLIFNG::Papyrus
 			return Ledger::GetSingleton().TargetScale(a_scaleId.c_str());
 		}
 
+		bool HasMigrated(RE::StaticFunctionTag*) { return Ledger::GetSingleton().Migrated(); }
+
+		void SetMigrated(RE::StaticFunctionTag*, bool a_done)
+		{
+			logger::info("[API] SetMigrated({})", a_done);
+			Ledger::GetSingleton().SetMigrated(a_done);
+		}
+
 		bool IsMorphEngineReady(RE::StaticFunctionTag*) { return Skee::IsReady(); }
 		bool IsNodeEngineReady(RE::StaticFunctionTag*) { return Skee::IsNodeReady(); }
 
@@ -300,6 +308,8 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetMasterScale", script, GetMasterScale);
 		a_vm->RegisterFunction("SetTargetScale", script, SetTargetScale);
 		a_vm->RegisterFunction("GetTargetScale", script, GetTargetScale);
+		a_vm->RegisterFunction("HasMigrated", script, HasMigrated);
+		a_vm->RegisterFunction("SetMigrated", script, SetMigrated);
 		a_vm->RegisterFunction("IsMorphEngineReady", script, IsMorphEngineReady);
 		a_vm->RegisterFunction("IsNodeEngineReady", script, IsNodeEngineReady);
 		a_vm->RegisterFunction("TrackedActorCount", script, TrackedActorCount);

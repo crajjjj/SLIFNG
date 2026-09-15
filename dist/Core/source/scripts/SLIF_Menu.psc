@@ -23,6 +23,7 @@ int _oMode
 int _oMaster
 int _oVerbose
 int _oDump
+int _oImport
 
 ; --- Actor page ---
 int _oTarget
@@ -68,6 +69,27 @@ Function RenderSettingsPage()
 	AddHeaderOption("Diagnostics")
 	_oVerbose = AddToggleOption("Verbose logging", _verbose)
 	_oDump    = AddTextOption("Dump everything to SLIFNG.log", "")
+
+	AddHeaderOption("Migration")
+	_oImport = AddTextOption("Import from old SLIF save", ImportLabel(), ImportFlags())
+EndFunction
+
+; Disabled once it has run (the flag rides in the co-save, so it stays disabled
+; across reloads of THIS save) and also when there is simply nothing to import.
+String Function ImportLabel()
+	if SLIFNG.HasMigrated()
+		return "done"
+	elseIf SLIFNG_Migrate.CountLegacyActors() == 0
+		return "nothing found"
+	endIf
+	return SLIFNG_Migrate.CountLegacyActors() + " actor(s)"
+EndFunction
+
+Int Function ImportFlags()
+	if SLIFNG.HasMigrated() || SLIFNG_Migrate.CountLegacyActors() == 0
+		return OPTION_FLAG_DISABLED
+	endIf
+	return OPTION_FLAG_NONE
 EndFunction
 
 String Function ModeName()
@@ -168,6 +190,10 @@ Event OnOptionSelect(int a_option)
 	elseIf a_option == _oDump
 		SLIFNG.DumpLedger()
 		Debug.Notification("SLIF NG: state written to SLIFNG.log")
+	elseIf a_option == _oImport
+		Int moved = SLIFNG_Migrate.Run()
+		Debug.Notification("SLIF NG: imported " + moved + " contribution(s)")
+		ForcePageReset()   ; redraw so the option greys out
 	elseIf a_option == _oTarget
 		_useCrosshair = !_useCrosshair
 		ForcePageReset()
@@ -192,6 +218,8 @@ Event OnOptionHighlight(int a_option)
 		SetInfoText("Whether SLIF NG found RaceMenu's skee interfaces. 'morphs only' means node scaling is unavailable.")
 	elseIf a_option == _oTarget
 		SetInfoText("Switch between the player and whatever is under your crosshair. Close the menu, look at an NPC, reopen.")
+	elseIf a_option == _oImport
+		SetInfoText("Copies what reference SLIF stored in THIS save - every mod's per-actor belly/breast values - into SLIF NG, so a migrating character keeps her shape. Runs once, then greys out. Harmless to skip: mods re-send their values as play continues.")
 	elseIf a_option == _oRefresh
 		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
 	elseIf a_option == _oLog

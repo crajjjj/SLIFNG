@@ -11,7 +11,8 @@ namespace SLIFNG
 		constexpr std::uint32_t kLedgerRecord = 'LEDG';
 		// v2: aggregation mode + slider display-name table.
 		// v3: user magnitude scaling (master + per-target).
-		constexpr std::uint32_t kLedgerVersion = 3;
+		// v4: one-shot legacy-import marker.
+		constexpr std::uint32_t kLedgerVersion = 4;
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
@@ -222,6 +223,18 @@ namespace SLIFNG
 		return _mode == AggregationMode::kAdditive ? std::clamp(sum, clampMin, clampMax) : highest;
 	}
 
+	bool Ledger::Migrated() const
+	{
+		std::scoped_lock lock(_lock);
+		return _migrated;
+	}
+
+	void Ledger::SetMigrated(bool a_done)
+	{
+		std::scoped_lock lock(_lock);
+		_migrated = a_done;
+	}
+
 	float Ledger::MasterScale() const
 	{
 		std::scoped_lock lock(_lock);
@@ -411,6 +424,7 @@ namespace SLIFNG
 		}
 
 		Write(a_intfc, static_cast<std::uint32_t>(inst._mode));
+		Write(a_intfc, static_cast<std::uint32_t>(inst._migrated ? 1 : 0));
 
 		Write(a_intfc, inst._masterScale);
 		Write(a_intfc, static_cast<std::uint32_t>(inst._targetScales.size()));
@@ -454,6 +468,7 @@ namespace SLIFNG
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
+		inst._migrated = false;
 		inst._mode = AggregationMode::kHighestWins;
 
 		std::uint32_t type = 0;
@@ -479,6 +494,9 @@ namespace SLIFNG
 					                 ? AggregationMode::kAdditive
 					                 : AggregationMode::kHighestWins;
 
+					if (version >= 4) {
+						inst._migrated = Read<std::uint32_t>(a_intfc, length) != 0;
+					}
 					if (version >= 3) {
 						inst._masterScale = Read<float>(a_intfc, length);
 						const auto scaleCount = Read<std::uint32_t>(a_intfc, length);
@@ -535,6 +553,7 @@ namespace SLIFNG
 				inst._sliderNames.clear();
 				inst._targetScales.clear();
 				inst._masterScale = 1.0f;
+				inst._migrated = false;
 				inst._mode = AggregationMode::kHighestWins;
 			}
 		}
@@ -550,6 +569,7 @@ namespace SLIFNG
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
+		inst._migrated = false;
 		inst._mode = AggregationMode::kHighestWins;
 		logger::info("[Ledger] reverted");
 	}

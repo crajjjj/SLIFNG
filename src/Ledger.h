@@ -124,6 +124,11 @@ namespace SLIFNG
 		[[nodiscard]] std::vector<std::string> TargetsOf(RE::FormID a_actor) const;
 		[[nodiscard]] bool HasEntries(RE::FormID a_actor) const;
 
+		// One-shot legacy-import marker. Persisted with the save, because the
+		// question "has THIS save been imported" is save state, not settings.
+		[[nodiscard]] bool Migrated() const;
+		void SetMigrated(bool a_done);
+
 		AggregationMode GetMode() const { return _mode; }
 		void SetMode(AggregationMode a_mode) { _mode = a_mode; }
 
@@ -155,6 +160,7 @@ namespace SLIFNG
 		// scale id -> user multiplier (absent = 1.0, never stored when == 1.0)
 		std::unordered_map<std::string, float> _targetScales;
 		float _masterScale{ 1.0f };
+		bool _migrated{ false };
 		AggregationMode _mode{ AggregationMode::kHighestWins };
 	};
 }

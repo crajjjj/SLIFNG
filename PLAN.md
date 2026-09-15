@@ -13,10 +13,10 @@ rows.
 Release gates, in order:
 1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
    — the repo is already public, so this is now the pacing item.
-2. **P6 legacy-save migration** — CONTRACT sec.6 promises old SLIF saves carry
-   over; today nothing reads the legacy StorageUtil ledger, so that promise is
-   unmet.
-3. **P7 rows for Estrus, MME and an old-SLIF save** — never exercised.
+2. ~~P6 legacy-save migration~~ **built** (MCM import button); still needs one
+   real migrating-save test.
+3. **P7 rows for Estrus, MME and an old-SLIF save** — never exercised (the
+   import button now makes the old-save row testable).
 
 ## Goal
 
@@ -341,10 +341,22 @@ DLL cannot read these keys. A one-shot script has to walk them on first
 `OnPlayerLoadGame` and push each row into the native ledger through the existing
 natives, then mark the actor migrated. That also means PapyrusUtil becomes a
 soft dependency for migration only - noted in P3's requirements.
-- [ ] On first `OnPlayerLoadGame`: read legacy StorageUtil state (same key
-      names — CONTRACT §6), rebuild aggregates, remove stale
-      `"SexLab Inflation Framework.esp"` NiOverride entries not owned by the new
-      model, single re-apply per actor.
+- [x] **Legacy import DONE — an MCM button, not an automatic pass.**
+      `SLIFNG_Migrate.psc` walks the legacy StorageUtil ledger (node side via
+      `slif_mod_list` -> `<mod>slif_node_list` -> `<mod><node>` + bounds; morph
+      side via `slif_morph_mod_list` -> `slif_morph_list_<mod>` ->
+      `slif_<mod>_<morph>`) and pushes each row through the ordinary natives, so
+      imported data goes through exactly the same clamp/fold/apply path as a
+      live call. `-1.0` is used as the read default, which is already our
+      "unspecified, keep defaults" sentinel. "All Mods" is skipped on both sides
+      - it is SLIF's aggregate pseudo-mod and importing it would double
+      everything. Node names arrive RAW ("NPC Belly") and resolve through the
+      same path Fill Her Up's calls take.
+      The button greys out once run (flag persisted in cosave v4, so it stays
+      disabled for THAT save) and also when there is nothing to find; the label
+      shows the actor count up front. Chosen over an automatic pass so a user
+      who does not want old values simply never presses it - and so it cannot
+      fire on a save that never ran SLIF.
 - [ ] Uninstall path: clear our applied output for all tracked actors.
 
 ### P7 — Compatibility matrix (gate for any release)
