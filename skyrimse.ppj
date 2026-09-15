@@ -1,0 +1,31 @@
+<?xml version='1.0'?>
+<!--
+  Papyrus build for SLIF NG (pyro / Champollion-style .ppj).
+
+  Imports are absolute because they point at OTHER mods' script sources, which
+  live wherever the local mod-staging folder is - adjust ModsFolder below.
+  SkyUI's SDK is required for SLIF_Menu (SKI_ConfigBase).
+-->
+<PapyrusProject xmlns="PapyrusProject.xsd"
+    Flags="TESV_Papyrus_Flags.flg"
+    Game="sse"
+    Output="dist/Core/Scripts"
+    Optimize="false"
+    Release="false"
+    Zip="false"
+    Package="false"
+    Final="false">
+    <Variables>
+        <Variable Name="ModsFolder" Value="C:\Playground\Skyrim\mods" />
+    </Variables>
+    <Imports>
+        <Import>.\dist\Core\source\scripts</Import>
+        <!-- vanilla + SKSE -->
+        <Import>@ModsFolder\build\Scripts\Source\Scripts</Import>
+        <!-- SKI_ConfigBase for the MCM -->
+        <Import>@ModsFolder\build\SkyUI_5.1_SDK\Scripts\Source</Import>
+    </Imports>
+    <Folders>
+        <Folder>./dist/Core/source/scripts</Folder>
+    </Folders>
+</PapyrusProject>

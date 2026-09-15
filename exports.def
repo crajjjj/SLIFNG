@@ -1,0 +1,3 @@
+LIBRARY	"SLIFNG"
+EXPORTS
+SKSEPlugin_Load

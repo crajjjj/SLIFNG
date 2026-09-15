@@ -1,0 +1,20 @@
+# --- build output ------------------------------------------------------------
+build/
+.xmake/
+*.pdb
+*.ilk
+*.obj
+
+# --- editors / IDE -----------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# --- local only --------------------------------------------------------------
+.claude/settings.local.json
+
+# NOTE: dist/ IS tracked on purpose - it is the shippable mod, mirroring
+# Beeing Female NG: the compiled .pex, the .esp/.seq and SLIFNG.dll are the
+# artifacts users install, so they are versioned with the sources that made them.
