@@ -33,12 +33,25 @@ int _oLog
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
 
-; SkyUI only ever fires OnConfigInit ONCE, and Pages is a script PROPERTY that
-; then lives in the save. So adding a page in a later build is invisible to
-; anyone already running the mod - their save keeps the old array. GetVersion +
-; OnVersionUpdate is the supported way to re-run the setup on an existing save;
-; bump this whenever Pages or ModName changes.
+; ---------------------------------------------------------------- versioning
+; SkyUI fires OnConfigInit ONCE and `Pages` is a script PROPERTY, so it lives in
+; the save from then on: a page added in a later build stays invisible to anyone
+; already running the mod. Three sibling projects solve this three ways; this
+; takes the useful half of each.
+;
+; Packed (M)MmmPP -- 100 => 0.01.00, 10203 => 1.02.03. Same scheme as
+; ArousedBodyMorphs. Bump alongside the mod version whenever Pages, ModName, or
+; the option layout changes.
 Int Function GetVersion()
+	return 100
+EndFunction
+
+String Function VersionString()
+	Int v = GetVersion()
+	return (v / 10000) + "." + ((v / 100) % 100) + "." + (v % 100)
+EndFunction
+
+Int Function ExpectedPageCount()
 	return 2
 EndFunction
 
@@ -47,8 +60,20 @@ Event OnConfigInit()
 EndEvent
 
 Event OnVersionUpdate(int a_version)
-	; Re-run setup so an existing save picks up pages added since it registered.
+	{Deliberately LIGHT. This runs during SkyUI's registration with the script
+	lock contended - reaching across to another quest or alias here froze the
+	game in ArousedBodyMorphs' predecessor. Setting our own properties is safe;
+	anything else belongs in OnGameReload.}
 	BuildPages()
+EndEvent
+
+Event OnConfigOpen()
+	; Self-heal, borrowed from SLO Aroused NG's `Pages.length < 4` guard: if a
+	; save somehow carries a stale page array while reporting a current version,
+	; rebuild anyway rather than showing a menu with pages missing.
+	if Pages.length != ExpectedPageCount()
+		BuildPages()
+	endIf
 EndEvent
 
 Function BuildPages()
@@ -71,7 +96,7 @@ EndEvent
 Function RenderSettingsPage()
 	SetCursorFillMode(TOP_TO_BOTTOM)
 
-	AddHeaderOption("SLIF NG")
+	AddHeaderOption("SLIF NG " + VersionString())
 	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
 	_oEngine  = AddTextOption("RaceMenu / skee", EngineStatus())
 	_oActors  = AddTextOption("Tracked actors", SLIFNG.TrackedActorCount())

@@ -254,8 +254,14 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
 - [x] FOMOD ships `SLIFNG.dll` + ESP + SEQ + scripts together in Core;
       requirements stay minimal: SKSE, RaceMenu (skee). info.xml states
       "install INSTEAD of SLIF".
-- [ ] A real mod VERSION (the MCM shows the native API version, not a release
-      number) + a version line in the installer description.
+- [x] Mod VERSION: packed `(M)MmmPP` in `SLIF_Menu.GetVersion()` (100 =
+      0.01.00), shown in the MCM header and used by SkyUI to fire
+      OnVersionUpdate. Same scheme as ArousedBodyMorphs. **Bump it whenever
+      Pages, ModName or the option layout changes** - it is what makes an added
+      page appear on an existing save.
+- [ ] Move the version to a data file the way BF NG does
+      (`FWVersion.GetMCMVersion()` reads `BF_VersionMCM` from an INI), so a
+      release bump needs no script recompile. Not urgent at one MCM script.
 - [ ] ESL-flag decision for the ESP.
 
 ### P4 — Diagnostics ("Check my setup") — ACTOR PAGE DONE

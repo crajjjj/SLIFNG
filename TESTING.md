@@ -118,7 +118,9 @@ build therefore stays invisible on an existing save. The fix is already in
 `OnVersionUpdate` re-runs `BuildPages()`.
 
 If a page is still missing after loading a save made with the older script,
-force SkyUI to re-read the menu from the console:
+force SkyUI to re-read the menu from the console (a third guard also exists:
+`OnConfigOpen` rebuilds if `Pages.length` disagrees with the expected count,
+borrowed from SLO Aroused NG):
 
 ```
 setstage SKI_ConfigManagerInstance 1
