@@ -188,6 +188,14 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       that UUNP table is what it drove UUNP-family bodies with for years -
       the best source short of a BHUNP install. Corrected the guess: `Breasts`
       is not a UUNP slider; `BreastsSH` is.
+- [x] **The two candidates are MUTUALLY EXCLUSIVE - no double-up.** Verified
+      against CBBE 3BA Reference.osp and SLIF's UUNP table: `BreastsSH` is
+      UUNP-only, `BreastsNewSH` is CBBE-only, and NO body carries both. So the
+      generic profile's pair always fires exactly once. An earlier note warning
+      of "roughly double the effect" was wrong and has been corrected in-file.
+- [x] **BHUNP aligned to BF NG's own tuned BHUNP profile** (BreastsSSH 0.4 /
+      DoubleMelon 0.25 / BreastsSmall 0.1), so a character looks the same
+      whichever backend drives her.
 - [x] **The CBBE/UUNP slider split is now documented, with evidence.** SLIF's
       CBBE SE table has `BreastsNewSH` and NO `BreastsSH`; its UUNP table has
       `BreastsSH` and NO `BreastsNewSH`. That split is precisely why one
