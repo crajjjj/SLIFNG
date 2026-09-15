@@ -157,7 +157,18 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       cleared on revert. The ledger fold resolves blends per actor too, so a
       node key drives whatever THAT actor's body uses.
 - [ ] Manual per-actor profile override in the MCM (currently automatic only).
-- [ ] UBE slider names are placeholders - needs a pass against UBE's BodySlide.
+- [x] **Slider names verified against real slider sets** (the `<Slider name>`
+      values in a body's `.osp` are what BodySlide writes into morphs.tri, which
+      is what skee matches):
+      * CBBE 3BA - all five verified present.
+      * UBE 2.0 - `PregnancyBelly` verified present (it shares CBBE's name);
+        `BreastsSH`/`BreastsNewSH` are **absent**, so the placeholder profile
+        was silently dead. Replaced with UBE's own `BreastsBigger`. Race matcher
+        confirmed: EditorIDs are `00UBE_BretonRace` etc, so `UBE_` matches.
+      * default.ini keeps BreastsSH AND BreastsNewSH as candidates (a missing
+        slider contributes nothing) - noted in-file, same trade BF NG makes.
+- [ ] **BHUNP.ini is UNVERIFIED** - no BHUNP body installed here to check
+      against. Flagged in the file itself.
 - [x] ~~Known gap: the node fallback is unreachable for a morph-mapped key.~~
       `slif_belly`/`slif_breast` always take the morph path, so on a body whose
       BodySlide set lacks `PregnancyBelly`/`BreastsSH` nothing happens instead
