@@ -182,8 +182,22 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
         confirmed: EditorIDs are `00UBE_BretonRace` etc, so `UBE_` matches.
       * default.ini keeps BreastsSH AND BreastsNewSH as candidates (a missing
         slider contributes nothing) - noted in-file, same trade BF NG makes.
-- [ ] **BHUNP.ini is UNVERIFIED** - no BHUNP body installed here to check
-      against. Flagged in the file itself.
+- [x] **BHUNP sourced from reference SLIF's own UUNP table.** SLIF generates
+      three body variants of its mappings
+      (`StorageUtilData/.../bodymorphs/{000_Default,001_UUNP,002_CBBE_SE}`), and
+      that UUNP table is what it drove UUNP-family bodies with for years -
+      the best source short of a BHUNP install. Corrected the guess: `Breasts`
+      is not a UUNP slider; `BreastsSH` is.
+- [x] **The CBBE/UUNP slider split is now documented, with evidence.** SLIF's
+      CBBE SE table has `BreastsNewSH` and NO `BreastsSH`; its UUNP table has
+      `BreastsSH` and NO `BreastsNewSH`. That split is precisely why one
+      hardcoded mapping cannot serve both bodies. `PregnancyBelly` is in all
+      three tables - the one name safe everywhere.
+- [x] **Node vocabulary confirmed body-INDEPENDENT.** All three of SLIF's
+      `lists/*.json` resolve our four keys identically (`NPC Belly`,
+      `NPC L/R Breast`, `NPC L/R Butt`, `NPC GenitalsScrotum [GenScrot]`), so
+      only the MORPH side needs per-body profiles. One hardcoded node table is
+      correct.
 - [x] ~~Known gap: the node fallback is unreachable for a morph-mapped key.~~
       `slif_belly`/`slif_breast` always take the morph path, so on a body whose
       BodySlide set lacks `PregnancyBelly`/`BreastsSH` nothing happens instead
