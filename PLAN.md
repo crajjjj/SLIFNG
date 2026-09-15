@@ -308,6 +308,39 @@ Today only HALF of that is true: the NiOverride side is handled (legacy-key
 cleanup on `oldModName`, and the SLIF_Menu/Scanner/Timer stubs that stop SkyUI's
 config manager aborting), but nothing reads the legacy StorageUtil ledger, so a
 migrating user silently loses every stored contribution.
+
+**The legacy layout, read from a real co-save** (NEFARAM Save33, 2026-09-14,
+before SLIF NG was installed) - this is what an importer must walk:
+
+```
+global (none-keyed)
+  slif_actor_list          FormList  [0x14]              tracked actors
+  slif_complete_actor_list FormList  [0x14]
+  slif_morph_actor_list    FormList  [0x14]
+  slif_actor_name_list     StrList   ["Anna"]
+  slif_installed / slif_valid_nioverride / slif_working   int flags
+
+per actor
+  slif_gender              int
+  slif_mod_list            StrList   ["All Mods","Sexlab Survival"]   node-driving mods
+  slif_morph_mod_list      StrList   ["All Mods","Fill her up"]       morph-driving mods
+  <mod>slif_node_list      StrList   ["NPC Belly"]      which nodes THAT mod drives
+  slif_morph_list_<mod>    StrList   ["PregnancyBelly"] which morphs THAT mod drives
+  slif_morph_mod_list_<morph> StrList ["Fill her up"]   reverse index
+  <mod><node>              float     + _min/_max/_mult/_increment   node contribution
+  slif_<mod>_<morph>       float     e.g. slif_fillherup_pregnancybelly = 0.09
+  slif_<morph>             float     the aggregate, e.g. slif_pregnancybelly = 0.09
+```
+
+Shape-for-shape the same model as our ledger (per mod, per target, plus bounds),
+so the import is a translation rather than a reconstruction.
+
+**Design consequence: the importer must be PAPYRUS-side.** StorageUtil is
+PapyrusUtil's API and publishes no C++ interface for other SKSE plugins, so the
+DLL cannot read these keys. A one-shot script has to walk them on first
+`OnPlayerLoadGame` and push each row into the native ledger through the existing
+natives, then mark the actor migrated. That also means PapyrusUtil becomes a
+soft dependency for migration only - noted in P3's requirements.
 - [ ] On first `OnPlayerLoadGame`: read legacy StorageUtil state (same key
       names — CONTRACT §6), rebuild aggregates, remove stale
       `"SexLab Inflation Framework.esp"` NiOverride entries not owned by the new
