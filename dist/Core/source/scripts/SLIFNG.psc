@@ -52,5 +52,10 @@ Bool Function IsMorphEngineReady() Global Native
 Bool Function IsNodeEngineReady() Global Native
 Int Function TrackedActorCount() Global Native
 
+; Actor diagnostics, formatted by the engine: interleaved {label, value, ...}
+; where an empty value marks a section header. Same text either way.
+String[] Function GetActorReport(Actor kActor) Global Native
+Function LogActorReport(Actor kActor) Global Native
+
 Function DumpLedger() Global Native
 Function DumpActor(Actor kActor) Global Native

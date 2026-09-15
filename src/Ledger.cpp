@@ -286,6 +286,24 @@ namespace SLIFNG
 		return it != modIt->second.end() ? it->second.value : 0.0f;
 	}
 
+	std::vector<std::string> Ledger::ModsDriving(RE::FormID a_actor, const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		std::vector<std::string> out;
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
+			return out;
+		}
+		const std::string target = Lower(a_target);
+		for (const auto& [mod, targets] : actorIt->second) {
+			if (targets.find(target) != targets.end()) {
+				out.push_back(mod);
+			}
+		}
+		std::sort(out.begin(), out.end());
+		return out;
+	}
+
 	std::vector<RE::FormID> Ledger::TrackedActors() const
 	{
 		std::scoped_lock lock(_lock);

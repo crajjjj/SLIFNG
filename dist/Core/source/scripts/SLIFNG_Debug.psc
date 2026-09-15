@@ -12,6 +12,8 @@ and verified from SLIFNG.log without any consumer mod or gameplay.
   cgf "SLIFNG_Debug.Scale" 0.5
   cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
   cgf "SLIFNG_Debug.Dump"
+  cgf "SLIFNG_Debug.Report"      ; player diagnostics
+  cgf "SLIFNG_Debug.ReportX"     ; crosshair target
   cgf "SLIFNG_Debug.SmokeTest"
 }
 
@@ -57,6 +59,15 @@ EndFunction
 
 Function DumpP() Global
 	SLIFNG.DumpActor(Game.GetPlayer())
+EndFunction
+
+; Full actor diagnostics (body, contributions, applied-vs-default) to the log.
+Function Report() Global
+	SLIFNG.LogActorReport(Game.GetPlayer())
+EndFunction
+
+Function ReportX() Global
+	SLIFNG.LogActorReport(Game.GetCurrentCrosshairRef() as Actor)
 EndFunction
 
 ; One-shot scripted smoke run: exercises inflate, overlap aggregation,

@@ -258,6 +258,14 @@ namespace SLIFNG::Skee
 
 	bool Verbose() { return g_verbose.load(std::memory_order_relaxed); }
 
+	float ReadMorph(RE::Actor* a_actor, const std::string& a_sliderName)
+	{
+		if (!a_actor || !g_bodyMorph) {
+			return 0.0f;
+		}
+		return g_bodyMorph->GetMorph(a_actor, a_sliderName.c_str(), kAppliedKey);
+	}
+
 	void RegisterLoadHook()
 	{
 		if (auto* holder = RE::ScriptEventSourceHolder::GetSingleton()) {

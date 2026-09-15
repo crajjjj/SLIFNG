@@ -1,6 +1,7 @@
 #include "Papyrus.h"
 
 #include "Ledger.h"
+#include "Report.h"
 #include "Skee.h"
 #include "Vocabulary.h"
 
@@ -253,6 +254,17 @@ namespace SLIFNG::Papyrus
 			Skee::SetVerbose(a_on);
 		}
 
+		// Interleaved {label, value, ...}; an empty value marks a section header.
+		std::vector<RE::BSFixedString> GetActorReport(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			return Report::ForActor(a_actor);
+		}
+
+		void LogActorReport(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			Report::LogForActor(a_actor);
+		}
+
 		void DumpLedger(RE::StaticFunctionTag*)
 		{
 			Ledger::GetSingleton().DumpToLog();
@@ -287,6 +299,8 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("IsNodeEngineReady", script, IsNodeEngineReady);
 		a_vm->RegisterFunction("TrackedActorCount", script, TrackedActorCount);
 		a_vm->RegisterFunction("SetVerboseLogging", script, SetVerboseLogging);
+		a_vm->RegisterFunction("GetActorReport", script, GetActorReport);
+		a_vm->RegisterFunction("LogActorReport", script, LogActorReport);
 		a_vm->RegisterFunction("DumpLedger", script, DumpLedger);
 		a_vm->RegisterFunction("DumpActor", script, DumpActor);
 		return true;

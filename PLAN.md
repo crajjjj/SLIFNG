@@ -179,7 +179,24 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
 - [ ] FOMOD; installer text: "install INSTEAD of SLIF; load-order replace".
 - [ ] Version file + MCM version display (BF NG conventions).
 
-### P4 — Diagnostics ("Check my setup") — UI split DECIDED
+### P4 — Diagnostics ("Check my setup") — ACTOR PAGE DONE
+- [x] **MCM "Actor" page**: subject toggle (player / crosshair target),
+      identity (name, FormID, race, sex, 3D-loaded), body heuristic + REAL
+      skeleton-node probe via `Get3D()->GetObjectByName`, per-mod contributions
+      grouped by what they drive, and applied-vs-default per slider with the
+      skee readback beside it (a slider absent on the body shows as a
+      mismatch). One button writes the identical text to SLIFNG.log for bug
+      reports. The ENGINE formats the report (`Report::ForActor` returns
+      interleaved label/value pairs) so the MCM is a dumb printer and the log
+      and page can never drift.
+- [x] Per-slider magnitude knobs deliberately NOT in the MCM — a load order can
+      drive dozens of sliders, and a page of per-slider sliders is the exact
+      complexity this framework exists to remove. `SetTargetScale` stays in the
+      engine for presets (P5); the MCM shows one overall magnitude.
+- [ ] Still open: body identification is a heuristic (race + marker plugins)
+      until per-actor profiles land in P2.
+
+### P4 notes — UI split DECIDED
 - [ ] **Settings: one minimal SkyUI MCM page** (what users expect to find);
       **diagnostics: our own SKSEMenuFramework debug window** (rich tables are
       easy there): detected body/profile per actor, engine version, per-actor

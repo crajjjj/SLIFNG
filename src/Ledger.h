@@ -115,6 +115,11 @@ namespace SLIFNG
 		[[nodiscard]] float GetContribution(RE::FormID a_actor, const std::string& a_mod,
 			const std::string& a_target) const;
 
+		// Which mods hold a contribution to one target on one actor (for the
+		// actor diagnostics page).
+		[[nodiscard]] std::vector<std::string> ModsDriving(RE::FormID a_actor,
+			const std::string& a_target) const;
+
 		[[nodiscard]] std::vector<RE::FormID> TrackedActors() const;
 		[[nodiscard]] std::vector<std::string> TargetsOf(RE::FormID a_actor) const;
 		[[nodiscard]] bool HasEntries(RE::FormID a_actor) const;

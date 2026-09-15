@@ -31,6 +31,10 @@ namespace SLIFNG::Skee
 	void SetVerbose(bool a_on);
 	bool Verbose();
 
+	// What skee currently holds for one slider under OUR key - the readback the
+	// diagnostics page compares against what we meant to write.
+	float ReadMorph(RE::Actor* a_actor, const std::string& a_sliderName);
+
 	// ---- main-thread only (task bodies, 3D-load hook) ----
 	void Apply(RE::Actor* a_actor, const std::string& a_lowerTarget);
 	void ApplyTargets(RE::Actor* a_actor, const std::vector<std::string>& a_lowerTargets);
