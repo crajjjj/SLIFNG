@@ -1,6 +1,7 @@
 #include "Report.h"
 
 #include "API/SKEE.h"
+#include "BodyProfile.h"
 #include "Ledger.h"
 #include "Skee.h"
 #include "Vocabulary.h"
@@ -104,7 +105,8 @@ namespace SLIFNG::Report
 
 		// ---- body -----------------------------------------------------------
 		Header(out, "Body");
-		Row(out, "Detected", BodyGuess(a_actor));
+		Row(out, "Profile", BodyProfile::ResolvedName(a_actor));
+		Row(out, "Heuristic", BodyGuess(a_actor));
 		int found = 0;
 		int total = 0;
 		const std::string nodes = SkeletonNodes(a_actor, found, total);
@@ -143,12 +145,12 @@ namespace SLIFNG::Report
 		for (const auto& target : targets) {
 			if (IsMorphTarget(target)) {
 				sliders.insert(SliderOf(target));
-			} else if (const auto* nt = Vocabulary::Find(target)) {
-				if (nt->morphs[0].slider) {
-					for (const auto& blend : nt->morphs) {
-						if (blend.slider) {
-							sliders.insert(Lower(blend.slider));
-						}
+			} else if (Vocabulary::Find(target)) {
+				// Per-actor: the profile decides morph vs node for this key.
+				const auto* blends = BodyProfile::BlendFor(a_actor, target);
+				if (blends && !blends->empty()) {
+					for (const auto& blend : *blends) {
+						sliders.insert(Lower(blend.slider));
 					}
 				} else {
 					nodeTargets.insert(target);
@@ -163,8 +165,14 @@ namespace SLIFNG::Report
 			const std::string name = ledger.SliderName(sliderLower);
 			const float folded = ledger.AggregateSlider(formID, sliderLower);
 			const float scaled = folded * ledger.EffectiveScale(sliderLower);
-			// morph default is 0.0; show what skee reports back so a silent
-			// rejection (slider absent on this body) is visible as a mismatch.
+			// Morph default is 0.0. The skee readback proves OUR WRITE LANDED
+			// (right key, right name, not clobbered) - it is NOT an availability
+			// test: SetMorph/GetMorph are a dictionary keyed by
+			// (actor, slider, key) and never consult the mesh. A slider absent
+			// from this body's morphs.tri stores and reads back exactly the same;
+			// it is only ignored later, inside ApplyBodyMorphs. Knowing whether a
+			// body HAS a slider needs the per-body profile (PLAN P2) - skee
+			// exposes no such query.
 			std::string value = std::format("{} (default 0.000", Num(scaled));
 			if (Skee::IsReady()) {
 				value += std::format(", skee {}", Num(Skee::ReadMorph(a_actor, name)));

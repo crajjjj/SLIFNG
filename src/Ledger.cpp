@@ -1,5 +1,6 @@
 #include "Ledger.h"
 
+#include "BodyProfile.h"
 #include "Serialization.h"
 #include "Vocabulary.h"
 
@@ -193,9 +194,11 @@ namespace SLIFNG
 					boundHi = contribution.EffectiveMax();
 					boundLo = contribution.EffectiveMin();
 				} else if (!IsMorphTarget(target)) {
-					if (const auto* node = Vocabulary::Find(target)) {
-						for (const auto& blend : node->morphs) {
-							if (blend.slider && Lower(blend.slider) == a_sliderLower) {
+					// Which sliders a node key drives is a property of THIS ACTOR's
+					// body, so the blend comes from its profile, not a global table.
+					if (const auto* blends = BodyProfile::BlendForID(a_actor, target)) {
+						for (const auto& blend : *blends) {
+							if (Lower(blend.slider) == a_sliderLower) {
 								driven = (contribution.Effective() - 1.0f) * blend.weight;
 								boundHi = (contribution.EffectiveMax() - 1.0f) * blend.weight;
 								boundLo = (contribution.EffectiveMin() - 1.0f) * blend.weight;

@@ -2,6 +2,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "BodyProfile.h"
 #include "Ledger.h"
 #include "Papyrus.h"
 #include "Skee.h"
@@ -44,6 +45,7 @@ namespace
 	{
 		SLIFNG::Ledger::OnRevert(a_intfc);
 		SLIFNG::Skee::OnRevert();
+		SLIFNG::BodyProfile::ClearCache();
 	}
 
 	void InitializeSerialization()
@@ -76,6 +78,9 @@ namespace
 			SLIFNG::Skee::Initialize();
 			break;
 		case MessagingInterface::kDataLoaded:
+			// Profiles match on race + plugin presence, so the data handler must
+			// be up before they load.
+			SLIFNG::BodyProfile::Load();
 			// Retry actors that had no 3D when their values were restored.
 			SLIFNG::Skee::RegisterLoadHook();
 			break;

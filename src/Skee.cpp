@@ -1,6 +1,7 @@
 #include "Skee.h"
 
 #include "API/SKEE.h"
+#include "BodyProfile.h"
 #include "Ledger.h"
 #include "Vocabulary.h"
 

@@ -141,8 +141,24 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       early-out (the reference lacks one; BF NG re-sends unchanged values every
       cycle tick) + one native call.
 
-### P2 — Vocabulary + body profiles (per-ACTOR, not global)
-- [ ] **Known gap: the node fallback is unreachable for a morph-mapped key.**
+### P2 — Vocabulary + body profiles (per-ACTOR, not global) — CORE DONE
+- [x] **Node fallback is now REACHABLE.** A key the actor's profile does not
+      list has no usable slider on that body, so the apply path drives it with a
+      skeleton node scale instead. Declaring absence in the profile is the only
+      honest mechanism - see the note below on why detection is impossible.
+- [x] **INI profiles** at `Data/SLIFNG/Bodies/*.ini`, loaded at kDataLoaded
+      (race + plugin matchers need the data handler). Sections per vocabulary
+      key with `FullScale` + `MorphN`/`MorphNMax`, i.e. BF NG's proven format:
+      Max is the slider value at full node deviation, converted internally to
+      weight-per-deviation. Ships default / CBBE 3BA / BHUNP / UBE. A compiled
+      built-in default keeps a bare install working with no files at all.
+- [x] **Per-actor resolution + cache**: race EditorID substring first (decisive
+      for UBE), then plugin presence, else default.ini. Cached per FormID and
+      cleared on revert. The ledger fold resolves blends per actor too, so a
+      node key drives whatever THAT actor's body uses.
+- [ ] Manual per-actor profile override in the MCM (currently automatic only).
+- [ ] UBE slider names are placeholders - needs a pass against UBE's BodySlide.
+- [x] ~~Known gap: the node fallback is unreachable for a morph-mapped key.~~
       `slif_belly`/`slif_breast` always take the morph path, so on a body whose
       BodySlide set lacks `PregnancyBelly`/`BreastsSH` nothing happens instead
       of falling back to a NiTransform node scale (PLAN P0 promised a fallback
@@ -184,9 +200,9 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       identity (name, FormID, race, sex, 3D-loaded), body heuristic + REAL
       skeleton-node probe via `Get3D()->GetObjectByName`, per-mod contributions
       grouped by what they drive, and applied-vs-default per slider with the
-      skee readback beside it (a slider absent on the body shows as a
-      mismatch). One button writes the identical text to SLIFNG.log for bug
-      reports. The ENGINE formats the report (`Report::ForActor` returns
+      skee readback beside it (which proves our write landed - it is NOT an
+      availability test, see the note in P2). One button writes the identical
+      text to SLIFNG.log for bug reports. The ENGINE formats the report (`Report::ForActor` returns
       interleaved label/value pairs) so the MCM is a dumb printer and the log
       and page can never drift.
 - [x] Per-slider magnitude knobs deliberately NOT in the MCM — a load order can
