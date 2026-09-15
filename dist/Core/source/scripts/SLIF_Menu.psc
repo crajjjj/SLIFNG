@@ -33,12 +33,30 @@ int _oLog
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
 
+; SkyUI only ever fires OnConfigInit ONCE, and Pages is a script PROPERTY that
+; then lives in the save. So adding a page in a later build is invisible to
+; anyone already running the mod - their save keeps the old array. GetVersion +
+; OnVersionUpdate is the supported way to re-run the setup on an existing save;
+; bump this whenever Pages or ModName changes.
+Int Function GetVersion()
+	return 2
+EndFunction
+
 Event OnConfigInit()
+	BuildPages()
+EndEvent
+
+Event OnVersionUpdate(int a_version)
+	; Re-run setup so an existing save picks up pages added since it registered.
+	BuildPages()
+EndEvent
+
+Function BuildPages()
 	ModName = "SLIF NG"
 	Pages = new String[2]
 	Pages[0] = "Settings"
 	Pages[1] = "Actor"
-EndEvent
+EndFunction
 
 Event OnPageReset(String a_page)
 	if a_page == "Actor"

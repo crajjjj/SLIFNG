@@ -109,6 +109,23 @@ call surfaces there with its outcome; `oldModName` first-contacts log
 `[Skee] cleaned legacy key ...` once per actor per session. MME: a
 `[API] UnregisterMod(... mod='Milk Mod Economy')` on maid reset.
 
+## MCM pages not updating after a build?
+
+`Pages` is a script PROPERTY, so SkyUI stores it in the save the first time it
+registers the menu and `OnConfigInit` never fires again. A page added in a later
+build therefore stays invisible on an existing save. The fix is already in
+`SLIF_Menu.psc` - bump `GetVersion()` whenever `Pages` or `ModName` changes, and
+`OnVersionUpdate` re-runs `BuildPages()`.
+
+If a page is still missing after loading a save made with the older script,
+force SkyUI to re-read the menu from the console:
+
+```
+setstage SKI_ConfigManagerInstance 1
+```
+
+then wait for the "Registered new menus" notification and reopen the MCM.
+
 ## Other console tools
 
 ```
