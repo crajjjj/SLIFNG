@@ -7,8 +7,9 @@ the ESP/SEQ, the pinned shims, per-actor body profiles, the FOMOD and a two-page
 MCM all ship; BF NG, Fill Her Up and Sexlab Survival have been observed folding
 correctly together on one actor (`SLIFNG.log`, 2026-09-15).
 
-Not started: **P6 migration** and **P8 ramp**. Not run: **P7**, three of its six
-rows.
+P6 migration is **built but untested** (the import button has never met a real
+old-SLIF save). Not started: **P8 ramp**, and P6's uninstall path. Not run:
+**P7**, three of its six rows.
 
 Release gates, in order:
 1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
@@ -308,12 +309,13 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       best-effort mapping); the `SLIF_Config` presets API itself stays
       unimplemented — no consumer calls it (CONTRACT §8).
 
-### P6 — Migration & cleanup  ← RELEASE BLOCKER, nothing built yet
-CONTRACT sec.6 promises a save that ran real SLIF migrates with no user action.
-Today only HALF of that is true: the NiOverride side is handled (legacy-key
-cleanup on `oldModName`, and the SLIF_Menu/Scanner/Timer stubs that stop SkyUI's
-config manager aborting), but nothing reads the legacy StorageUtil ledger, so a
-migrating user silently loses every stored contribution.
+### P6 — Migration & cleanup  ← import BUILT, untested; uninstall path unbuilt
+CONTRACT sec.6 promises a save that ran real SLIF migrates. The NiOverride side
+is automatic (legacy-key cleanup on `oldModName`, and the SLIF_Menu/Scanner/Timer
+stubs that stop SkyUI's config manager aborting); the StorageUtil ledger is now
+imported too, but by an MCM BUTTON rather than "no user action" - a deliberate
+departure from the contract's wording, so the import cannot fire on a save that
+never ran SLIF. It has never been run against a real migrating save.
 
 **The legacy layout, read from a real co-save** (NEFARAM Save33, 2026-09-14,
 before SLIF NG was installed) - this is what an importer must walk:
