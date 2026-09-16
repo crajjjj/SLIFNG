@@ -263,9 +263,20 @@ namespace SLIFNG::Papyrus
 		}
 
 		// Interleaved {label, value, ...}; an empty value marks a section header.
+		// Two halves so the MCM can lay them out as real columns.
 		std::vector<RE::BSFixedString> GetActorReport(RE::StaticFunctionTag*, RE::Actor* a_actor)
 		{
 			return Report::ForActor(a_actor);
+		}
+
+		std::vector<RE::BSFixedString> GetActorReportLeft(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			return Report::IdentityRows(a_actor);
+		}
+
+		std::vector<RE::BSFixedString> GetActorReportRight(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			return Report::StateRows(a_actor);
 		}
 
 		void LogActorReport(RE::StaticFunctionTag*, RE::Actor* a_actor)
@@ -315,6 +326,8 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("TrackedActorCount", script, TrackedActorCount);
 		a_vm->RegisterFunction("SetVerboseLogging", script, SetVerboseLogging);
 		a_vm->RegisterFunction("GetActorReport", script, GetActorReport);
+		a_vm->RegisterFunction("GetActorReportLeft", script, GetActorReportLeft);
+		a_vm->RegisterFunction("GetActorReportRight", script, GetActorReportRight);
 		a_vm->RegisterFunction("LogActorReport", script, LogActorReport);
 		a_vm->RegisterFunction("LogKnownMorphs", script, LogKnownMorphs);
 		a_vm->RegisterFunction("DumpLedger", script, DumpLedger);

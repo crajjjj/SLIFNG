@@ -61,6 +61,10 @@ Int Function TrackedActorCount() Global Native
 ; Actor diagnostics, formatted by the engine: interleaved {label, value, ...}
 ; where an empty value marks a section header. Same text either way.
 String[] Function GetActorReport(Actor kActor) Global Native
+; The same report split in two, so the MCM can pair the halves into real
+; columns instead of leaving the right half blank.
+String[] Function GetActorReportLeft(Actor kActor) Global Native
+String[] Function GetActorReportRight(Actor kActor) Global Native
 Function LogActorReport(Actor kActor) Global Native
 
 ; Probe: dump skee's known morph-name table (and one actor's morphs) to the

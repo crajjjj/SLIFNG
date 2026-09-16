@@ -178,36 +178,51 @@ String Function TargetName()
 EndFunction
 
 Function RenderActorPage()
-	; TOP_TO_BOTTOM is right HERE: the report is long and variable, so filling
-	; the left column and flowing into the right keeps related rows adjacent.
-	; Pairing it into columns like the Settings page would interleave unrelated
-	; sections.
-	SetCursorFillMode(TOP_TO_BOTTOM)
-
-	AddHeaderOption("Subject")
-	_oTarget  = AddTextOption("Showing", TargetName())
-	_oRefresh = AddTextOption("Refresh", "")
-	_oLog     = AddTextOption("Write this page to SLIFNG.log", "")
+	; REAL two columns. TOP_TO_BOTTOM only flows right once the LEFT column is
+	; FULL, and this page is never that long - it sat one-sided. So the engine
+	; hands back the report in two halves and we interleave them here, padding
+	; whichever runs out first.
+	SetCursorFillMode(LEFT_TO_RIGHT)
 
 	Actor subject = SelectedActor()
+
+	_oTarget  = AddTextOption("Showing", TargetName())
+	_oRefresh = AddTextOption("Refresh", "")
+	_oLog     = AddTextOption("Write to SLIFNG.log", "")
+	AddEmptyOption()
+
 	if !subject
 		AddHeaderOption("Nothing under the crosshair")
+		AddEmptyOption()
 		return
 	endIf
 
-	; The ENGINE formats the whole report; this page is a dumb printer, so the
-	; same text can go to the log unchanged. Interleaved {label, value, ...};
-	; an empty value means the pair is a section header.
-	String[] rows = SLIFNG.GetActorReport(subject)
-	int i = 0
-	while i < rows.length - 1
-		if rows[i + 1] == ""
-			AddHeaderOption(rows[i])
-		else
-			AddTextOption(rows[i], rows[i + 1])
-		endIf
+	; Interleaved {label, value, ...}; an empty value means the pair is a header.
+	String[] left = SLIFNG.GetActorReportLeft(subject)
+	String[] right = SLIFNG.GetActorReportRight(subject)
+
+	Int rows = left.length
+	if right.length > rows
+		rows = right.length
+	endIf
+
+	Int i = 0
+	While i < rows - 1
+		EmitRow(left, i)
+		EmitRow(right, i)
 		i += 2
-	endWhile
+	EndWhile
+EndFunction
+
+; One report row into the next slot, or a blank when that half has run out.
+Function EmitRow(String[] rowsArr, Int i)
+	if i + 1 >= rowsArr.length
+		AddEmptyOption()
+	elseIf rowsArr[i + 1] == ""
+		AddHeaderOption(rowsArr[i])
+	else
+		AddTextOption(rowsArr[i], rowsArr[i + 1])
+	endIf
 EndFunction
 
 ; =================================================================== input ===

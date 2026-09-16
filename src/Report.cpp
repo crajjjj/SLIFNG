@@ -54,70 +54,58 @@ namespace SLIFNG::Report
 			return missing;
 		}
 
-		// Body identification is HEURISTIC until per-actor profiles land (PLAN
-		// P2). Report the evidence rather than asserting a body: the race is
-		// decisive for UBE (it is race-based), and skee's knowledge of a slider
-		// name tells you whether the morph we drive exists at all.
-		std::string BodyGuess(RE::Actor* a_actor)
-		{
-			const auto* race = a_actor->GetRace();
-			const std::string raceID = race && race->GetFormEditorID() ? race->GetFormEditorID() : "";
-			if (!raceID.empty() && Lower(raceID).find("ube") != std::string::npos) {
-				return "UBE (race)";
-			}
-			auto* dh = RE::TESDataHandler::GetSingleton();
-			auto has = [dh](const char* a_plugin) { return dh && dh->LookupModByName(a_plugin) != nullptr; };
-			if (has("UBE_AllRace.esp") || has("UBE.esp")) {
-				return "UBE installed";
-			}
-			if (has("3BBB.esp") || has("CBBE 3BA.esp")) {
-				return "CBBE 3BA";
-			}
-			if (has("BHUNP.esp") || has("BHUNP3BBB.esp")) {
-				return "BHUNP";
-			}
-			return "unknown";
-		}
 	}
 
-	std::vector<RE::BSFixedString> ForActor(RE::Actor* a_actor)
+	// LAYOUT RULES - this renders in a TWO-COLUMN SkyUI MCM:
+	//   * a label past ~30 chars collides with its own value column;
+	//   * a value past ~20 chars runs left across the label;
+	//   * an EMPTY value means "section header", so a placeholder line must
+	//     still carry a value or it draws as a header complete with divider.
+	// The log reuses these rows, so short helps there too.
+	//
+	// The report is split in two so the MCM can pair the halves into real
+	// columns: TOP_TO_BOTTOM only flows right once the LEFT column is FULL, and
+	// this page is never that long, so it was sitting one-sided.
+
+	std::vector<RE::BSFixedString> IdentityRows(RE::Actor* a_actor)
 	{
-		// LAYOUT RULES - this renders in a TWO-COLUMN SkyUI MCM:
-		//   * a label past ~30 chars collides with its own value column;
-		//   * a value past ~20 chars runs left across the label;
-		//   * an EMPTY value means "section header", so a placeholder line must
-		//     still carry a value or it draws as a header complete with divider.
-		// The log reuses these rows, so short helps there too.
 		std::vector<RE::BSFixedString> out;
 		if (!a_actor) {
 			Row(out, "Actor", "none selected");
 			return out;
 		}
-		auto& ledger = Ledger::GetSingleton();
-		const auto formID = a_actor->GetFormID();
-
 		Header(out, "Actor");
 		Row(out, "Name", a_actor->GetName() ? a_actor->GetName() : "(unnamed)");
-		Row(out, "FormID", std::format("{:08X}", formID));
+		Row(out, "FormID", std::format("{:08X}", a_actor->GetFormID()));
 		const auto* race = a_actor->GetRace();
 		Row(out, "Race", race && race->GetFormEditorID() ? race->GetFormEditorID() : "(unknown)");
 		const auto* base = a_actor->GetActorBase();
 		Row(out, "Sex", base && base->GetSex() == RE::SEX::kFemale ? "Female" : "Male");
-		Row(out, "3D loaded", a_actor->Is3DLoaded() ? "yes" : "NO (deferred)");
+		// NOTE: no "3D loaded" row. This page can only ever show the player or a
+		// crosshair target, both of which are loaded by definition, so it read
+		// "yes" forever. The per-apply [Apply] log lines still carry 3D state,
+		// which is where an unloaded actor actually shows up.
 
 		Header(out, "Body");
 		Row(out, "Profile", BodyProfile::ResolvedName(a_actor));
-		Row(out, "Guessed", BodyGuess(a_actor));
 		int found = 0;
 		int total = 0;
 		const auto missing = SkeletonNodes(a_actor, found, total);
 		Row(out, "Skeleton nodes", std::format("{} / {}", found, total));
-		if (!a_actor->Is3DLoaded()) {
-			Row(out, "  probe", "no 3D - unknown");
-		}
 		for (const auto& name : missing) {
 			Row(out, "  missing", name);   // one per row: a long name cannot overflow
 		}
+		return out;
+	}
+
+	std::vector<RE::BSFixedString> StateRows(RE::Actor* a_actor)
+	{
+		std::vector<RE::BSFixedString> out;
+		if (!a_actor) {
+			return out;
+		}
+		auto& ledger = Ledger::GetSingleton();
+		const auto formID = a_actor->GetFormID();
 
 		Header(out, "Contributions");
 		const auto targets = ledger.TargetsOf(formID);
@@ -187,6 +175,15 @@ namespace SLIFNG::Report
 
 		Header(out, "Aggregation");
 		Row(out, "Mode", ledger.GetMode() == AggregationMode::kAdditive ? "Additive" : "Highest wins");
+		return out;
+	}
+
+	std::vector<RE::BSFixedString> ForActor(RE::Actor* a_actor)
+	{
+		auto out = IdentityRows(a_actor);
+		for (auto& row : StateRows(a_actor)) {
+			out.push_back(std::move(row));
+		}
 		return out;
 	}
 
