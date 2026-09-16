@@ -30,11 +30,13 @@ namespace SLIFNG::Report
 
 		// Which skeleton nodes this actor actually has. Real evidence, unlike a
 		// guess from the plugin list: it reads the loaded 3D.
-		std::string SkeletonNodes(RE::Actor* a_actor, int& a_found, int& a_total)
+		std::vector<std::string> SkeletonNodes(RE::Actor* a_actor, int& a_found, int& a_total)
 		{
+			// Returns only the MISSING nodes: the full list overflows the MCM's
+			// value column, and "which are absent" is the useful answer anyway.
 			a_found = 0;
 			a_total = 0;
-			std::string present;
+			std::vector<std::string> missing;
 			auto* root = a_actor->Get3D(false);
 			for (const auto& target : Vocabulary::kTargets) {
 				for (const auto* node : target.nodes) {
@@ -44,17 +46,12 @@ namespace SLIFNG::Report
 					++a_total;
 					if (root && root->GetObjectByName(RE::BSFixedString(node))) {
 						++a_found;
-						if (!present.empty()) {
-							present += ", ";
-						}
-						present += node;
+					} else if (root) {
+						missing.emplace_back(node);
 					}
 				}
 			}
-			if (!root) {
-				return "(no 3D loaded - cannot probe)";
-			}
-			return a_found == 0 ? "none found" : present;
+			return missing;
 		}
 
 		// Body identification is HEURISTIC until per-actor profiles land (PLAN
@@ -66,34 +63,39 @@ namespace SLIFNG::Report
 			const auto* race = a_actor->GetRace();
 			const std::string raceID = race && race->GetFormEditorID() ? race->GetFormEditorID() : "";
 			if (!raceID.empty() && Lower(raceID).find("ube") != std::string::npos) {
-				return "UBE (race-based) - heuristic";
+				return "UBE (race)";
 			}
 			auto* dh = RE::TESDataHandler::GetSingleton();
 			auto has = [dh](const char* a_plugin) { return dh && dh->LookupModByName(a_plugin) != nullptr; };
 			if (has("UBE_AllRace.esp") || has("UBE.esp")) {
-				return "UBE installed, non-UBE race - heuristic";
+				return "UBE installed";
 			}
 			if (has("3BBB.esp") || has("CBBE 3BA.esp")) {
-				return "CBBE 3BA - heuristic";
+				return "CBBE 3BA";
 			}
 			if (has("BHUNP.esp") || has("BHUNP3BBB.esp")) {
-				return "BHUNP - heuristic";
+				return "BHUNP";
 			}
-			return "unknown (no marker plugin) - heuristic";
+			return "unknown";
 		}
 	}
 
 	std::vector<RE::BSFixedString> ForActor(RE::Actor* a_actor)
 	{
+		// LAYOUT RULES - this renders in a TWO-COLUMN SkyUI MCM:
+		//   * a label past ~30 chars collides with its own value column;
+		//   * a value past ~20 chars runs left across the label;
+		//   * an EMPTY value means "section header", so a placeholder line must
+		//     still carry a value or it draws as a header complete with divider.
+		// The log reuses these rows, so short helps there too.
 		std::vector<RE::BSFixedString> out;
 		if (!a_actor) {
-			Row(out, "No actor selected", "");
+			Row(out, "Actor", "none selected");
 			return out;
 		}
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();
 
-		// ---- identity -------------------------------------------------------
 		Header(out, "Actor");
 		Row(out, "Name", a_actor->GetName() ? a_actor->GetName() : "(unnamed)");
 		Row(out, "FormID", std::format("{:08X}", formID));
@@ -101,52 +103,55 @@ namespace SLIFNG::Report
 		Row(out, "Race", race && race->GetFormEditorID() ? race->GetFormEditorID() : "(unknown)");
 		const auto* base = a_actor->GetActorBase();
 		Row(out, "Sex", base && base->GetSex() == RE::SEX::kFemale ? "Female" : "Male");
-		Row(out, "3D loaded", a_actor->Is3DLoaded() ? "yes" : "NO - changes deferred to load");
+		Row(out, "3D loaded", a_actor->Is3DLoaded() ? "yes" : "NO (deferred)");
 
-		// ---- body -----------------------------------------------------------
 		Header(out, "Body");
 		Row(out, "Profile", BodyProfile::ResolvedName(a_actor));
-		Row(out, "Heuristic", BodyGuess(a_actor));
+		Row(out, "Guessed", BodyGuess(a_actor));
 		int found = 0;
 		int total = 0;
-		const std::string nodes = SkeletonNodes(a_actor, found, total);
-		Row(out, std::format("Skeleton nodes ({}/{})", found, total), nodes);
+		const auto missing = SkeletonNodes(a_actor, found, total);
+		Row(out, "Skeleton nodes", std::format("{} / {}", found, total));
+		if (!a_actor->Is3DLoaded()) {
+			Row(out, "  probe", "no 3D - unknown");
+		}
+		for (const auto& name : missing) {
+			Row(out, "  missing", name);   // one per row: a long name cannot overflow
+		}
 
-		// ---- what mods sent -------------------------------------------------
-		Header(out, "Contributions (what each mod sent)");
+		Header(out, "Contributions");
 		const auto targets = ledger.TargetsOf(formID);
-		bool anyContribution = false;
-		// Walk mods per target so the page groups by what is being driven.
+		bool any = false;
 		for (const auto& target : targets) {
-			const std::string shown = IsMorphTarget(target)
-			                              ? ledger.SliderName(SliderOf(target))
-			                              : target;
-			for (const auto& mod : ledger.ModsDriving(formID, target)) {
-				const float raw = ledger.GetContribution(formID, mod, target);
-				Row(out, std::format("{} -> {}", mod, shown), Num(raw));
-				anyContribution = true;
+			const auto mods = ledger.ModsDriving(formID, target);
+			if (mods.empty()) {
+				continue;
+			}
+			// Sub-header per target, one short row per mod beneath it.
+			Header(out, IsMorphTarget(target)
+					? "morph " + ledger.SliderName(SliderOf(target))
+					: target);
+			for (const auto& mod : mods) {
+				Row(out, "  " + mod, Num(ledger.GetContribution(formID, mod, target)));
+				any = true;
 			}
 		}
-		if (!anyContribution) {
-			Row(out, "(nothing registered for this actor)", "");
+		if (!any) {
+			Row(out, "Registered", "nothing");
 		}
 
-		// ---- applied vs default --------------------------------------------
-		Header(out, "Applied vs default");
+		Header(out, "Applied");
 		const float master = ledger.MasterScale();
 		if (std::abs(master - 1.0f) > 0.0001f) {
 			Row(out, "Overall magnitude", std::format("{}x", Num(master)));
 		}
 
-		// Collect every skee slider these targets drive, plus any node-fallback
-		// targets, so the summary matches what actually reached the body.
 		std::set<std::string> sliders;
 		std::set<std::string> nodeTargets;
 		for (const auto& target : targets) {
 			if (IsMorphTarget(target)) {
 				sliders.insert(SliderOf(target));
 			} else if (Vocabulary::Find(target)) {
-				// Per-actor: the profile decides morph vs node for this key.
 				const auto* blends = BodyProfile::BlendFor(a_actor, target);
 				if (blends && !blends->empty()) {
 					for (const auto& blend : *blends) {
@@ -157,33 +162,27 @@ namespace SLIFNG::Report
 				}
 			}
 		}
-
 		if (sliders.empty() && nodeTargets.empty()) {
-			Row(out, "(nothing applied)", "");
+			Row(out, "Output", "nothing");
 		}
 		for (const auto& sliderLower : sliders) {
 			const std::string name = ledger.SliderName(sliderLower);
 			const float folded = ledger.AggregateSlider(formID, sliderLower);
 			const float scaled = folded * ledger.EffectiveScale(sliderLower);
-			// Morph default is 0.0. The skee readback proves OUR WRITE LANDED
-			// (right key, right name, not clobbered) - it is NOT an availability
-			// test: SetMorph/GetMorph are a dictionary keyed by
-			// (actor, slider, key) and never consult the mesh. A slider absent
-			// from this body's morphs.tri stores and reads back exactly the same;
-			// it is only ignored later, inside ApplyBodyMorphs. Knowing whether a
-			// body HAS a slider needs the per-body profile (PLAN P2) - skee
-			// exposes no such query.
-			std::string value = std::format("{} (default 0.000", Num(scaled));
+			Row(out, name, Num(scaled));
 			if (Skee::IsReady()) {
-				value += std::format(", skee {}", Num(Skee::ReadMorph(a_actor, name)));
+				// The readback proves OUR WRITE LANDED; it is NOT an availability
+				// test (see BodyProfile.h). Worth a row only when it DISAGREES.
+				const float back = Skee::ReadMorph(a_actor, name);
+				if (std::abs(back - scaled) > 0.001f) {
+					Row(out, "  skee disagrees", Num(back));
+				}
 			}
-			value += ")";
-			Row(out, std::format("morph {}", name), value);
 		}
 		for (const auto& target : nodeTargets) {
 			const float folded = ledger.Aggregate(formID, target);
 			const float scaled = 1.0f + (folded - 1.0f) * ledger.EffectiveScale(target);
-			Row(out, std::format("node {}", target), std::format("{} (default 1.000)", Num(scaled)));
+			Row(out, target + " (node)", Num(scaled));
 		}
 
 		Header(out, "Aggregation");

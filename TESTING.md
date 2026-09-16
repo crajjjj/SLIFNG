@@ -128,6 +128,21 @@ setstage SKI_ConfigManagerInstance 1
 
 then wait for the "Registered new menus" notification and reopen the MCM.
 
+## Actor page layout rules
+
+It renders in a TWO-COLUMN SkyUI MCM, which is unforgiving:
+
+* a label past ~30 chars collides with its own value column;
+* a value past ~20 chars runs LEFT across the label;
+* an **empty value means "section header"**, so a placeholder line must still
+  carry a value (`"Registered" / "nothing"`) or it draws as a header with a
+  divider through it.
+
+`Report::ForActor` obeys these: long lists become one row per item (missing
+skeleton nodes), contributions use a sub-header per target with short indented
+rows per mod, and the skee readback only gets a row when it DISAGREES with what
+we wrote.
+
 ## Other console tools
 
 ```
