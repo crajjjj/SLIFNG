@@ -12,7 +12,7 @@ namespace SLIFNG
 		// v2: aggregation mode + slider display-name table.
 		// v3: user magnitude scaling (master + per-target).
 		// v4: one-shot legacy-import marker.
-		constexpr std::uint32_t kLedgerVersion = 4;
+		constexpr std::uint32_t kLedgerVersion = 5;  // v5 added the hidden-node map
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
@@ -120,6 +120,14 @@ namespace SLIFNG
 		}
 
 		constexpr float neutral = 1.0f;  // node scales
+		// A hidden target OVERRIDES the fold: DD's chastity belt must win over
+		// whatever Beeing Female or FHU is asking for, not merely compete.
+		if (const auto hiddenIt = _hidden.find(a_actor); hiddenIt != _hidden.end()) {
+			const auto pin = hiddenIt->second.find(target);
+			if (pin != hiddenIt->second.end()) {
+				return pin->second;
+			}
+		}
 		const auto actorIt = _actors.find(a_actor);
 		if (actorIt == _actors.end()) {
 			return neutral;
@@ -194,7 +202,9 @@ namespace SLIFNG
 					driven = contribution.Effective();
 					boundHi = contribution.EffectiveMax();
 					boundLo = contribution.EffectiveMin();
-				} else if (!IsMorphTarget(target)) {
+				} else if (!IsMorphTarget(target) && !IsHiddenLocked(a_actor, target)) {
+					// A hidden node target drives NO slider: neutral is the only
+					// honest morph-side reading of "collapsed" (see Ledger.h).
 					// Which sliders a node key drives is a property of THIS ACTOR's
 					// body, so the blend comes from its profile, not a global table.
 					if (const auto* blends = BodyProfile::BlendForID(a_actor, target)) {
@@ -300,6 +310,122 @@ namespace SLIFNG
 		}
 		const auto it = modIt->second.find(Lower(a_target));
 		return it != modIt->second.end() ? it->second.value : 0.0f;
+	}
+
+	// Bounds and existence, for the reference's GetMinValue / GetMaxValue /
+	// GetValue getters. kAllMods folds across contributors the way the value
+	// aggregate does; a single mod reads its own row.
+	float Ledger::GetBoundMin(RE::FormID a_actor, const std::string& a_mod,
+		const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
+			return 0.0f;
+		}
+		const std::string target = Lower(a_target);
+		const std::string mod = Lower(a_mod);
+		float lowest = std::numeric_limits<float>::infinity();
+		for (const auto& [modKey, targets] : actorIt->second) {
+			if (mod != kAllMods && modKey != mod) {
+				continue;
+			}
+			const auto it = targets.find(target);
+			if (it != targets.end()) {
+				lowest = (std::min)(lowest, it->second.min);
+			}
+		}
+		return std::isinf(lowest) ? 0.0f : lowest;
+	}
+
+	float Ledger::GetBoundMax(RE::FormID a_actor, const std::string& a_mod,
+		const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
+			return 0.0f;
+		}
+		const std::string target = Lower(a_target);
+		const std::string mod = Lower(a_mod);
+		float highest = -std::numeric_limits<float>::infinity();
+		for (const auto& [modKey, targets] : actorIt->second) {
+			if (mod != kAllMods && modKey != mod) {
+				continue;
+			}
+			const auto it = targets.find(target);
+			if (it != targets.end()) {
+				highest = (std::max)(highest, it->second.max);
+			}
+		}
+		return std::isinf(highest) ? 0.0f : highest;
+	}
+
+	bool Ledger::HasTarget(RE::FormID a_actor, const std::string& a_mod,
+		const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
+			return false;
+		}
+		const std::string target = Lower(a_target);
+		const std::string mod = Lower(a_mod);
+		for (const auto& [modKey, targets] : actorIt->second) {
+			if (mod != kAllMods && modKey != mod) {
+				continue;
+			}
+			if (targets.contains(target)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// ---- hidden nodes ------------------------------------------------------
+
+	bool Ledger::Hide(RE::FormID a_actor, const std::string& a_target, float a_value)
+	{
+		std::scoped_lock lock(_lock);
+		const std::string target = Lower(a_target);
+		// The reference floors the pin at 0.0000001: a node scale of exactly 0
+		// is a degenerate transform.
+		const float pinned = (std::max)(a_value, 0.0000001f);
+		auto& targets = _hidden[a_actor];
+		const auto it = targets.find(target);
+		if (it != targets.end() && std::abs(it->second - pinned) < 0.0000001f) {
+			return false;  // already hidden at this value
+		}
+		targets[target] = pinned;
+		return true;
+	}
+
+	bool Ledger::Show(RE::FormID a_actor, const std::string& a_target)
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _hidden.find(a_actor);
+		if (actorIt == _hidden.end()) {
+			return false;
+		}
+		if (actorIt->second.erase(Lower(a_target)) == 0) {
+			return false;
+		}
+		if (actorIt->second.empty()) {
+			_hidden.erase(actorIt);
+		}
+		return true;
+	}
+
+	bool Ledger::IsHidden(RE::FormID a_actor, const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		return IsHiddenLocked(a_actor, Lower(a_target));
+	}
+
+	bool Ledger::IsHiddenLocked(RE::FormID a_actor, const std::string& a_target) const
+	{
+		const auto actorIt = _hidden.find(a_actor);
+		return actorIt != _hidden.end() && actorIt->second.contains(a_target);
 	}
 
 	std::vector<std::string> Ledger::ModsDriving(RE::FormID a_actor, const std::string& a_target) const
@@ -455,6 +581,17 @@ namespace SLIFNG
 				}
 			}
 		}
+		// v5: hidden nodes last, so the field is purely additive on the wire.
+		Write(a_intfc, static_cast<std::uint32_t>(inst._hidden.size()));
+		for (const auto& [formID, targets] : inst._hidden) {
+			Write(a_intfc, formID);
+			Write(a_intfc, static_cast<std::uint32_t>(targets.size()));
+			for (const auto& [target, pin] : targets) {
+				WriteString(a_intfc, target);
+				Write(a_intfc, pin);
+			}
+		}
+
 		logger::info("[Ledger] saved {} actor(s), mode={}", inst._actors.size(),
 			inst._mode == AggregationMode::kAdditive ? "additive" : "highest-wins");
 	}
@@ -465,6 +602,7 @@ namespace SLIFNG
 		auto& inst = GetSingleton();
 		std::scoped_lock lock(inst._lock);
 		inst._actors.clear();
+		inst._hidden.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
@@ -547,9 +685,28 @@ namespace SLIFNG
 					}
 					inst._actors[resolved] = std::move(mods);
 				}
+
+				if (version >= 5) {
+					const auto hiddenActors = Read<std::uint32_t>(a_intfc, length);
+					for (std::uint32_t i = 0; i < hiddenActors; ++i) {
+						const auto rawFormID = Read<RE::FormID>(a_intfc, length);
+						std::unordered_map<std::string, float> targets;
+						const auto targetCount = Read<std::uint32_t>(a_intfc, length);
+						for (std::uint32_t t = 0; t < targetCount; ++t) {
+							std::string target = ReadString(a_intfc, length);
+							targets[std::move(target)] = Read<float>(a_intfc, length);
+						}
+						RE::FormID resolved = 0;
+						if (!a_intfc->ResolveFormID(rawFormID, resolved)) {
+							continue;  // payload already consumed; stream stays in sync
+						}
+						inst._hidden[resolved] = std::move(targets);
+					}
+				}
 			} catch (const std::exception& e) {
 				logger::error("[Ledger] corrupt cosave record: {}", e.what());
 				inst._actors.clear();
+				inst._hidden.clear();
 				inst._sliderNames.clear();
 				inst._targetScales.clear();
 				inst._masterScale = 1.0f;
@@ -566,6 +723,7 @@ namespace SLIFNG
 		auto& inst = GetSingleton();
 		std::scoped_lock lock(inst._lock);
 		inst._actors.clear();
+		inst._hidden.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;

@@ -11,6 +11,14 @@ P6 migration is **built but untested** (the import button has never met a real
 old-SLIF save). Not started: **P8 ramp**, and P6's uninstall path. Not run:
 **P7**, three of its six rows.
 
+**2026-09-16: the contract surface widened.** A full consumer grep (see
+CONTRACT sec.7 for the command) found ten entry points that installed mods call
+and SLIF NG did not implement — Sexlab Survival's and Estrus Chaurus's read
+path, Devious Devices' node hide/show, Devious Interests' `unregisterMorph`.
+All ten now ship. The hide/show pair needed a real engine feature (a per-actor
+override that beats the fold, cosave v5), the rest are shims over natives that
+already existed.
+
 Release gates, in order:
 1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
    — the repo is already public, so this is now the pacing item.
@@ -376,6 +384,9 @@ Status from the live session logged 2026-09-15 (`SLIFNG.log`), CBBE 3BA body:
 | FHU Baka | event inflate + `SLIF_Morph.morph` + `unregisterNode` | inflation + deflation, legacy keys cleared | **pass** — deflate sequence 0.09 -> 0.065 -> 0.025 -> 0 observed, `sr_FillHerUp.esp` cleaned once |
 | Sexlab Survival | event inflate + `unregisterActor` | gluttony belly on player | **pass** — `slif_belly` 2.2 -> PregnancyBelly 0.16, early-out on the repeat |
 | Estrus Spider | event inflate incl. dead keys | live keys scale; dead keys no-op + diagnostic | **not run** |
+| Estrus Chaurus (core) | `GetValue`/`GetMinValue`/`GetMaxValue`, `inflateBoth`, `resetActor`, `updateActorList` | reads agree with what was written; both breast nodes scale from one `inflateBoth` | **not run** — surface only just implemented |
+| Devious Devices NG | `hideNode` / `showNode` | belly flat while a chastity belt is worn, restored on unequip, and a pregnancy underneath it reappears | **not run** — surface only just implemented |
+| Devious Interests | `SLIF_Morph.unregisterMorph` | its morph is dropped, other mods' morphs on the same slider survive | **not run** — surface only just implemented |
 | Milk Mod Economy | `unregisterActor` only | stale SLIF output cleared; MME's own scaling untouched | **not run** |
 | Old-SLIF save | migration | values survive, no double-apply, no orphan transforms | **not run** — blocked on P6, which is unbuilt |
 

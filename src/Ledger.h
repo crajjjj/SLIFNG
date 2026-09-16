@@ -115,6 +115,36 @@ namespace SLIFNG
 		[[nodiscard]] float GetContribution(RE::FormID a_actor, const std::string& a_mod,
 			const std::string& a_target) const;
 
+		// The stored bounds behind SLIF_Main/SLIF_Morph.GetMinValue/GetMaxValue.
+		// a_mod == kAllMods folds them the way the aggregate does: the LOOSEST
+		// bound any contributor set, since that is what the fold may reach.
+		[[nodiscard]] float GetBoundMin(RE::FormID a_actor, const std::string& a_mod,
+			const std::string& a_target) const;
+		[[nodiscard]] float GetBoundMax(RE::FormID a_actor, const std::string& a_mod,
+			const std::string& a_target) const;
+
+		// Whether anything is stored at all, so a getter can honour the caller's
+		// `default` instead of inventing a neutral (reference semantics: an
+		// absent StorageUtil key returns the caller's default, NOT 0 or 1).
+		[[nodiscard]] bool HasTarget(RE::FormID a_actor, const std::string& a_mod,
+			const std::string& a_target) const;
+
+		// ---- hidden nodes (SLIF_Main.hideNode / showNode) -------------------
+		// Devious Devices pins the belly flat under a chastity belt. A hidden
+		// target OVERRIDES the fold rather than joining it, and it is keyed by
+		// ACTOR+TARGET, not by mod - reference SLIF stores one `<node>_hidden`
+		// flag per actor and any mod may lift it.
+		//
+		// The node path takes the pin value verbatim (reference behaviour: a
+		// scale of ~0.01 collapses the node). The MORPH path forces every slider
+		// the hidden target drives to NEUTRAL instead, because a morph body has
+		// no way to express "collapsed": running the pin through the blend gives
+		// PregnancyBelly = (0.01 - 1.0) * 0.1333 = -0.13, which is a concave
+		// belly, not a flat one.
+		bool Hide(RE::FormID a_actor, const std::string& a_target, float a_value);
+		bool Show(RE::FormID a_actor, const std::string& a_target);
+		[[nodiscard]] bool IsHidden(RE::FormID a_actor, const std::string& a_target) const;
+
 		// Which mods hold a contribution to one target on one actor (for the
 		// actor diagnostics page).
 		[[nodiscard]] std::vector<std::string> ModsDriving(RE::FormID a_actor,
@@ -148,6 +178,8 @@ namespace SLIFNG
 		// mod key (lowercase) -> target (lowercase) -> contribution
 		using ModMap = std::unordered_map<std::string, std::unordered_map<std::string, Contribution>>;
 
+		[[nodiscard]] bool IsHiddenLocked(RE::FormID a_actor, const std::string& a_target) const;
+
 		// Unlocked internals, for callers already holding _lock.
 		void RememberSliderLocked(const std::string& a_sliderName);
 		[[nodiscard]] float AggregateSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
@@ -155,6 +187,9 @@ namespace SLIFNG
 
 		mutable std::recursive_mutex _lock;
 		std::unordered_map<RE::FormID, ModMap> _actors;
+		// actor -> target -> pin value. Deliberately NOT part of _actors: a hide
+		// is not a contribution and must not fold with one.
+		std::unordered_map<RE::FormID, std::unordered_map<std::string, float>> _hidden;
 		// lowercase slider -> original spelling handed to skee
 		std::unordered_map<std::string, std::string> _sliderNames;
 		// scale id -> user multiplier (absent = 1.0, never stored when == 1.0)

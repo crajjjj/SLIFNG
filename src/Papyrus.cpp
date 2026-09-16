@@ -200,6 +200,146 @@ namespace SLIFNG::Papyrus
 				a_actor->GetFormID(), a_mod.c_str(), Lower(a_target.c_str()));
 		}
 
+		// ---- the reference's READ surface -----------------------------------
+		// Sexlab Survival and Estrus Chaurus both ASK what an actor's inflation
+		// is, not only set it: SLS gates a whole scene branch on
+		// _SLS_BodyInflationScale, computed from three GetValue calls. Without
+		// these the VM logged "Static function GetValue not found on object
+		// slif_main" on a loop and SLS read every actor as flat.
+		//
+		// Reference semantics, preserved: modName "All Mods" reads the AGGREGATE,
+		// any other name reads that mod's own row, and an ABSENT key returns the
+		// caller's `default` rather than a neutral we invented.
+		//
+		// Departure, deliberate: the aggregate is returned with the user's
+		// magnitude scaling applied, because the question is "how inflated does
+		// this actor look" and the scale genuinely changes the answer. A consumer
+		// that gates content on size should agree with the body it can see.
+
+		// "slif_belly" / "NPC Belly" / "morph:pregnancybelly" -> ledger target.
+		// Empty when the key is not vocabulary and not a morph target.
+		std::string ResolveTarget(const std::string& a_raw)
+		{
+			const std::string lower = Lower(a_raw);
+			if (IsMorphTarget(lower)) {
+				return lower;
+			}
+			const auto* resolved = Vocabulary::Resolve(lower);
+			return resolved ? resolved->key : std::string{};
+		}
+
+		float GetValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_target, float a_default)
+		{
+			if (!a_actor || a_target.empty()) {
+				return 0.0f;  // reference returns 0.0 for invalid parameters
+			}
+			const std::string target = ResolveTarget(a_target.c_str());
+			if (target.empty()) {
+				return 0.0f;
+			}
+			auto& ledger = Ledger::GetSingleton();
+			const auto formID = a_actor->GetFormID();
+			const std::string mod = Lower(a_mod.c_str());
+			if (!ledger.HasTarget(formID, mod, target)) {
+				return a_default;
+			}
+			if (mod != kAllMods) {
+				return ledger.GetContribution(formID, mod, target);
+			}
+			if (IsMorphTarget(target)) {
+				const std::string slider = SliderOf(target);
+				return ledger.AggregateSlider(formID, slider) * ledger.EffectiveScale(slider);
+			}
+			// Node scales are multipliers: the user magnitude scales the
+			// DEVIATION from neutral, exactly as the apply path does.
+			const float folded = ledger.Aggregate(formID, target);
+			return 1.0f + (folded - 1.0f) * ledger.EffectiveScale(target);
+		}
+
+		float GetMinValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_target, float a_default)
+		{
+			if (!a_actor || a_target.empty()) {
+				return 0.0f;
+			}
+			const std::string target = ResolveTarget(a_target.c_str());
+			if (target.empty()) {
+				return 0.0f;
+			}
+			auto& ledger = Ledger::GetSingleton();
+			const auto formID = a_actor->GetFormID();
+			const std::string mod = Lower(a_mod.c_str());
+			return ledger.HasTarget(formID, mod, target)
+			           ? ledger.GetBoundMin(formID, mod, target)
+			           : a_default;
+		}
+
+		float GetMaxValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_target, float a_default)
+		{
+			if (!a_actor || a_target.empty()) {
+				return 0.0f;
+			}
+			const std::string target = ResolveTarget(a_target.c_str());
+			if (target.empty()) {
+				return 0.0f;
+			}
+			auto& ledger = Ledger::GetSingleton();
+			const auto formID = a_actor->GetFormID();
+			const std::string mod = Lower(a_mod.c_str());
+			return ledger.HasTarget(formID, mod, target)
+			           ? ledger.GetBoundMax(formID, mod, target)
+			           : a_default;
+		}
+
+		// ---- hidden nodes (Devious Devices) ---------------------------------
+
+		void HideNode(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_key, float a_value, RE::BSFixedString a_oldMod)
+		{
+			logger::info("[API] HideNode({:08X} '{}', mod='{}', key='{}', value={})",
+				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
+				a_mod.c_str(), a_key.c_str(), a_value);
+			if (!a_actor || a_key.empty()) {
+				logger::warn("[API]   -> rejected (null actor or empty key)");
+				return;
+			}
+			if (!a_oldMod.empty()) {
+				Skee::CleanLegacyKeyDeferred(a_actor, a_oldMod.c_str());
+			}
+			const std::string target = ResolveTarget(a_key.c_str());
+			if (target.empty()) {
+				logger::warn("[API]   -> unknown node key '{}' from '{}' — ignored",
+					a_key.c_str(), a_mod.c_str());
+				return;
+			}
+			if (!Ledger::GetSingleton().Hide(a_actor->GetFormID(), target, a_value)) {
+				logger::info("[API]   -> already hidden (early-out)");
+				return;
+			}
+			Skee::ApplyDeferred(a_actor, target);
+		}
+
+		void ShowNode(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_key)
+		{
+			logger::info("[API] ShowNode({:08X} '{}', mod='{}', key='{}')",
+				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
+				a_mod.c_str(), a_key.c_str());
+			if (!a_actor || a_key.empty()) {
+				return;
+			}
+			const std::string target = ResolveTarget(a_key.c_str());
+			if (target.empty() || !Ledger::GetSingleton().Show(a_actor->GetFormID(), target)) {
+				logger::info("[API]   -> was not hidden (no-op)");
+				return;
+			}
+			// Restores whatever the fold says it should be now, which is the
+			// reference's behaviour too (it re-reads the calculated value).
+			Skee::ApplyDeferred(a_actor, target);
+		}
+
 		float GetApplied(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_target)
 		{
 			if (!a_actor) {
@@ -315,6 +455,11 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetAggregationMode", script, GetAggregationMode);
 		a_vm->RegisterFunction("GetContribution", script, GetContribution);
 		a_vm->RegisterFunction("GetApplied", script, GetApplied);
+		a_vm->RegisterFunction("GetValue", script, GetValue);
+		a_vm->RegisterFunction("GetMinValue", script, GetMinValue);
+		a_vm->RegisterFunction("GetMaxValue", script, GetMaxValue);
+		a_vm->RegisterFunction("HideNode", script, HideNode);
+		a_vm->RegisterFunction("ShowNode", script, ShowNode);
 		a_vm->RegisterFunction("SetMasterScale", script, SetMasterScale);
 		a_vm->RegisterFunction("GetMasterScale", script, GetMasterScale);
 		a_vm->RegisterFunction("SetTargetScale", script, SetTargetScale);

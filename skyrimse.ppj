@@ -24,6 +24,8 @@
         <Import>@ModsFolder\build\Scripts\Source\Scripts</Import>
         <!-- SKI_ConfigBase for the MCM -->
         <Import>@ModsFolder\build\SkyUI_5.1_SDK\Scripts\Source</Import>
+        <!-- StorageUtil for SLIFNG_Migrate (PapyrusUtil, shipped with SexLab) -->
+        <Import>@ModsFolder\BaboDialoguePatch\dependencies\SexLabFrameworkSE_v163\scripts\Source</Import>
     </Imports>
     <Folders>
         <Folder>./dist/Core/source/scripts</Folder>

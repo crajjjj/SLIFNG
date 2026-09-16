@@ -24,6 +24,22 @@ Function UnregisterMod(Actor kActor, String modName) Global Native
 Function SetAggregationMode(Int mode) Global Native
 Int Function GetAggregationMode() Global Native
 
+; ---- the reference's READ surface (SLIF_Main/SLIF_Morph.Get*Value) ----
+; target: a slif_* key, a raw skeleton node, or "morph:<slider>".
+; modName "All Mods" reads the fold; any other name reads that mod's own row.
+; An ABSENT key returns `default` - the reference reads StorageUtil with the
+; caller's default, so "nothing registered" must not read as a neutral value.
+Float Function GetValue(Actor kActor, String modName, String target, Float default) Global Native
+Float Function GetMinValue(Actor kActor, String modName, String target, Float default) Global Native
+Float Function GetMaxValue(Actor kActor, String modName, String target, Float default) Global Native
+
+; ---- hidden nodes (Devious Devices pins the belly under a chastity belt) ----
+; A hide OVERRIDES the fold instead of competing with it, and is keyed by
+; actor+target rather than by mod, matching the reference's per-actor
+; `<node>_hidden` flag. See Ledger.h for what "hidden" means on a morph body.
+Function HideNode(Actor kActor, String modName, String slifKey, Float value, String oldModName) Global Native
+Function ShowNode(Actor kActor, String modName, String slifKey) Global Native
+
 ; Diagnostics: a mod's stored raw value / the folded applied value for a
 ; target ("slif_belly" or "morph:<slider>").
 Float Function GetContribution(Actor kActor, String modName, String target) Global Native

@@ -9,13 +9,21 @@
 | Reference implementation | SexLab Inflation Framework SE **1.2.2 beta** (`.pex` bytecode; the bundled `.psc` sources are 1.2.1a and were NOT used) |
 | Also active in survey load order | SLIF-SE-1.2.2-r2 community patch (replaces 4 scripts; does not change this surface) |
 | Method | Decompiled `SLIF_Main.pex`, `SLIF_Morph.pex`, `SLIF_ScannerAlias.pex`, `SLIF_Scale.pex`, `SLIF_Calc.pex`, `SLIF_Util.pex` + static scan of every loose consumer `.pex` in the NEFARAM load order + MME BSA extraction + SGO4IF sources + SLIF's runtime `Modlist.json` |
-| Surveyed consumers | Beeing Female NG, Fill Her Up Baka, Sexlab Survival, Estrus Chaurus Spider Addon, Milk Mod Economy (BSA), SGO4IF (uses no SLIF at all) |
-| Date pinned | 2026-09-15 |
+| Surveyed consumers | Beeing Female NG, Fill Her Up Baka (+ its 2.0.3.12 patch), Sexlab Survival, Estrus Chaurus **core and** Spider Addon, Devious Devices NG, Devious Interests, Trap Needs to be Real Trap, Milk Mod Economy (BSA), SGO4IF (uses no SLIF at all) |
+| Date pinned | 2026-09-15; surface widened 2026-09-16 (see correction below) |
 
-Six mods surveyed across two independent sources (static call-site scan + SLIF's
-runtime registration list); the FUNCTION surface converged and did not grow with
-the last two mods added. **Scope rule: implement the observed surface below,
-nothing more.**
+**Scope rule: implement the observed surface below, nothing more.**
+
+> **Survey correction (2026-09-16) — the surface had NOT converged.** This
+> paragraph used to claim it had, on the strength of six mods scanned. A full
+> grep of every consumer `.psc` in the load order then found **ten more entry
+> points** in four mods that the first pass never looked at: Devious Devices NG
+> (`hideNode`/`showNode`), Devious Interests (`unregisterMorph`), Estrus Chaurus
+> core — distinct from the Spider Addon that WAS surveyed —
+> (`GetValue`/`GetMinValue`/`GetMaxValue`/`inflateBoth`/`resetActor`/
+> `updateActorList`) and Sexlab Survival's read path. Two lessons, both cheap:
+> a mod's *addon* is not the mod, and "converged" needs a stopping rule that is
+> not "we stopped finding things".
 
 > **Survey correction (2026-09-15):** the first scan matched `slif_*` literals
 > and so missed that FHU passes a raw skeleton node name instead — see sec.5.1.
@@ -81,10 +89,50 @@ Function unregisterNode(Actor kActor, string node, string modName = "All Mods") 
 Function morph(Actor kActor, string modName, string morphName, float value, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
 ; callers: Fill Her Up Baka (9-arg call baked) AND Beeing Female NG
 ;          (FWAbilityBeeingFemale.psc:1427-1434, its FillHerUpUpdateNotes path)
+
+; --- promoted from Tier-2 on 2026-09-16, after a full load-order survey ------
+; grep of every consumer .psc for SLIF_Main./SLIF_Morph. calls. All of these
+; were being called by installed mods and aborting in the VM.
+
+Float Function GetValue(Actor kActor, string modName, string node, float default = 0.0) Global
+Float Function GetMinValue(Actor kActor, string modName, string node, float default = 0.0) Global
+Float Function GetMaxValue(Actor kActor, string modName, string node, float default = 100.0) Global
+; callers: Sexlab Survival (GetValue, on a 1-game-hour timer), Estrus Chaurus (all three)
+
+Function hideNode(Actor kActor, String modName, String node, float value = 0.0000001, string oldModName = "") Global
+Function showNode(Actor kActor, String modName, String node) Global
+; caller: Devious Devices NG (zadLibs.SetNodeHidden - belly flat under a belt)
+
+Function inflateBoth(Actor kActor, string modName, string syncKey, float value, int gender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+Function resetActor(Actor kActor, string modName = "All Mods", string node = "", float value = 1.0, int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+Function updateActorList(String modName = "All Mods", string node = "", int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+; caller: Estrus Chaurus
+
+; SLIF_Morph.psc, same promotion ---------------------------------------------
+
+Function unregisterMorph(Actor kActor, string morphName, string modName = "All Mods") Global
+; caller: Devious Interests
+
+Float Function GetValue(Actor kActor, string modName, string morphName, float default = 0.0) Global
+Float Function GetMinValue(Actor kActor, string modName, string morphName, float default = 0.0) Global
+Float Function GetMaxValue(Actor kActor, string modName, string morphName, float default = 100.0) Global
+; caller: Sexlab Survival
 ```
 
 `gender` and `perspective` are accepted and ignored (reference behavior for the
 observed calls: gender is re-derived internally, perspective is unused).
+
+### The READ surface is not optional
+
+Six of the entry points above are getters, and treating them as decoration was
+a mistake this project actually made. Sexlab Survival's
+`_SLS_BodyInflationTracking` recomputes `_SLS_BodyInflationScale` from three
+`SLIF_Main.GetValue` calls every game hour and gates a whole scene branch on
+`>= 0.3`. With `GetValue` absent the VM logged
+`Static function GetValue not found on object slif_main` in a loop and SLS read
+every actor as flat - no error a player would ever connect to SLIF NG.
+
+A framework whose consumers ASK it questions is not a write-only sink.
 
 ## 4. Semantics
 
@@ -232,14 +280,27 @@ not an emulation of this key.)
 Required by no surveyed consumer; cheap insurance against unsurveyed mods
 (Devourment, Hentai Pregnancy, SL Parasites, Being a Cow were NOT surveyed):
 
-`SLIF_Main.IsInstalled()`, `SLIF_Main.IsRegistered(actor, mod)`,
-`SLIF_Main.GetValue/GetMinValue/GetMaxValue(actor, mod, node, default)`,
-`SLIF_Morph.GetValue(...)` — SLS ships `_sls_intslif.pex` referencing both
-`SLIF_Main.GetValue` and `SLIF_Morph.GetValue`; no live caller in its own
-sources, so dead code today, but it is compiled and could be revived —
+`SLIF_Main.IsInstalled()` (implemented), `SLIF_Main.IsRegistered(actor, mod)`,
 `SLIF_Main.registerActor(...)`, `SLIF_Main.GetGender(actor, gender)`,
 mod events `SLIF_registerActor`, `SLIF_updateActor`, `SLIF_morph`,
 `SLIF_registerMorphActor`, `SLIF_unregisterMorph`.
+
+**Correction (2026-09-16).** This section previously filed the `Get*Value`
+getters here and called SLS's references to them "dead code today". That was
+wrong: `_SLS_BodyInflationTracking` calls them on a timer. They are Tier-1 and
+are now in section 3. The error came from grepping SLS's *interface* script and
+stopping there instead of following through to its callers - the survey method,
+not the survey's scope, was at fault.
+
+**Survey method that found the rest** (repeat it before release):
+
+```sh
+grep -rhoiE "SLIF_(Main|Morph|Config)\.[A-Za-z0-9_]+" --include=*.psc <mods dir>
+```
+
+run per consumer folder, EXCLUDING reference SLIF's own sources (they dominate
+the counts with internal calls). That one command turned up ten missing entry
+points across four installed mods.
 
 Any unimplemented call surfaces in the Papyrus log as
 `"<fn> is not a function or does not exist"` — that log line IS the detection
