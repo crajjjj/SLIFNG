@@ -128,6 +128,19 @@ setstage SKI_ConfigManagerInstance 1
 
 then wait for the "Registered new menus" notification and reopen the MCM.
 
+## Which fill mode to use
+
+`TOP_TO_BOTTOM` only spills into the RIGHT column once the LEFT one is full, so
+a short page leaves half the menu blank. The two pages want different modes:
+
+* **Settings** - `LEFT_TO_RIGHT`: fills alternately, so options are written in
+  PAIRS (left, right, left, ...) and `AddEmptyOption()` pads whichever column
+  runs out. Headers pair up too, which is what gives the page two titled
+  columns.
+* **Actor** - `TOP_TO_BOTTOM`: the report is long and variable, so filling one
+  column and flowing into the next keeps related rows adjacent. Pairing it
+  would interleave unrelated sections.
+
 ## Actor page layout rules
 
 It renders in a TWO-COLUMN SkyUI MCM, which is unforgiving:

@@ -94,27 +94,37 @@ EndEvent
 ; =============================================================== Settings ====
 
 Function RenderSettingsPage()
-	SetCursorFillMode(TOP_TO_BOTTOM)
+	; TWO COLUMNS. TOP_TO_BOTTOM only spills into the right column once the LEFT
+	; one is full, so a short page like this leaves half the menu blank.
+	; LEFT_TO_RIGHT instead fills alternately - every Add call takes the next
+	; slot, left then right - so options are written in PAIRS and AddEmptyOption
+	; pads whichever column runs out first.
+	SetCursorFillMode(LEFT_TO_RIGHT)
 
 	AddHeaderOption("SLIF NG " + VersionString())
+	AddHeaderOption("Diagnostics")
+
 	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
+	_oVerbose = AddToggleOption("Verbose logging", _verbose)
+
 	_oEngine  = AddTextOption("RaceMenu / skee", EngineStatus())
+	_oDump    = AddTextOption("Dump to SLIFNG.log", "")
+
 	_oActors  = AddTextOption("Tracked actors", SLIFNG.TrackedActorCount())
+	AddEmptyOption()
 
 	AddHeaderOption("Behaviour")
-	_oMode   = AddTextOption("When two mods drive one target", ModeName())
+	AddHeaderOption("Migration")
+
 	; ONE overall magnitude only. Per-slider multipliers exist in the engine
 	; (SLIFNG.SetTargetScale) but are deliberately not surfaced here - a load
 	; order can drive dozens of sliders and a page of per-slider knobs is the
 	; exact complexity this framework exists to avoid. Presets (P5) set them.
+	_oMode   = AddTextOption("Two mods, one target", ModeName())
+	_oImport = AddTextOption("Import from old SLIF", ImportLabel(), ImportFlags())
+
 	_oMaster = AddSliderOption("Overall magnitude", SLIFNG.GetMasterScale(), "{2}x")
-
-	AddHeaderOption("Diagnostics")
-	_oVerbose = AddToggleOption("Verbose logging", _verbose)
-	_oDump    = AddTextOption("Dump everything to SLIFNG.log", "")
-
-	AddHeaderOption("Migration")
-	_oImport = AddTextOption("Import from old SLIF save", ImportLabel(), ImportFlags())
+	AddEmptyOption()
 EndFunction
 
 ; Disabled once it has run (the flag rides in the co-save, so it stays disabled
@@ -168,6 +178,10 @@ String Function TargetName()
 EndFunction
 
 Function RenderActorPage()
+	; TOP_TO_BOTTOM is right HERE: the report is long and variable, so filling
+	; the left column and flowing into the right keeps related rows adjacent.
+	; Pairing it into columns like the Settings page would interleave unrelated
+	; sections.
 	SetCursorFillMode(TOP_TO_BOTTOM)
 
 	AddHeaderOption("Subject")
