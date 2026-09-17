@@ -75,7 +75,7 @@ namespace SLIFNG::Report
 			Row(out, "Actor", "none selected");
 			return out;
 		}
-		Header(out, "ACTOR");
+		Header(out, "Actor");
 		Row(out, "Name", a_actor->GetName() ? a_actor->GetName() : "(unnamed)");
 		Row(out, "FormID", std::format("{:08X}", a_actor->GetFormID()));
 		const auto* race = a_actor->GetRace();
@@ -87,7 +87,7 @@ namespace SLIFNG::Report
 		// "yes" forever. The per-apply [Apply] log lines still carry 3D state,
 		// which is where an unloaded actor actually shows up.
 
-		Header(out, "BODY");
+		Header(out, "Body");
 		Row(out, "Profile", BodyProfile::ResolvedName(a_actor));
 		int found = 0;
 		int total = 0;
@@ -108,7 +108,7 @@ namespace SLIFNG::Report
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();
 
-		Header(out, "CONTRIBUTIONS");
+		Header(out, "Contributions");
 		const auto targets = ledger.TargetsOf(formID);
 		bool any = false;
 		for (const auto& target : targets) {
@@ -119,8 +119,8 @@ namespace SLIFNG::Report
 			// Sub-header per target, one short row per mod beneath it. Node
 			// keys render decrypted: "node Belly (NPC Belly)", not slif_belly.
 			Header(out, IsMorphTarget(target)
-					? "morph " + ledger.SliderName(SliderOf(target))
-					: "node " + Vocabulary::Describe(target));
+					? "Morph " + ledger.SliderName(SliderOf(target))
+					: "Node " + Vocabulary::Describe(target));
 			for (const auto& mod : mods) {
 				Row(out, "  " + mod, Num(ledger.GetContribution(formID, mod, target)));
 				any = true;
@@ -145,7 +145,7 @@ namespace SLIFNG::Report
 			Row(out, "Registered", "nothing");
 		}
 
-		Header(out, "APPLIED");
+		Header(out, "Applied");
 		const float master = ledger.MasterScale();
 		if (std::abs(master - 1.0f) > 0.0001f) {
 			Row(out, "Overall magnitude", std::format("{}x", Num(master)));
@@ -190,7 +190,7 @@ namespace SLIFNG::Report
 			Row(out, Vocabulary::Describe(target) + " [node]", Num(scaled));
 		}
 
-		Header(out, "AGGREGATION");
+		Header(out, "Aggregation");
 		// "Across mods": the calc type folds per-mod values on one target -
 		// node or slider alike; one mod's own node+morph layers still add.
 		Row(out, "Calc (across mods)", Calc::TypeName(ledger.GetMode()));

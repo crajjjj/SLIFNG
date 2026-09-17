@@ -153,7 +153,7 @@ Function RenderSettingsPage()
 	SetCursorFillMode(LEFT_TO_RIGHT)
 
 	AddHeaderOption("SLIF NG " + ModVersion())
-	AddHeaderOption("DIAGNOSTICS")
+	AddHeaderOption("Diagnostics")
 
 	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
 	_oVerbose = AddToggleOption("Verbose logging", _verbose)
@@ -164,8 +164,8 @@ Function RenderSettingsPage()
 	_oActors  = AddTextOption("Tracked actors", SLIFNG.TrackedActorCount())
 	AddEmptyOption()
 
-	AddHeaderOption("BEHAVIOUR")
-	AddHeaderOption("MIGRATION")
+	AddHeaderOption("Behaviour")
+	AddHeaderOption("Migration")
 
 	; ONE overall magnitude only. Per-slider multipliers exist in the engine
 	; (SLIFNG.SetTargetScale) but are deliberately not surfaced here - a load
