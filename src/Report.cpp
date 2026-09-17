@@ -75,7 +75,7 @@ namespace SLIFNG::Report
 			Row(out, "Actor", "none selected");
 			return out;
 		}
-		Header(out, "Actor");
+		Header(out, "ACTOR");
 		Row(out, "Name", a_actor->GetName() ? a_actor->GetName() : "(unnamed)");
 		Row(out, "FormID", std::format("{:08X}", a_actor->GetFormID()));
 		const auto* race = a_actor->GetRace();
@@ -87,7 +87,7 @@ namespace SLIFNG::Report
 		// "yes" forever. The per-apply [Apply] log lines still carry 3D state,
 		// which is where an unloaded actor actually shows up.
 
-		Header(out, "Body");
+		Header(out, "BODY");
 		Row(out, "Profile", BodyProfile::ResolvedName(a_actor));
 		int found = 0;
 		int total = 0;
@@ -108,7 +108,7 @@ namespace SLIFNG::Report
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();
 
-		Header(out, "Contributions");
+		Header(out, "CONTRIBUTIONS");
 		const auto targets = ledger.TargetsOf(formID);
 		bool any = false;
 		for (const auto& target : targets) {
@@ -125,12 +125,27 @@ namespace SLIFNG::Report
 				Row(out, "  " + mod, Num(ledger.GetContribution(formID, mod, target)));
 				any = true;
 			}
+			// What the node value BECOMES on this actor's body, so the page
+			// answers "how does slif_belly relate to my morphs" by itself:
+			// either the profile transforms it into sliders (weight per +1.0
+			// of scale), or it stays a skeleton bone scale.
+			if (!IsMorphTarget(target)) {
+				const auto* blends = BodyProfile::BlendFor(a_actor, target);
+				if (blends && !blends->empty()) {
+					for (const auto& blend : *blends) {
+						Row(out, "  > drives " + blend.slider,
+							std::format("{} / +1.0", Num(blend.weight)));
+					}
+				} else {
+					Row(out, "  > drives", "bone scale");
+				}
+			}
 		}
 		if (!any) {
 			Row(out, "Registered", "nothing");
 		}
 
-		Header(out, "Applied");
+		Header(out, "APPLIED");
 		const float master = ledger.MasterScale();
 		if (std::abs(master - 1.0f) > 0.0001f) {
 			Row(out, "Overall magnitude", std::format("{}x", Num(master)));
@@ -175,7 +190,7 @@ namespace SLIFNG::Report
 			Row(out, Vocabulary::Describe(target) + " [node]", Num(scaled));
 		}
 
-		Header(out, "Aggregation");
+		Header(out, "AGGREGATION");
 		// "Across mods": the calc type folds per-mod values on one target -
 		// node or slider alike; one mod's own node+morph layers still add.
 		Row(out, "Calc (across mods)", Calc::TypeName(ledger.GetMode()));

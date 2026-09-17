@@ -18,7 +18,7 @@ any save with a female player.
 Just load the save and quit. Expect in the log, in order:
 
 ```
-SLIFNG v0.2.0 is loading...
+SLIFNG v0.2.1 is loading...
 Cosave serialization initialized.
 Papyrus functions bound.
 [Skee] BodyMorph interface vN

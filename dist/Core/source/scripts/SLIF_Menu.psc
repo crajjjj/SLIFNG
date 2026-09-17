@@ -30,6 +30,7 @@ int _oImport
 int _oTarget
 int _oRefresh
 int _oLog
+int _oReset
 
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
@@ -152,7 +153,7 @@ Function RenderSettingsPage()
 	SetCursorFillMode(LEFT_TO_RIGHT)
 
 	AddHeaderOption("SLIF NG " + ModVersion())
-	AddHeaderOption("Diagnostics")
+	AddHeaderOption("DIAGNOSTICS")
 
 	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
 	_oVerbose = AddToggleOption("Verbose logging", _verbose)
@@ -163,14 +164,14 @@ Function RenderSettingsPage()
 	_oActors  = AddTextOption("Tracked actors", SLIFNG.TrackedActorCount())
 	AddEmptyOption()
 
-	AddHeaderOption("Behaviour")
-	AddHeaderOption("Migration")
+	AddHeaderOption("BEHAVIOUR")
+	AddHeaderOption("MIGRATION")
 
 	; ONE overall magnitude only. Per-slider multipliers exist in the engine
 	; (SLIFNG.SetTargetScale) but are deliberately not surfaced here - a load
 	; order can drive dozens of sliders and a page of per-slider knobs is the
 	; exact complexity this framework exists to avoid. Presets (P5) set them.
-	_oMode    = AddTextOption("Two mods, one target", ModeName())
+	_oMode    = AddMenuOption("Calculation type", ModeName())
 	_oImport  = AddTextOption("Old-SLIF import", ImportLabel(), ImportFlags())
 
 	_oGradual = AddToggleOption("Incremental inflation", SLIFNG.IsIncrementalInflation())
@@ -203,20 +204,26 @@ EndFunction
 ; SLIF's own six calculation types, SLIF's numbering (0 = Top X is the
 ; reference's default). Folds across mods on one target - nodes and sliders
 ; alike; one mod's own node+morph layers still add.
+; Array index == SLIF's calculation_type number, so the menu dialog's
+; SetMenuDialogStartIndex/Accept index maps 1:1 onto the native value.
+String[] Function ModeNames()
+	String[] names = new String[6]
+	names[0] = "Top X"
+	names[1] = "Highest wins"
+	names[2] = "Subtract and add one"
+	names[3] = "Square root"
+	names[4] = "Average"
+	names[5] = "Additive"
+	return names
+EndFunction
+
 String Function ModeName()
 	int mode = SLIFNG.GetAggregationMode()
-	if mode == 1
-		return "Highest wins"
-	elseIf mode == 2
-		return "Subtract and add one"
-	elseIf mode == 3
-		return "Square root"
-	elseIf mode == 4
-		return "Average"
-	elseIf mode == 5
-		return "Additive"
+	String[] names = ModeNames()
+	if mode < 0 || mode >= names.length
+		return names[0]
 	endIf
-	return "Top X"
+	return names[mode]
 EndFunction
 
 String Function EngineStatus()
@@ -256,7 +263,7 @@ Function RenderActorPage()
 	_oTarget  = AddTextOption("Showing", TargetName())
 	_oRefresh = AddTextOption("Refresh", "")
 	_oLog     = AddTextOption("Write to SLIFNG.log", "")
-	AddEmptyOption()
+	_oReset   = AddTextOption("Reset this actor", "")
 
 	if !subject
 		AddHeaderOption("Nothing under the crosshair")
@@ -294,6 +301,24 @@ EndFunction
 
 ; =================================================================== input ===
 
+Event OnOptionMenuOpen(int a_option)
+	if a_option != _oMode
+		return
+	endIf
+	SetMenuDialogOptions(ModeNames())
+	SetMenuDialogStartIndex(SLIFNG.GetAggregationMode())
+	SetMenuDialogDefaultIndex(0)
+EndEvent
+
+Event OnOptionMenuAccept(int a_option, int a_index)
+	if a_option != _oMode
+		return
+	endIf
+	; The dialog index IS SLIF's calculation_type number (see ModeNames).
+	SLIFNG.SetAggregationMode(a_index)
+	SetMenuOptionValue(_oMode, ModeName())
+EndEvent
+
 Event OnOptionSliderOpen(int a_option)
 	if a_option != _oMaster
 		return
@@ -315,14 +340,14 @@ Event OnOptionSliderAccept(int a_option, float a_value)
 EndEvent
 
 Event OnOptionSelect(int a_option)
-	if a_option == _oMode
-		; Click cycles through the six types; wraps after Additive.
-		int nextMode = SLIFNG.GetAggregationMode() + 1
-		if nextMode > 5
-			nextMode = 0
+	if a_option == _oReset
+		; The wipe itself is instant; whether the shape comes back is up to
+		; the mods - some re-send every tick, some only on events.
+		if ShowMessage("Wipe everything SLIF NG stores for this actor and clear the applied inflation?\n\nMods MAY OR MAY NOT re-send their values afterwards: some push every cycle tick, others only on events (a meal, a scene, a pregnancy update), so the shape can stay flat until they do.", true, "$Yes", "$No")
+			SLIFNG.UnregisterMod(SelectedActor(), "All Mods")
+			Debug.Notification("SLIF NG: actor storage cleared")
+			ForcePageReset()
 		endIf
-		SLIFNG.SetAggregationMode(nextMode)
-		SetTextOptionValue(_oMode, ModeName())
 	elseIf a_option == _oGradual
 		SLIFNG.SetIncrementalInflation(!SLIFNG.IsIncrementalInflation())
 		SetToggleOptionValue(_oGradual, SLIFNG.IsIncrementalInflation())
@@ -350,7 +375,7 @@ EndEvent
 
 Event OnOptionHighlight(int a_option)
 	if a_option == _oMode
-		SetInfoText("How several mods driving the same target combine - SLIF's own six types, applied across mods to nodes and sliders alike (one mod's own node+morph layers still add).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.\nClick to cycle.")
+		SetInfoText("How several mods driving the same target combine - SLIF's own six types, applied across mods to nodes and sliders alike (one mod's own node+morph layers still add).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.")
 	elseIf a_option == _oMaster
 		SetInfoText("Scales EVERYTHING this framework applies. 1.00x leaves mods exactly as they intended; 0.00x suppresses all inflation. Applies instantly to every tracked actor.")
 	elseIf a_option == _oVerbose
@@ -367,6 +392,8 @@ Event OnOptionHighlight(int a_option)
 		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. Hiding a node and unregistering stay instant. Off = instant, the old SLIF's default.")
 	elseIf a_option == _oRefresh
 		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
+	elseIf a_option == _oReset
+		SetInfoText("Wipes every stored contribution for this actor and clears the applied inflation. Mods may or may not re-send their values afterwards - some only push on events - so use this to clear stuck state, not as an undo.")
 	elseIf a_option == _oLog
 		SetInfoText("Writes exactly what this page shows to SKSE\\SLIFNG.log, so it can be pasted into a bug report.")
 	endIf
