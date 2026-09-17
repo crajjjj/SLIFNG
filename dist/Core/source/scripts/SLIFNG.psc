@@ -5,15 +5,19 @@ no-ops, clamp, keyed per-mod ledger, configurable fold, ONE coalesced skee
 apply) runs natively. Values: node targets 1.0 = neutral, morphs 0.0 = neutral.
 min/max/mult accept -1.0 = "keep defaults" (0 / 100 / 1.0).}
 
-; API version of the native surface (1 = P1 MVP).
+; API version of the native surface.
+; 2: increment parameter on Inflate/Morph, incremental inflation, and the
+;    enumeration surface for mod authors (IsTracked/GetTrackedActors/...).
 Int Function GetVersion() Global Native
 
 ; Returns true when the value changed and was applied (false = early-out,
 ; dead key, unknown key, or missing engine).
 ; slifKey accepts EITHER a slif_* key OR a raw skeleton node name ("NPC Belly"
 ; - what FHU sends); both resolve to the same canonical target.
-Bool Function Inflate(Actor kActor, String modName, String slifKey, Float value, Float minimum, Float maximum, Float multiplier, String oldModName) Global Native
-Bool Function Morph(Actor kActor, String modName, String morphName, Float value, Float minimum, Float maximum, Float multiplier, String oldModName) Global Native
+; increment: the per-row step for incremental inflation (SLIF's own knob;
+; -1.0 = keep the default 0.1). Only consumed while incremental mode is on.
+Bool Function Inflate(Actor kActor, String modName, String slifKey, Float value, Float minimum, Float maximum, Float multiplier, Float increment, String oldModName) Global Native
+Bool Function Morph(Actor kActor, String modName, String morphName, Float value, Float minimum, Float maximum, Float multiplier, Float increment, String oldModName) Global Native
 
 Function UnregisterNode(Actor kActor, String slifKey, String modName) Global Native
 Function UnregisterMorph(Actor kActor, String morphName, String modName) Global Native
@@ -55,6 +59,28 @@ Float Function GetApplied(Actor kActor, String target) Global Native
 ; contributions for one slider. SLIF_Morph mirrors it into StorageUtil under
 ; that exact name - Sexlab Survival reads it from StorageUtil directly.
 Float Function GetCombinedMorph(Actor kActor, String morphName) Global Native
+
+; ---- incremental inflation (the reference's "Inflation Type") ---------------
+; Off (instant) by default - the reference's shipped default too. When on,
+; node-value CHANGES step toward their new fold by each row's increment every
+; quarter second, entirely off the Papyrus VM; hide/unregister stay instant.
+; Turning it off snaps every in-flight ramp to its final value.
+Function SetIncrementalInflation(Bool enabled) Global Native
+Bool Function IsIncrementalInflation() Global Native
+
+; ---- query surface for mod authors ------------------------------------------
+; The values come through GetValue / GetApplied / GetContribution /
+; GetCombinedMorph above; these answer "what is there to ask about".
+; C++ plugins get the same surface via messaging - see src/API/SLIFNG_API.h.
+Bool Function IsTracked(Actor kActor) Global Native
+Actor[] Function GetTrackedActors() Global Native
+; Canonical node keys with a stored contribution ("slif_belly", ...).
+String[] Function GetNodeTargets(Actor kActor) Global Native
+; BodySlide sliders with a stored direct contribution, original case.
+String[] Function GetMorphTargets(Actor kActor) Global Native
+; Which mods hold a contribution to one target (key, raw node, or
+; "morph:<slider>").
+String[] Function GetModsDriving(Actor kActor, String target) Global Native
 
 ; Diagnostics: write the full ledger (or one actor's entries) to SLIFNG.log -
 ; contributions, fold results, active mode. See SLIFNG_Debug.psc for

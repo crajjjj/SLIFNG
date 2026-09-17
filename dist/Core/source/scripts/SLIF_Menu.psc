@@ -20,6 +20,7 @@ int _oVersion
 int _oEngine
 int _oActors
 int _oMode
+int _oGradual
 int _oMaster
 int _oVerbose
 int _oDump
@@ -43,7 +44,7 @@ bool _useCrosshair = false    ; false = player, true = whatever you are looking 
 ; ArousedBodyMorphs. Bump alongside the mod version whenever Pages, ModName, or
 ; the option layout changes.
 Int Function GetVersion()
-	return 100
+	return 101
 EndFunction
 
 String Function VersionString()
@@ -120,22 +121,27 @@ Function RenderSettingsPage()
 	; (SLIFNG.SetTargetScale) but are deliberately not surfaced here - a load
 	; order can drive dozens of sliders and a page of per-slider knobs is the
 	; exact complexity this framework exists to avoid. Presets (P5) set them.
-	_oMode   = AddTextOption("Two mods, one target", ModeName())
-	_oImport = AddTextOption("Import from old SLIF", ImportLabel(), ImportFlags())
+	_oMode    = AddTextOption("Two mods, one target", ModeName())
+	_oImport  = AddTextOption("Old-SLIF import", ImportLabel(), ImportFlags())
 
-	_oMaster = AddSliderOption("Overall magnitude", SLIFNG.GetMasterScale(), "{2}x")
+	_oGradual = AddToggleOption("Incremental inflation", SLIFNG.IsIncrementalInflation())
+	AddEmptyOption()
+
+	_oMaster  = AddSliderOption("Overall magnitude", SLIFNG.GetMasterScale(), "{2}x")
 	AddEmptyOption()
 EndFunction
 
-; Disabled once it has run (the flag rides in the co-save, so it stays disabled
-; across reloads of THIS save) and also when there is simply nothing to import.
+; A STATUS row, not a button: the import runs automatically on the first load
+; of a legacy save (SLIF_ScannerAlias.AutoMigrate). It stays clickable only in
+; the "pending" state, as a manual fallback if the automatic pass never got to
+; run (e.g. the alias failed to fill).
 String Function ImportLabel()
 	if SLIFNG.HasMigrated()
-		return "done"
+		return "done (automatic)"
 	elseIf SLIFNG_Migrate.CountLegacyActors() == 0
-		return "nothing found"
+		return "nothing to import"
 	endIf
-	return SLIFNG_Migrate.CountLegacyActors() + " actor(s)"
+	return "pending: " + SLIFNG_Migrate.CountLegacyActors() + " actor(s)"
 EndFunction
 
 Int Function ImportFlags()
@@ -267,6 +273,9 @@ Event OnOptionSelect(int a_option)
 		endIf
 		SLIFNG.SetAggregationMode(nextMode)
 		SetTextOptionValue(_oMode, ModeName())
+	elseIf a_option == _oGradual
+		SLIFNG.SetIncrementalInflation(!SLIFNG.IsIncrementalInflation())
+		SetToggleOptionValue(_oGradual, SLIFNG.IsIncrementalInflation())
 	elseIf a_option == _oVerbose
 		_verbose = !_verbose
 		SLIFNG.SetVerboseLogging(_verbose)
@@ -303,7 +312,9 @@ Event OnOptionHighlight(int a_option)
 	elseIf a_option == _oTarget
 		SetInfoText("Switch between the player and whatever is under your crosshair. Close the menu, look at an NPC, reopen.")
 	elseIf a_option == _oImport
-		SetInfoText("Copies what reference SLIF stored in THIS save - every mod's per-actor belly/breast values - into SLIF NG, so a migrating character keeps her shape. Runs once, then greys out. Harmless to skip: mods re-send their values as play continues.")
+		SetInfoText("Runs by itself on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
+	elseIf a_option == _oGradual
+		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. Hiding a node and unregistering stay instant. Off = instant, the old SLIF's default.")
 	elseIf a_option == _oRefresh
 		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
 	elseIf a_option == _oLog

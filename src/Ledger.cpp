@@ -15,19 +15,22 @@ namespace SLIFNG
 		// v5: the hidden-node map.
 		// v6: the mode field switched to SLIF's calculation_type numbering
 		//     (0 Top X .. 5 Additive) and gained the top_x count beside it.
-		constexpr std::uint32_t kLedgerVersion = 6;
+		// v7: per-contribution increment; the incremental-inflation flag.
+		constexpr std::uint32_t kLedgerVersion = 7;
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
 	bool Ledger::Set(RE::FormID a_actor, const std::string& a_mod, const std::string& a_target,
-		float a_value, float a_min, float a_max, float a_mult, const std::string& a_sliderName)
+		float a_value, float a_min, float a_max, float a_mult, float a_increment,
+		const std::string& a_sliderName)
 	{
 		std::scoped_lock lock(_lock);
 		RememberSliderLocked(a_sliderName);
 		auto& entry = _actors[a_actor][Lower(a_mod)][Lower(a_target)];
-		const Contribution next{ a_value, a_min, a_max, a_mult };
+		const Contribution next{ a_value, a_min, a_max, a_mult, a_increment };
 		const bool changed = entry.value != next.value || entry.min != next.min ||
-		                     entry.max != next.max || entry.mult != next.mult;
+		                     entry.max != next.max || entry.mult != next.mult ||
+		                     entry.increment != next.increment;
 		entry = next;
 		return changed;
 	}
@@ -130,7 +133,67 @@ namespace SLIFNG
 				return pin->second;
 			}
 		}
-		return FoldNodeLocked(a_actor, target);
+		return DisplayedNodeLocked(a_actor, target);
+	}
+
+	float Ledger::FoldNode(RE::FormID a_actor, const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		return FoldNodeLocked(a_actor, Lower(a_target));
+	}
+
+	// The ramp's in-flight value when one is active, else the fold.
+	float Ledger::DisplayedNodeLocked(RE::FormID a_actor, const std::string& a_target) const
+	{
+		if (const auto actorIt = _display.find(a_actor); actorIt != _display.end()) {
+			const auto it = actorIt->second.find(a_target);
+			if (it != actorIt->second.end()) {
+				return it->second;
+			}
+		}
+		return FoldNodeLocked(a_actor, a_target);
+	}
+
+	void Ledger::SetDisplay(RE::FormID a_actor, const std::string& a_target, float a_value)
+	{
+		std::scoped_lock lock(_lock);
+		_display[a_actor][Lower(a_target)] = a_value;
+	}
+
+	void Ledger::ClearDisplay(RE::FormID a_actor, const std::string& a_target)
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _display.find(a_actor);
+		if (actorIt == _display.end()) {
+			return;
+		}
+		actorIt->second.erase(Lower(a_target));
+		if (actorIt->second.empty()) {
+			_display.erase(actorIt);
+		}
+	}
+
+	std::optional<float> Ledger::DisplayOf(RE::FormID a_actor, const std::string& a_target) const
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _display.find(a_actor);
+		if (actorIt == _display.end()) {
+			return std::nullopt;
+		}
+		const auto it = actorIt->second.find(Lower(a_target));
+		return it != actorIt->second.end() ? std::optional<float>{ it->second } : std::nullopt;
+	}
+
+	bool Ledger::GetGradual() const
+	{
+		std::scoped_lock lock(_lock);
+		return _gradual;
+	}
+
+	void Ledger::SetGradual(bool a_on)
+	{
+		std::scoped_lock lock(_lock);
+		_gradual = a_on;
 	}
 
 	// SLIF_Calc.addCalculationType over the per-mod effective contributions -
@@ -202,7 +265,10 @@ namespace SLIFNG
 			}
 			for (const auto& blend : *blends) {
 				if (Lower(blend.slider) == a_sliderLower) {
-					value += (FoldNodeLocked(a_actor, target) - 1.0f) * blend.weight;
+					// Displayed, not the raw fold: a mid-ramp node drags its
+					// derived sliders along with it, so node and morph move in
+					// step during incremental inflation.
+					value += (DisplayedNodeLocked(a_actor, target) - 1.0f) * blend.weight;
 				}
 			}
 		}
@@ -483,6 +549,30 @@ namespace SLIFNG
 		return out;
 	}
 
+	std::vector<std::string> Ledger::NodeTargetsOf(RE::FormID a_actor) const
+	{
+		std::scoped_lock lock(_lock);
+		std::vector<std::string> out;
+		for (auto& target : TargetsOfLocked(a_actor)) {
+			if (!IsMorphTarget(target)) {
+				out.push_back(std::move(target));
+			}
+		}
+		return out;
+	}
+
+	std::vector<std::string> Ledger::MorphSlidersOf(RE::FormID a_actor) const
+	{
+		std::scoped_lock lock(_lock);
+		std::vector<std::string> out;
+		for (const auto& target : TargetsOfLocked(a_actor)) {
+			if (IsMorphTarget(target)) {
+				out.push_back(SliderOf(target));
+			}
+		}
+		return out;
+	}
+
 	bool Ledger::HasEntries(RE::FormID a_actor) const
 	{
 		std::scoped_lock lock(_lock);
@@ -553,6 +643,7 @@ namespace SLIFNG
 
 		Write(a_intfc, static_cast<std::uint32_t>(inst._mode));
 		Write(a_intfc, inst._topX);
+		Write(a_intfc, static_cast<std::uint32_t>(inst._gradual ? 1 : 0));
 		Write(a_intfc, static_cast<std::uint32_t>(inst._migrated ? 1 : 0));
 
 		Write(a_intfc, inst._masterScale);
@@ -581,6 +672,7 @@ namespace SLIFNG
 					Write(a_intfc, c.min);
 					Write(a_intfc, c.max);
 					Write(a_intfc, c.mult);
+					Write(a_intfc, c.increment);
 				}
 			}
 		}
@@ -606,10 +698,12 @@ namespace SLIFNG
 		std::scoped_lock lock(inst._lock);
 		inst._actors.clear();
 		inst._hidden.clear();
+		inst._display.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
+		inst._gradual = false;
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 
@@ -639,6 +733,9 @@ namespace SLIFNG
 					} else {
 						// v2-v5 stored the old two-value enum: 0 highest, 1 additive.
 						inst._mode = mode == 1 ? Calc::Type::kAdditive : Calc::Type::kHighestWins;
+					}
+					if (version >= 7) {
+						inst._gradual = Read<std::uint32_t>(a_intfc, length) != 0;
 					}
 
 					if (version >= 4) {
@@ -683,6 +780,9 @@ namespace SLIFNG
 							c.min = Read<float>(a_intfc, length);
 							c.max = Read<float>(a_intfc, length);
 							c.mult = Read<float>(a_intfc, length);
+							if (version >= 7) {
+								c.increment = Read<float>(a_intfc, length);
+							}
 							targets[target] = c;
 						}
 					}
@@ -720,6 +820,8 @@ namespace SLIFNG
 				inst._targetScales.clear();
 				inst._masterScale = 1.0f;
 				inst._migrated = false;
+				inst._gradual = false;
+				inst._display.clear();
 				inst._mode = Calc::Type::kTopX;
 				inst._topX = Calc::kDefaultTopX;
 			}
@@ -734,10 +836,12 @@ namespace SLIFNG
 		std::scoped_lock lock(inst._lock);
 		inst._actors.clear();
 		inst._hidden.clear();
+		inst._display.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
+		inst._gradual = false;
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 		logger::info("[Ledger] reverted");

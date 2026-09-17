@@ -10,9 +10,9 @@ public signatures below are FROZEN: same names, order, types, count.}
 ; oldModName: consumer's pre-SLIF NiOverride key to clean up (CONTRACT sec.4.2).
 ; min/max/mult/incr = -1.0 -> keep defaults 0 / 100 / 1.0 / 0.1.
 Function inflate(Actor kActor, string modName, string node, float value, int gender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
-	; increment belongs to the reference's gradual queue - accepted and unused
-	; until the native ramp (PLAN P8). Everything else runs in SLIFNG.dll.
-	SLIFNG.Inflate(kActor, modName, node, value, minimum, maximum, multiplier, oldModName)
+	; increment feeds the native ramp when incremental inflation is on
+	; (PLAN P8); with instant inflation it is stored and idle, as before.
+	SLIFNG.Inflate(kActor, modName, node, value, minimum, maximum, multiplier, increment, oldModName)
 EndFunction
 
 ; Pinned caller: Beeing Female NG (3-arg call baked).
@@ -77,7 +77,7 @@ EndFunction
 ; Our vocabulary already models a sync pair as ONE target - both nodes always
 ; carry the same value - so this is plain inflate, not a second code path.
 Function inflateBoth(Actor kActor, string modName, string syncKey, float value, int gender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
-	SLIFNG.Inflate(kActor, modName, syncKey, value, minimum, maximum, multiplier, oldModName)
+	SLIFNG.Inflate(kActor, modName, syncKey, value, minimum, maximum, multiplier, increment, oldModName)
 EndFunction
 
 ; resetActor: drop a mod's hold on ONE node, or on everything when node is "".

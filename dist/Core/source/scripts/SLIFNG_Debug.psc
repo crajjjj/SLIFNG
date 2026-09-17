@@ -9,6 +9,7 @@ and verified from SLIFNG.log without any consumer mod or gameplay.
   cgf "SLIFNG_Debug.UPlayer" "TestMod"
   cgf "SLIFNG_Debug.Mode" 1        ; 0 Top X (default) .. 5 Additive
   cgf "SLIFNG_Debug.Verbose" false
+  cgf "SLIFNG_Debug.Gradual" true  ; incremental inflation on/off
   cgf "SLIFNG_Debug.Scale" 0.5
   cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
   cgf "SLIFNG_Debug.Dump"
@@ -25,12 +26,12 @@ EndFunction
 
 ; Node-key inflate on the player (value 1.0 = neutral, 2.0 = double).
 Function IPlayer(String modName, String slifKey, Float value) Global
-	SLIFNG.Inflate(Game.GetPlayer(), modName, slifKey, value, -1.0, -1.0, -1.0, "")
+	SLIFNG.Inflate(Game.GetPlayer(), modName, slifKey, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 
 ; Direct morph on the player (value 0.0 = neutral).
 Function MPlayer(String modName, String morphName, Float value) Global
-	SLIFNG.Morph(Game.GetPlayer(), modName, morphName, value, -1.0, -1.0, -1.0, "")
+	SLIFNG.Morph(Game.GetPlayer(), modName, morphName, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 
 Function UPlayer(String modName) Global
@@ -45,6 +46,13 @@ EndFunction
 
 Function Verbose(Bool enabled) Global
 	SLIFNG.SetVerboseLogging(enabled)
+EndFunction
+
+; Incremental inflation: node changes step by their increment (default 0.1)
+; every quarter second instead of snapping.
+Function Gradual(Bool enabled) Global
+	SLIFNG.SetIncrementalInflation(enabled)
+	Debug.Notification("SLIF NG incremental inflation: " + enabled)
 EndFunction
 
 ; User magnitude. 1.0 = as mods intended, 0.0 = suppressed.
@@ -86,24 +94,24 @@ Function SmokeTest() Global
 	Debug.Notification("SLIF NG smoke test - watch the log")
 
 	; -- node-key aggregation (default calc = Top X, as in SLIF) --------------
-	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, "")   ; alone: fold 2.0
-	SLIFNG.Inflate(player, "SmokeB", "slif_belly", 1.5, -1.0, -1.0, -1.0, "")   ; Top X: 2.0 + 1.5/3 = 2.5
-	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, "")   ; must early-out
+	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, -1.0, "")   ; alone: fold 2.0
+	SLIFNG.Inflate(player, "SmokeB", "slif_belly", 1.5, -1.0, -1.0, -1.0, -1.0, "")   ; Top X: 2.0 + 1.5/3 = 2.5
+	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, -1.0, "")   ; must early-out
 
 	; -- CROSS-SOURCE: a direct morph on the SAME slider slif_belly drives.
 	;    Slider value = direct sum + blend(fold): morphs never fold, they add
 	;    (the reference's slif_<morph> + slif_scale_<morph> composition).
-	SLIFNG.Morph(player, "SmokeC", "PregnancyBelly", 0.4, -1.0, -1.0, -1.0, "")
+	SLIFNG.Morph(player, "SmokeC", "PregnancyBelly", 0.4, -1.0, -1.0, -1.0, -1.0, "")
 
 	; -- RAW NODE NAME: exactly what FHU sends ("NPC Belly", not slif_belly).
 	;    Must route to the slif_belly target - same ledger entry family, so it
 	;    aggregates with SmokeA/B instead of being rejected or clobbering.
-	SLIFNG.Inflate(player, "SmokeD", "NPC Belly", 1.8, -1.0, -1.0, -1.0, "")    ; Top X: 2 + 1.8/3 + 1.5/6 = 2.85
+	SLIFNG.Inflate(player, "SmokeD", "NPC Belly", 1.8, -1.0, -1.0, -1.0, -1.0, "")    ; Top X: 2 + 1.8/3 + 1.5/6 = 2.85
 
 	; -- contract edge cases --------------------------------------------------
-	SLIFNG.Inflate(player, "SmokeA", "slif_breast01", 3.0, -1.0, -1.0, -1.0, "") ; dead key no-op
-	SLIFNG.Inflate(player, "SmokeA", "slif_bogus", 3.0, -1.0, -1.0, -1.0, "")    ; unknown key
-	SLIFNG.Morph(player, "SmokeA", "BreastsNewSH", 0.5, -1.0, -1.0, -1.0, "")    ; unrelated slider
+	SLIFNG.Inflate(player, "SmokeA", "slif_breast01", 3.0, -1.0, -1.0, -1.0, -1.0, "") ; dead key no-op
+	SLIFNG.Inflate(player, "SmokeA", "slif_bogus", 3.0, -1.0, -1.0, -1.0, -1.0, "")    ; unknown key
+	SLIFNG.Morph(player, "SmokeA", "BreastsNewSH", 0.5, -1.0, -1.0, -1.0, -1.0, "")    ; unrelated slider
 
 	; -- calc-type switch recomputes everything -------------------------------
 	SLIFNG.SetAggregationMode(1)                                                 ; highest wins: 2.0

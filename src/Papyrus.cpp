@@ -2,6 +2,8 @@
 
 #include "Calc.h"
 #include "Ledger.h"
+#include "Query.h"
+#include "Ramp.h"
 #include "Report.h"
 #include "Skee.h"
 #include "Vocabulary.h"
@@ -14,7 +16,9 @@ namespace SLIFNG::Papyrus
 {
 	namespace
 	{
-		constexpr std::int32_t kApiVersion = 1;
+		// 2: increment parameter on Inflate/Morph, incremental inflation,
+		//    the enumeration surface for mod authors.
+		constexpr std::int32_t kApiVersion = 2;
 
 		// CONTRACT sec.4.1: exactly -1.0 means "not specified, keep the default".
 		// Tested for equality, not `< 0` / `<= 0`: a deliberate multiplier of 0
@@ -22,7 +26,7 @@ namespace SLIFNG::Papyrus
 		// are legitimate values a consumer can send.
 		constexpr float kUnset = -1.0f;
 
-		void ResolveDefaults(float& a_min, float& a_max, float& a_mult)
+		void ResolveDefaults(float& a_min, float& a_max, float& a_mult, float& a_increment)
 		{
 			if (a_min == kUnset) {
 				a_min = 0.0f;
@@ -33,6 +37,9 @@ namespace SLIFNG::Papyrus
 			if (a_mult == kUnset) {
 				a_mult = 1.0f;
 			}
+			if (a_increment == kUnset) {
+				a_increment = 0.1f;
+			}
 		}
 
 		std::int32_t GetVersion(RE::StaticFunctionTag*)
@@ -42,11 +49,12 @@ namespace SLIFNG::Papyrus
 
 		bool Inflate(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
 			RE::BSFixedString a_key, float a_value, float a_min, float a_max, float a_mult,
-			RE::BSFixedString a_oldMod)
+			float a_increment, RE::BSFixedString a_oldMod)
 		{
-			logger::info("[API] Inflate({:08X} '{}', mod='{}', key='{}', value={}, min={}, max={}, mult={}, old='{}')",
+			logger::info("[API] Inflate({:08X} '{}', mod='{}', key='{}', value={}, min={}, max={}, mult={}, incr={}, old='{}')",
 				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
-				a_mod.c_str(), a_key.c_str(), a_value, a_min, a_max, a_mult, a_oldMod.c_str());
+				a_mod.c_str(), a_key.c_str(), a_value, a_min, a_max, a_mult, a_increment,
+				a_oldMod.c_str());
 			if (!a_actor || a_mod.empty() || a_key.empty()) {
 				logger::warn("[API]   -> rejected (null actor or empty mod/key)");
 				return false;
@@ -75,12 +83,26 @@ namespace SLIFNG::Papyrus
 				logger::info("[API]   -> raw node '{}' routed to canonical target '{}'", raw, key);
 			}
 
-			ResolveDefaults(a_min, a_max, a_mult);
-			const bool changed = Ledger::GetSingleton().Set(
-				a_actor->GetFormID(), a_mod.c_str(), key, a_value, a_min, a_max, a_mult);
+			ResolveDefaults(a_min, a_max, a_mult, a_increment);
+			auto& ledger = Ledger::GetSingleton();
+			// What the target shows right now, captured BEFORE the write: the
+			// seed a ramp starts stepping from.
+			const float before = ledger.Aggregate(a_actor->GetFormID(), key);
+			const bool changed = ledger.Set(
+				a_actor->GetFormID(), a_mod.c_str(), key, a_value, a_min, a_max, a_mult, a_increment);
 			if (!changed) {
 				logger::info("[API]   -> unchanged (early-out)");
 				return false;  // unchanged-value early-out (the reference lacked one)
+			}
+			// Incremental inflation: value CHANGES ramp; everything else stays
+			// instant (hide wins immediately, unregister removes immediately -
+			// the reference's RemoveNodeScale was instant too). Unloaded actors
+			// skip the ramp: nobody is watching, and the 3D-load hook applies
+			// the final value when they stream in.
+			if (ledger.GetGradual() && a_actor->Is3DLoaded() &&
+				!ledger.IsHidden(a_actor->GetFormID(), key)) {
+				Ramp::Begin(a_actor, key, before, a_increment);
+				return true;
 			}
 			Skee::ApplyDeferred(a_actor, key);
 			return true;
@@ -88,11 +110,12 @@ namespace SLIFNG::Papyrus
 
 		bool Morph(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
 			RE::BSFixedString a_morph, float a_value, float a_min, float a_max, float a_mult,
-			RE::BSFixedString a_oldMod)
+			float a_increment, RE::BSFixedString a_oldMod)
 		{
-			logger::info("[API] Morph({:08X} '{}', mod='{}', morph='{}', value={}, min={}, max={}, mult={}, old='{}')",
+			logger::info("[API] Morph({:08X} '{}', mod='{}', morph='{}', value={}, min={}, max={}, mult={}, incr={}, old='{}')",
 				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
-				a_mod.c_str(), a_morph.c_str(), a_value, a_min, a_max, a_mult, a_oldMod.c_str());
+				a_mod.c_str(), a_morph.c_str(), a_value, a_min, a_max, a_mult, a_increment,
+				a_oldMod.c_str());
 			if (!a_actor || a_mod.empty() || a_morph.empty()) {
 				logger::warn("[API]   -> rejected (null actor or empty mod/morph)");
 				return false;
@@ -105,9 +128,9 @@ namespace SLIFNG::Papyrus
 			// given the consumer's ORIGINAL spelling, which Set() remembers.
 			const std::string slider = a_morph.c_str();
 			const std::string target = std::string{ kMorphPrefix } + Lower(slider);
-			ResolveDefaults(a_min, a_max, a_mult);
-			const bool changed = Ledger::GetSingleton().Set(
-				a_actor->GetFormID(), a_mod.c_str(), target, a_value, a_min, a_max, a_mult, slider);
+			ResolveDefaults(a_min, a_max, a_mult, a_increment);
+			const bool changed = Ledger::GetSingleton().Set(a_actor->GetFormID(), a_mod.c_str(),
+				target, a_value, a_min, a_max, a_mult, a_increment, slider);
 			if (!changed) {
 				logger::info("[API]   -> unchanged (early-out)");
 				return false;
@@ -133,6 +156,7 @@ namespace SLIFNG::Papyrus
 
 			std::vector<std::string> affected;
 			if (ledger.RemoveTarget(a_actor->GetFormID(), a_mod.c_str(), key)) {
+				Ramp::Cancel(a_actor->GetFormID(), key);
 				affected.push_back(key);
 			}
 			// A consumer may also name a slider here rather than a node key.
@@ -171,6 +195,9 @@ namespace SLIFNG::Papyrus
 			// a target nobody drives any more folds to neutral, which clears it.
 			// Apply + the ledger-empty clear ride ONE task so they cannot race.
 			auto affected = Ledger::GetSingleton().RemoveMod(a_actor->GetFormID(), a_mod.c_str());
+			for (const auto& target : affected) {
+				Ramp::Cancel(a_actor->GetFormID(), target);
+			}
 			Skee::UnregisterDeferred(a_actor, std::move(affected));
 		}
 
@@ -225,81 +252,29 @@ namespace SLIFNG::Papyrus
 		// this actor look" and the scale genuinely changes the answer. A consumer
 		// that gates content on size should agree with the body it can see.
 
-		// "slif_belly" / "NPC Belly" / "morph:pregnancybelly" -> ledger target.
-		// Empty when the key is not vocabulary and not a morph target.
+		// The bodies live in Query.h, shared with the inter-plugin SKSE API so
+		// both callers always get the same answer.
 		std::string ResolveTarget(const std::string& a_raw)
 		{
-			const std::string lower = Lower(a_raw);
-			if (IsMorphTarget(lower)) {
-				return lower;
-			}
-			const auto* resolved = Vocabulary::Resolve(lower);
-			return resolved ? resolved->key : std::string{};
+			return Query::ResolveTarget(a_raw.c_str());
 		}
 
 		float GetValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
 			RE::BSFixedString a_target, float a_default)
 		{
-			if (!a_actor || a_target.empty()) {
-				return 0.0f;  // reference returns 0.0 for invalid parameters
-			}
-			const std::string target = ResolveTarget(a_target.c_str());
-			if (target.empty()) {
-				return 0.0f;
-			}
-			auto& ledger = Ledger::GetSingleton();
-			const auto formID = a_actor->GetFormID();
-			const std::string mod = Lower(a_mod.c_str());
-			if (!ledger.HasTarget(formID, mod, target)) {
-				return a_default;
-			}
-			if (mod != kAllMods) {
-				return ledger.GetContribution(formID, mod, target);
-			}
-			if (IsMorphTarget(target)) {
-				const std::string slider = SliderOf(target);
-				return ledger.AggregateSlider(formID, slider) * ledger.EffectiveScale(slider);
-			}
-			// Node scales are multipliers: the user magnitude scales the
-			// DEVIATION from neutral, exactly as the apply path does.
-			const float folded = ledger.Aggregate(formID, target);
-			return 1.0f + (folded - 1.0f) * ledger.EffectiveScale(target);
+			return Query::Value(a_actor, a_mod.c_str(), a_target.c_str(), a_default);
 		}
 
 		float GetMinValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
 			RE::BSFixedString a_target, float a_default)
 		{
-			if (!a_actor || a_target.empty()) {
-				return 0.0f;
-			}
-			const std::string target = ResolveTarget(a_target.c_str());
-			if (target.empty()) {
-				return 0.0f;
-			}
-			auto& ledger = Ledger::GetSingleton();
-			const auto formID = a_actor->GetFormID();
-			const std::string mod = Lower(a_mod.c_str());
-			return ledger.HasTarget(formID, mod, target)
-			           ? ledger.GetBoundMin(formID, mod, target)
-			           : a_default;
+			return Query::MinValue(a_actor, a_mod.c_str(), a_target.c_str(), a_default);
 		}
 
 		float GetMaxValue(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
 			RE::BSFixedString a_target, float a_default)
 		{
-			if (!a_actor || a_target.empty()) {
-				return 0.0f;
-			}
-			const std::string target = ResolveTarget(a_target.c_str());
-			if (target.empty()) {
-				return 0.0f;
-			}
-			auto& ledger = Ledger::GetSingleton();
-			const auto formID = a_actor->GetFormID();
-			const std::string mod = Lower(a_mod.c_str());
-			return ledger.HasTarget(formID, mod, target)
-			           ? ledger.GetBoundMax(formID, mod, target)
-			           : a_default;
+			return Query::MaxValue(a_actor, a_mod.c_str(), a_target.c_str(), a_default);
 		}
 
 		// ---- hidden nodes (Devious Devices) ---------------------------------
@@ -327,6 +302,7 @@ namespace SLIFNG::Papyrus
 				logger::info("[API]   -> already hidden (early-out)");
 				return;
 			}
+			Ramp::Cancel(a_actor->GetFormID(), target);  // a belt snaps shut, never ramps
 			Skee::ApplyDeferred(a_actor, target);
 		}
 
@@ -344,6 +320,7 @@ namespace SLIFNG::Papyrus
 				logger::info("[API]   -> was not hidden (no-op)");
 				return;
 			}
+			Ramp::Cancel(a_actor->GetFormID(), target);
 			// Restores whatever the fold says it should be now, which is the
 			// reference's behaviour too (it re-reads the calculated value).
 			Skee::ApplyDeferred(a_actor, target);
@@ -396,10 +373,93 @@ namespace SLIFNG::Papyrus
 		// (_SLS_BodyInflationTracking) rather than through any API.
 		float GetCombinedMorph(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_morph)
 		{
-			if (!a_actor || a_morph.empty()) {
-				return 0.0f;
+			return Query::CombinedMorph(a_actor, a_morph.c_str());
+		}
+
+		// ---- incremental inflation (PLAN P8) --------------------------------
+		void SetIncrementalInflation(RE::StaticFunctionTag*, bool a_on)
+		{
+			auto& ledger = Ledger::GetSingleton();
+			if (a_on == ledger.GetGradual()) {
+				return;
 			}
-			return Ledger::GetSingleton().DirectMorph(a_actor->GetFormID(), Lower(a_morph.c_str()));
+			logger::info("[API] SetIncrementalInflation({})", a_on);
+			ledger.SetGradual(a_on);
+			if (!a_on) {
+				// Snap every in-flight ramp to its fold.
+				Ramp::CancelAll();
+				Skee::ReapplyAllDeferred();
+			}
+		}
+
+		bool IsIncrementalInflation(RE::StaticFunctionTag*)
+		{
+			return Ledger::GetSingleton().GetGradual();
+		}
+
+		// ---- enumeration surface for mod authors ----------------------------
+		// The values themselves come through GetValue/GetApplied/GetContribution;
+		// these answer "what is there to ask about". The same surface is served
+		// to C++ plugins via API/SLIFNG_API.h.
+		bool IsTracked(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			return Query::IsTracked(a_actor);
+		}
+
+		std::vector<RE::Actor*> GetTrackedActors(RE::StaticFunctionTag*)
+		{
+			std::vector<RE::Actor*> out;
+			for (const auto formID : Ledger::GetSingleton().TrackedActors()) {
+				if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(formID)) {
+					out.push_back(actor);
+				}
+			}
+			return out;
+		}
+
+		// Canonical node keys with a stored contribution ("slif_belly", ...).
+		std::vector<RE::BSFixedString> GetNodeTargets(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			std::vector<RE::BSFixedString> out;
+			if (!a_actor) {
+				return out;
+			}
+			for (const auto& target : Ledger::GetSingleton().NodeTargetsOf(a_actor->GetFormID())) {
+				out.emplace_back(target);
+			}
+			return out;
+		}
+
+		// BodySlide sliders with a stored DIRECT contribution, original case.
+		std::vector<RE::BSFixedString> GetMorphTargets(RE::StaticFunctionTag*, RE::Actor* a_actor)
+		{
+			std::vector<RE::BSFixedString> out;
+			if (!a_actor) {
+				return out;
+			}
+			auto& ledger = Ledger::GetSingleton();
+			for (const auto& slider : ledger.MorphSlidersOf(a_actor->GetFormID())) {
+				out.emplace_back(ledger.SliderName(slider));
+			}
+			return out;
+		}
+
+		// Which mods hold a contribution to one target (any spelling).
+		std::vector<RE::BSFixedString> GetModsDriving(RE::StaticFunctionTag*, RE::Actor* a_actor,
+			RE::BSFixedString a_target)
+		{
+			std::vector<RE::BSFixedString> out;
+			if (!a_actor || a_target.empty()) {
+				return out;
+			}
+			const std::string target = ResolveTarget(a_target.c_str());
+			if (target.empty()) {
+				return out;
+			}
+			for (const auto& mod : Ledger::GetSingleton().ModsDriving(a_actor->GetFormID(), target)) {
+				out.emplace_back(mod);
+			}
+			return out;
 		}
 
 		bool HasMigrated(RE::StaticFunctionTag*) { return Ledger::GetSingleton().Migrated(); }
@@ -486,6 +546,13 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("SetTargetScale", script, SetTargetScale);
 		a_vm->RegisterFunction("GetTargetScale", script, GetTargetScale);
 		a_vm->RegisterFunction("GetCombinedMorph", script, GetCombinedMorph);
+		a_vm->RegisterFunction("SetIncrementalInflation", script, SetIncrementalInflation);
+		a_vm->RegisterFunction("IsIncrementalInflation", script, IsIncrementalInflation);
+		a_vm->RegisterFunction("IsTracked", script, IsTracked);
+		a_vm->RegisterFunction("GetTrackedActors", script, GetTrackedActors);
+		a_vm->RegisterFunction("GetNodeTargets", script, GetNodeTargets);
+		a_vm->RegisterFunction("GetMorphTargets", script, GetMorphTargets);
+		a_vm->RegisterFunction("GetModsDriving", script, GetModsDriving);
 		a_vm->RegisterFunction("HasMigrated", script, HasMigrated);
 		a_vm->RegisterFunction("SetMigrated", script, SetMigrated);
 		a_vm->RegisterFunction("IsMorphEngineReady", script, IsMorphEngineReady);

@@ -28,8 +28,9 @@ EndFunction
 ; morphName is a PASS-THROUGH BodySlide slider name - no vocabulary.
 ; value 0.0 = neutral and MUST clear the contribution (CONTRACT sec.4.1).
 Function morph(Actor kActor, string modName, string morphName, float value, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
-	; increment: reference gradual-queue param, unused until PLAN P8.
-	if SLIFNG.Morph(kActor, modName, morphName, value, minimum, maximum, multiplier, oldModName)
+	; increment is stored for parity; direct morphs apply instantly even in
+	; incremental mode (sliders DERIVED from a ramping node follow the ramp).
+	if SLIFNG.Morph(kActor, modName, morphName, value, minimum, maximum, multiplier, increment, oldModName)
 		MirrorCombined(kActor, morphName)
 	endif
 EndFunction

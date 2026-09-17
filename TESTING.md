@@ -143,6 +143,35 @@ skeleton nodes), contributions use a sub-header per target with short indented
 rows per mod, and the skee readback only gets a row when it DISAGREES with what
 we wrote.
 
+## T4 — Auto-migration (legacy save)
+
+Load a save that ran reference SLIF (with SLIF NG replacing it). With no
+clicking at all, expect within a second of load:
+
+```
+[API] Inflate(... mod='Beeing Female', key='npc belly' ...)   <- the walk
+[API] SetMigrated(true)
+```
+
+plus the notification "SLIF NG: imported N value(s) from the old SLIF save".
+MCM > Settings > Old-SLIF import must read "done (automatic)". A second load
+must log NOTHING new (one native bool guards it). A fresh save must silently
+flag itself and never scan again.
+
+## T5 — Incremental inflation
+
+```
+cgf "SLIFNG_Debug.Gradual" true
+cgf "SLIFNG_Debug.IPlayer" "RampTest" "slif_belly" 3.0
+```
+
+The belly must swell in visible steps (0.1 per quarter second by default -
+about 5 seconds to reach 3.0), not snap; `[Apply]` lines tick in the log with
+the display value climbing. `GetValue(player, "All Mods", "slif_belly")`
+mid-ramp returns the in-flight value, as the reference's queue did. Opening a
+menu pauses the swell. `cgf "SLIFNG_Debug.Gradual" false` mid-ramp must snap
+straight to the fold. Hide/unregister during a ramp stays instant.
+
 ## Other console tools
 
 ```

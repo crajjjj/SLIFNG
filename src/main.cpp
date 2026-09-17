@@ -2,9 +2,11 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "APIServer.h"
 #include "BodyProfile.h"
 #include "Ledger.h"
 #include "Papyrus.h"
+#include "Ramp.h"
 #include "Skee.h"
 
 using namespace SKSE;
@@ -105,6 +107,7 @@ SKSEPluginLoad(const LoadInterface* skse)
 	Init(skse);
 	InitializeSerialization();
 	InitializePapyrus();
+	SLIFNG::APIServer::Install();
 	if (!GetMessagingInterface()->RegisterListener(OnMessage)) {
 		report_and_fail("Failed to register messaging listener.");
 	}

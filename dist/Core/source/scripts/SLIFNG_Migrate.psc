@@ -26,7 +26,8 @@ EndFunction
 
 ; Imports every actor reference SLIF tracked. Returns the number of
 ; contributions moved across. Safe to run twice (values overwrite, they do not
-; accumulate), but the MCM disables the button once it has run.
+; accumulate). Runs AUTOMATICALLY on the first load of a legacy save
+; (SLIF_ScannerAlias.AutoMigrate); the MCM row only reports the outcome.
 Int Function Run() Global
 	Int moved = 0
 	moved += ImportNodeSide()
@@ -71,9 +72,10 @@ Int Function ImportNodesFor(Actor kActor, String modName) Global
 			Float mn = StorageUtil.GetFloatValue(kActor, modName + node + "_min", -1.0)
 			Float mx = StorageUtil.GetFloatValue(kActor, modName + node + "_max", -1.0)
 			Float mu = StorageUtil.GetFloatValue(kActor, modName + node + "_mult", -1.0)
+			Float inc = StorageUtil.GetFloatValue(kActor, modName + node + "_increment", -1.0)
 			; node is a RAW skeleton name here ("NPC Belly"); Inflate resolves
 			; that to the canonical target exactly as Fill Her Up's calls do.
-			If SLIFNG.Inflate(kActor, modName, node, value, mn, mx, mu, "")
+			If SLIFNG.Inflate(kActor, modName, node, value, mn, mx, mu, inc, "")
 				moved += 1
 			EndIf
 		EndIf
@@ -116,7 +118,8 @@ Int Function ImportMorphsFor(Actor kActor, String modName) Global
 			Float mn = StorageUtil.GetFloatValue(kActor, prefix + morphName + "_min", -1.0)
 			Float mx = StorageUtil.GetFloatValue(kActor, prefix + morphName + "_max", -1.0)
 			Float mu = StorageUtil.GetFloatValue(kActor, prefix + morphName + "_mult", -1.0)
-			If SLIFNG.Morph(kActor, modName, morphName, value, mn, mx, mu, "")
+			Float inc = StorageUtil.GetFloatValue(kActor, prefix + morphName + "_increment", -1.0)
+			If SLIFNG.Morph(kActor, modName, morphName, value, mn, mx, mu, inc, "")
 				moved += 1
 			EndIf
 		EndIf

@@ -7,8 +7,9 @@ the ESP/SEQ, the pinned shims, per-actor body profiles, the FOMOD and a two-page
 MCM all ship; BF NG, Fill Her Up and Sexlab Survival have been observed folding
 correctly together on one actor (`SLIFNG.log`, 2026-09-15).
 
-P6 migration is **built but untested** (the import button has never met a real
-old-SLIF save). Not started: **P8 ramp**, and P6's uninstall path. Not run:
+P6 migration is **built and automatic** (runs on the first load of a legacy
+save; untested against a real one). **P8 ramp: built** (native incremental
+inflation, MCM toggle). Not started: P6's uninstall path. Not run:
 **P7**, three of its six rows.
 
 **2026-09-16: the contract surface widened.** A full consumer grep (see
@@ -22,7 +23,8 @@ already existed.
 Release gates, in order:
 1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
    — the repo is already public, so this is now the pacing item.
-2. ~~P6 legacy-save migration~~ **built** (MCM import button); still needs one
+2. ~~P6 legacy-save migration~~ **built, automatic** (first-load pass via
+   SLIF_ScannerAlias.AutoMigrate; the MCM row reports the outcome); still needs one
    real migrating-save test.
 3. **P7 rows for Estrus, MME and an old-SLIF save** — never exercised (the
    import button now makes the old-save row testable).
@@ -317,13 +319,15 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       best-effort mapping); the `SLIF_Config` presets API itself stays
       unimplemented — no consumer calls it (CONTRACT §8).
 
-### P6 — Migration & cleanup  ← import BUILT, untested; uninstall path unbuilt
-CONTRACT sec.6 promises a save that ran real SLIF migrates. The NiOverride side
-is automatic (legacy-key cleanup on `oldModName`, and the SLIF_Menu/Scanner/Timer
-stubs that stop SkyUI's config manager aborting); the StorageUtil ledger is now
-imported too, but by an MCM BUTTON rather than "no user action" - a deliberate
-departure from the contract's wording, so the import cannot fire on a save that
-never ran SLIF. It has never been run against a real migrating save.
+### P6 — Migration & cleanup  ← import BUILT + AUTOMATIC, untested; uninstall path unbuilt
+CONTRACT sec.6 promises a save that ran real SLIF migrates with zero user
+action, and it now does: SLIF_ScannerAlias.AutoMigrate runs the StorageUtil
+walk on the first load (guarded by the cosave HasMigrated flag; a save with
+nothing to import is flagged too, so later loads cost one native bool read).
+The NiOverride side was already automatic (legacy-key cleanup on `oldModName`,
+plus the SLIF_Menu/Scanner/Timer stubs that stop SkyUI's config manager
+aborting). The MCM row is a status display with a manual fallback while the
+state is "pending". It has never been run against a real migrating save.
 
 **The legacy layout, read from a real co-save** (NEFARAM Save33, 2026-09-14,
 before SLIF NG was installed) - this is what an importer must walk:
@@ -357,7 +361,8 @@ DLL cannot read these keys. A one-shot script has to walk them on first
 `OnPlayerLoadGame` and push each row into the native ledger through the existing
 natives, then mark the actor migrated. That also means PapyrusUtil becomes a
 soft dependency for migration only - noted in P3's requirements.
-- [x] **Legacy import DONE — an MCM button, not an automatic pass.**
+- [x] **Legacy import DONE — automatic on first load** (was an MCM button;
+      converted 2026-09-17, the row now reports the outcome).
       `SLIFNG_Migrate.psc` walks the legacy StorageUtil ledger (node side via
       `slif_mod_list` -> `<mod>slif_node_list` -> `<mod><node>` + bounds; morph
       side via `slif_morph_mod_list` -> `slif_morph_list_<mod>` ->
@@ -394,11 +399,31 @@ Also proved incidentally: the cross-source fold (SLS `slif_belly` + BF NG
 `morph:pregnancybelly` correctly resolved to max, 0.247 not 0.16), deferred
 threading (API and Apply on different threads), and the cosave round-trip.
 
-### P8 — Gradual growth (native ramp in SLIFNG.dll)
-Task/timer-based interpolation toward target values, entirely off the Papyrus
-VM, exposed as a per-consumer-mod toggle. Pure engine work in our own DLL.
-- [ ] Interpolation task in the engine's update path; per-target rate;
-      completion coalesces to one ApplyBodyMorphs. Never a Papyrus drain loop.
+### P8 — Gradual growth (native ramp in SLIFNG.dll) ← BUILT 2026-09-17
+Src/Ramp.cpp: a detached ticker posts one main-thread step per 250 ms while
+ramps are active; each node target moves toward its fold by its contribution's
+`increment` (the reference's own knob, now stored per row and imported from
+legacy saves), the goal re-read every tick so mid-ramp changes retarget
+rather than queue. Sliders derived from a ramping node follow it through the
+ledger's display override; one coalesced apply per actor per tick. Hide,
+unregister, and direct morphs stay instant; ramps pause while the game is
+paused, snap on unload/reload, and are cancelled when the toggle switches
+off. Off (instant) by default - the reference's own shipped default
+(SLIF_Util.GetDefaultInflationType = 1). MCM: "Incremental inflation".
+- [x] Interpolation off the Papyrus VM, per-row rate, one apply per actor
+      per tick. Never a Papyrus drain loop.
+
+### P9 — Query surface for mod authors ← BUILT 2026-09-17
+Two mirrors of one read core (src/Query.h), so Papyrus and C++ answers can
+never diverge:
+- Papyrus (SLIFNG.psc): IsTracked, GetTrackedActors, GetNodeTargets,
+  GetMorphTargets, GetModsDriving, plus the value getters that already
+  existed (GetValue/GetMinValue/GetMaxValue/GetApplied/GetContribution/
+  GetCombinedMorph).
+- SKSE inter-plugin (src/API/SLIFNG_API.h, the copyable public header):
+  IQueryInterface1 over a messaging InterfaceExchangeMessage dispatched to
+  "SLIFNG" - the skee handshake pattern. Read-only by design; mutations go
+  through the pinned SLIF surface.
 
 ## Risks
 

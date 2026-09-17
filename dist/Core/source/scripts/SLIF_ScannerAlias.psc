@@ -14,12 +14,30 @@ EndFunction
 
 Event OnInit()
 	RegisterForModEvents()
+	AutoMigrate()
 EndEvent
 
 Event OnPlayerLoadGame()
 	RegisterForModEvents()
-	; TODO(P6): legacy real-SLIF save migration + one coalesced re-apply per actor
+	AutoMigrate()
 EndEvent
+
+; P6, automatic: on the first load of a save that ran reference SLIF, walk its
+; StorageUtil state into the ledger (SLIFNG_Migrate) with zero user action -
+; CONTRACT sec.6's "migrates with zero user action", literally. The cosave
+; flag makes every later load a single native bool read; a save with nothing
+; to import is flagged too, so it is never re-scanned.
+Function AutoMigrate()
+	if SLIFNG.HasMigrated()
+		return
+	endif
+	if SLIFNG_Migrate.CountLegacyActors() == 0
+		SLIFNG.SetMigrated(true)
+		return
+	endif
+	Int moved = SLIFNG_Migrate.Run()
+	Debug.Notification("SLIF NG: imported " + moved + " value(s) from the old SLIF save")
+EndFunction
 
 ; -- pinned handlers ----------------------------------------------------------
 ; WARNING: the event carries (modName, node); SLIF_Main.unregisterNode takes

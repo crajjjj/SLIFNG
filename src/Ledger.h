@@ -22,6 +22,10 @@ namespace SLIFNG
 		float min{ 0.0f };
 		float max{ 100.0f };
 		float mult{ 1.0f };
+		// The reference's per-row step size for incremental inflation (default
+		// 0.1). Stored per contribution like everything else; consumed by the
+		// native ramp when incremental mode is on.
+		float increment{ 0.1f };
 
 		[[nodiscard]] float Effective() const
 		{
@@ -63,7 +67,7 @@ namespace SLIFNG
 		// a_sliderName: the consumer's ORIGINAL spelling for a morph target
 		// (remembered for the skee call); ignored for node targets.
 		bool Set(RE::FormID a_actor, const std::string& a_mod, const std::string& a_target,
-			float a_value, float a_min, float a_max, float a_mult,
+			float a_value, float a_min, float a_max, float a_mult, float a_increment,
 			const std::string& a_sliderName = {});
 
 		// Remove one mod's contribution to one target. True if something was removed.
@@ -74,10 +78,33 @@ namespace SLIFNG
 		// the targets that lost a contribution (each needs a re-apply).
 		std::vector<std::string> RemoveMod(RE::FormID a_actor, const std::string& a_mod);
 
-		// The fold for a NODE-SCALE target: SLIF's own addCalculationType,
-		// reproduced exactly (six types, Top X by default - CONTRACT sec.4.3).
-		// Neutral (1.0) when no positive contributions.
+		// What a NODE-SCALE target currently SHOWS: the hidden pin if hidden,
+		// else the ramp's in-flight display value if one is mid-ramp, else the
+		// fold. This is what the apply path writes and what GetValue("All Mods")
+		// reports - during the reference's incremental queue, its stored
+		// "All Mods<node>" was likewise the current stepped value.
 		[[nodiscard]] float Aggregate(RE::FormID a_actor, const std::string& a_target) const;
+
+		// The fold alone: SLIF's own addCalculationType, reproduced exactly
+		// (six types, Top X by default - CONTRACT sec.4.3). Neutral (1.0) when
+		// no positive contributions. This is the ramp's GOAL value.
+		[[nodiscard]] float FoldNode(RE::FormID a_actor, const std::string& a_target) const;
+
+		// ---- ramp display overrides (incremental inflation, PLAN P8) --------
+		// While a ramp is in flight, the target's SHOWN value is this override
+		// rather than the fold; the ramp advances it each tick and clears it on
+		// arrival. Transient by design: never serialized, so a load snaps every
+		// actor to the fold (which is also what the reference's ReapplyAll-on-
+		// load effectively did to its queue).
+		void SetDisplay(RE::FormID a_actor, const std::string& a_target, float a_value);
+		void ClearDisplay(RE::FormID a_actor, const std::string& a_target);
+		[[nodiscard]] std::optional<float> DisplayOf(RE::FormID a_actor,
+			const std::string& a_target) const;
+
+		// Incremental inflation on/off (the reference's per-preset
+		// inflation_type, as one global switch; its shipped default is instant).
+		[[nodiscard]] bool GetGradual() const;
+		void SetGradual(bool a_on);
 
 		// The value for ONE skee slider, composed the way the reference composes
 		// it (SLIF_Morph_Util.SetAndUpdateMorphs): the plain SUM of every mod's
@@ -154,6 +181,10 @@ namespace SLIFNG
 
 		[[nodiscard]] std::vector<RE::FormID> TrackedActors() const;
 		[[nodiscard]] std::vector<std::string> TargetsOf(RE::FormID a_actor) const;
+		// TargetsOf split for the query API: canonical node keys, and morph
+		// sliders (lowercase; map through SliderName for the display spelling).
+		[[nodiscard]] std::vector<std::string> NodeTargetsOf(RE::FormID a_actor) const;
+		[[nodiscard]] std::vector<std::string> MorphSlidersOf(RE::FormID a_actor) const;
 		[[nodiscard]] bool HasEntries(RE::FormID a_actor) const;
 
 		// One-shot legacy-import marker. Persisted with the save, because the
@@ -191,8 +222,12 @@ namespace SLIFNG
 		[[nodiscard]] float DirectMorphLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
 		[[nodiscard]] std::vector<std::string> TargetsOfLocked(RE::FormID a_actor) const;
 
+		[[nodiscard]] float DisplayedNodeLocked(RE::FormID a_actor, const std::string& a_target) const;
+
 		mutable std::recursive_mutex _lock;
 		std::unordered_map<RE::FormID, ModMap> _actors;
+		// actor -> target -> the ramp's current in-flight value (transient).
+		std::unordered_map<RE::FormID, std::unordered_map<std::string, float>> _display;
 		// actor -> target -> pin value. Deliberately NOT part of _actors: a hide
 		// is not a contribution and must not fold with one.
 		std::unordered_map<RE::FormID, std::unordered_map<std::string, float>> _hidden;
@@ -202,6 +237,7 @@ namespace SLIFNG
 		std::unordered_map<std::string, float> _targetScales;
 		float _masterScale{ 1.0f };
 		bool _migrated{ false };
+		bool _gradual{ false };  // instant by default, as the reference ships
 		// SLIF's Config.json calculation_type numbering; its default is Top X.
 		Calc::Type _mode{ Calc::Type::kTopX };
 		std::uint32_t _topX{ Calc::kDefaultTopX };
