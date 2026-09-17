@@ -189,12 +189,22 @@ is `<= 0`. There is NO post-fold clamp (the per-contribution bounds are the
 only clamp) and a below-neutral contribution CAN show — e.g. a lone 0.5 under
 highest-wins applies as 0.5. Both are reference behaviour, kept.
 
-**Morphs never fold.** Direct morph contributions are a plain raw sum across
-mods, always (`SLIF_Morph_Util.CalculateMorphValue` — the reference stores
-morph min/max/mult and never applies them), and the applied slider value is
-that sum PLUS what node targets drive into the slider through the actor's
-body profile, computed from each target's FOLDED value. This is the
-reference's `slif_<morphName>` + `slif_scale_<morphName>` composition.
+**Sliders fold across mods too — a deliberate deviation (2026-09-18).** The
+reference sums morph contributions unconditionally
+(`SLIF_Morph_Util.CalculateMorphValue`), but that corner shipped disabled
+(stock morph percents are all 0) and was never field-tested — and once a body
+profile TRANSFORMS a node value into a slider, "several mods, one physical
+target" applies to the slider, so composition must not depend on which API
+spelling a mod used (FHU sends the same belly as `"NPC Belly"` or as a morph
+depending on its own MCM). SLIF NG therefore builds ONE value per mod — its
+direct contribution plus its transformed node share, summed WITHIN the mod
+because they are one intent (BF NG sends `slif_belly` AND `PregnancyBelly`) —
+and folds ACROSS mods with the calculation type, exactly as for nodes.
+Worked example (real save): BF NG 0.495 direct + FHU 0.090 direct + SLS
+`slif_belly` 2.2 -> 0.160 through the 3BA profile: highest-wins applies
+0.495 (BF NG alone), Top X 0.568, additive 0.745. The StorageUtil mirror
+`slif_<morphName>` stays the RAW DIRECT SUM (reference bookkeeping — that is
+what Sexlab Survival reads back).
 
 Because aggregation is a pure fold over stored inputs, switching types
 recomputes and re-applies in one pass with no data migration (unlike the

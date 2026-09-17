@@ -25,16 +25,17 @@ namespace SLIFNG::Vocabulary
 	struct NodeTarget
 	{
 		const char* key;       // canonical slif_* key (lowercase)
+		const char* label;     // human name for the MCM / log ("Belly")
 		const char* nodes[2];  // skeleton node(s) for the node path (nullptr = unused)
 	};
 
 	// Live keys. slif_breast / slif_butt are "sync" pairs in the reference:
 	// both L/R nodes always receive the same value.
 	inline constexpr NodeTarget kTargets[] = {
-		{ "slif_belly", { "NPC Belly", nullptr } },
-		{ "slif_breast", { "NPC L Breast", "NPC R Breast" } },
-		{ "slif_butt", { "NPC L Butt", "NPC R Butt" } },
-		{ "slif_scrotum", { "NPC GenitalsScrotum [GenScrot]", nullptr } },
+		{ "slif_belly", "Belly", { "NPC Belly", nullptr } },
+		{ "slif_breast", "Breasts", { "NPC L Breast", "NPC R Breast" } },
+		{ "slif_butt", "Butt", { "NPC L Butt", "NPC R Butt" } },
+		{ "slif_scrotum", "Scrotum", { "NPC GenitalsScrotum [GenScrot]", nullptr } },
 	};
 
 	// Bug-compatible dead keys: real SLIF 1.2.2 drops these silently
@@ -52,6 +53,23 @@ namespace SLIFNG::Vocabulary
 			}
 		}
 		return nullptr;
+	}
+
+	// Readable form of a canonical key for UI/log rows: "Belly (NPC Belly)",
+	// "Breasts (L+R)". Unknown keys come back unchanged.
+	inline std::string Describe(const std::string& a_lowerKey)
+	{
+		const auto* target = Find(a_lowerKey);
+		if (!target) {
+			return a_lowerKey;
+		}
+		std::string out = target->label;
+		if (target->nodes[1]) {
+			out += " (L+R)";
+		} else if (target->nodes[0] && std::string_view{ target->nodes[0] }.size() <= 12) {
+			out += std::string{ " (" } + target->nodes[0] + ")";
+		}
+		return out;
 	}
 
 	// Raw skeleton-node spelling -> the target that owns that node.

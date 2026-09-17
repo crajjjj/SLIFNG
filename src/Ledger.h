@@ -106,13 +106,17 @@ namespace SLIFNG
 		[[nodiscard]] bool GetGradual() const;
 		void SetGradual(bool a_on);
 
-		// The value for ONE skee slider, composed the way the reference composes
-		// it (SLIF_Morph_Util.SetAndUpdateMorphs): the plain SUM of every mod's
-		// direct "morph:<slider>" contribution ("slif_<morphName>") PLUS what the
-		// node targets drive into the slider through the actor's body profile,
-		// computed from each node target's FOLDED value ("slif_scale_<morphName>").
-		// Direct morphs always sum - the calculation type applies to node scales
-		// only, exactly as in the reference. Neutral is 0.0.
+		// The value for ONE skee slider. Per MOD: its direct "morph:<slider>"
+		// contribution plus what its node values transform into through the
+		// actor's body profile - WITHIN a mod the two layers add (they are one
+		// intent, e.g. BF NG sends slif_belly AND PregnancyBelly). ACROSS mods
+		// the calculation type folds, exactly as it does for nodes.
+		// Deliberate deviation from the reference, which sums morphs
+		// unconditionally: that corner shipped disabled (stock morph percents
+		// are all 0) and was never field-tested, and once a profile TRANSFORMS
+		// a node into a slider, "several mods, one physical target" applies to
+		// the slider - composition must not depend on which API spelling a mod
+		// used. Neutral is 0.0.
 		[[nodiscard]] float AggregateSlider(RE::FormID a_actor, const std::string& a_sliderLower) const;
 
 		// The consumer's original spelling for a lowercase slider (what skee is
@@ -223,6 +227,7 @@ namespace SLIFNG
 		[[nodiscard]] std::vector<std::string> TargetsOfLocked(RE::FormID a_actor) const;
 
 		[[nodiscard]] float DisplayedNodeLocked(RE::FormID a_actor, const std::string& a_target) const;
+		[[nodiscard]] float RampFactorLocked(RE::FormID a_actor, const std::string& a_target) const;
 
 		mutable std::recursive_mutex _lock;
 		std::unordered_map<RE::FormID, ModMap> _actors;

@@ -116,10 +116,11 @@ namespace SLIFNG::Report
 			if (mods.empty()) {
 				continue;
 			}
-			// Sub-header per target, one short row per mod beneath it.
+			// Sub-header per target, one short row per mod beneath it. Node
+			// keys render decrypted: "node Belly (NPC Belly)", not slif_belly.
 			Header(out, IsMorphTarget(target)
 					? "morph " + ledger.SliderName(SliderOf(target))
-					: target);
+					: "node " + Vocabulary::Describe(target));
 			for (const auto& mod : mods) {
 				Row(out, "  " + mod, Num(ledger.GetContribution(formID, mod, target)));
 				any = true;
@@ -171,11 +172,13 @@ namespace SLIFNG::Report
 		for (const auto& target : nodeTargets) {
 			const float folded = ledger.Aggregate(formID, target);
 			const float scaled = 1.0f + (folded - 1.0f) * ledger.EffectiveScale(target);
-			Row(out, target + " (node)", Num(scaled));
+			Row(out, Vocabulary::Describe(target) + " [node]", Num(scaled));
 		}
 
 		Header(out, "Aggregation");
-		Row(out, "Mode", Calc::TypeName(ledger.GetMode()));
+		// "Across mods": the calc type folds per-mod values on one target -
+		// node or slider alike; one mod's own node+morph layers still add.
+		Row(out, "Calc (across mods)", Calc::TypeName(ledger.GetMode()));
 		return out;
 	}
 

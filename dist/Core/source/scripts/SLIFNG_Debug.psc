@@ -99,8 +99,9 @@ Function SmokeTest() Global
 	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, -1.0, "")   ; must early-out
 
 	; -- CROSS-SOURCE: a direct morph on the SAME slider slif_belly drives.
-	;    Slider value = direct sum + blend(fold): morphs never fold, they add
-	;    (the reference's slif_<morph> + slif_scale_<morph> composition).
+	;    One value per mod (direct + transformed node share), then the calc
+	;    type folds across mods - Top X here: 0.4 + 0.133/3 + 0.107/6 = 0.462;
+	;    highest wins shows 0.4 (SmokeC alone). See CONTRACT 4.3.
 	SLIFNG.Morph(player, "SmokeC", "PregnancyBelly", 0.4, -1.0, -1.0, -1.0, -1.0, "")
 
 	; -- RAW NODE NAME: exactly what FHU sends ("NPC Belly", not slif_belly).

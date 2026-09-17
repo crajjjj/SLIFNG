@@ -201,7 +201,8 @@ Int Function ImportFlags()
 EndFunction
 
 ; SLIF's own six calculation types, SLIF's numbering (0 = Top X is the
-; reference's default). Applies to node scales; direct morphs always sum.
+; reference's default). Folds across mods on one target - nodes and sliders
+; alike; one mod's own node+morph layers still add.
 String Function ModeName()
 	int mode = SLIFNG.GetAggregationMode()
 	if mode == 1
@@ -349,7 +350,7 @@ EndEvent
 
 Event OnOptionHighlight(int a_option)
 	if a_option == _oMode
-		SetInfoText("How mods driving the same node combine - SLIF's own six types, applied to node scales (morphs always sum).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.\nClick to cycle.")
+		SetInfoText("How several mods driving the same target combine - SLIF's own six types, applied across mods to nodes and sliders alike (one mod's own node+morph layers still add).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.\nClick to cycle.")
 	elseIf a_option == _oMaster
 		SetInfoText("Scales EVERYTHING this framework applies. 1.00x leaves mods exactly as they intended; 0.00x suppresses all inflation. Applies instantly to every tracked actor.")
 	elseIf a_option == _oVerbose

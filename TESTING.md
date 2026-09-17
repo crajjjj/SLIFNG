@@ -41,10 +41,10 @@ cgf "SLIFNG_Debug.SmokeTest"     <- scripted end-to-end run
 
 SmokeTest exercises, in order: belly inflate x2 (SmokeA); an overlapping
 x1.5 (SmokeB); a repeat send (must log `-> unchanged (early-out)`); **a
-direct `PregnancyBelly` morph from SmokeC - direct morphs ADD to what the
-node fold drives through the body profile, they never fold**; a raw
-`"NPC Belly"` send (SmokeD - FHU's spelling, must route to the same
-slif_belly target); the dead key `slif_breast01` (must log
+direct `PregnancyBelly` morph from SmokeC - per MOD, direct morph and
+transformed node share add; ACROSS mods the calculation type folds, sliders
+and nodes alike**; a raw `"NPC Belly"` send (SmokeD - FHU's spelling, must
+route to the same slif_belly target); the dead key `slif_breast01` (must log
 `dead key ... bug-compatible no-op`); an unknown key `slif_bogus` (must WARN
 `unknown node key`); an unrelated morph; a walk through the calculation
 types (Top X -> highest wins -> additive -> Top X - watch the belly step
@@ -59,11 +59,13 @@ plain raw sum, always. `cgf "SLIFNG_Debug.Mode" N` switches at runtime.
 
 The highest-value assertions:
 
-1. With SmokeA 2.0 + SmokeB 1.5 + SmokeD 1.8 on slif_belly, the DEFAULT fold
-   is `2.0 + 1.8/3 + 1.5/6 = 2.85` - Top X, not 2.0 (highest) and not 5.3
-   (additive). Mode 1 shows 2.0; mode 5 shows 5.3.
-2. `PregnancyBelly` readback = SmokeC's direct 0.4 PLUS the profile blend of
-   the belly fold - the two sources add instead of clobbering or folding.
+1. With SmokeA 2.0 + SmokeB 1.5 + SmokeD 1.8 on slif_belly, the DEFAULT node
+   fold is `2.0 + 1.8/3 + 1.5/6 = 2.85` - Top X, not 2.0 (highest) and not
+   5.3 (additive). Mode 1 shows 2.0; mode 5 shows 5.3.
+2. `PregnancyBelly` folds PER MOD (3BA profile, belly share = (v-1)/7.5):
+   contributions A 0.133, B 0.067, D 0.107, C 0.4 direct. Top X shows
+   `0.4 + 0.133/3 + 0.107/6 = 0.462`; highest wins shows `0.4` (SmokeC
+   alone - NOT a 0.585-style sum); additive shows `0.707`.
 3. `UnregisterMod(SmokeA)` must NOT flatten the body - SmokeB/C/D still
    drive it. Only the last unregister logs `cleared all owned output`.
 4. The slider name in every `[Apply]` line keeps its original case

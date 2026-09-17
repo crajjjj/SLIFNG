@@ -2,9 +2,11 @@ Scriptname SLIF_Morph Hidden
 {SLIF NG - body-morph surface of the SLIF compatibility contract
 (CONTRACT.md sec.3/4). Signature FROZEN - pinned from 1.2.2 bytecode.
 
-Direct morph contributions aggregate ADDITIVELY across mods, always - the
-calculation type applies to node scales only. That asymmetry is the
-reference's (SLIF_Morph_Util.CalculateMorphValue) and is kept.}
+Composition: within one mod, its direct morph and its transformed node share
+add (one intent); ACROSS mods the calculation type folds, for sliders exactly
+as for nodes - see CONTRACT sec.4.3 for why this deviates from the
+reference's untested always-sum corner. The StorageUtil mirror below stays
+the raw direct sum, which is the reference bookkeeping consumers read.}
 
 ; The one StorageUtil name a consumer reads out of SLIF directly rather than
 ; through any API: Sexlab Survival's _SLS_BodyInflationTracking does

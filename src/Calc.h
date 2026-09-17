@@ -134,4 +134,66 @@ namespace SLIFNG::Calc
 			return 1.0f;
 		}
 	}
+
+	// The same folds in SLIDER space (neutral 0.0): ONE value per MOD driving a
+	// BodySlide slider - its direct contribution plus whatever its node values
+	// transform into through the actor's body profile. Zeros drop out (zero is
+	// "cleared" in morph space); values may be negative (reverse blends), and
+	// the sort is descending so the largest leads Top X and highest-wins.
+	inline float FoldSlider(Type a_type, std::vector<float> a_values,
+		std::uint32_t a_topX = kDefaultTopX)
+	{
+		std::erase_if(a_values, [](float v) { return v == 0.0f; });
+		if (a_values.empty()) {
+			return 0.0f;
+		}
+		std::sort(a_values.begin(), a_values.end(), std::greater<float>());
+
+		switch (a_type) {
+		case Type::kHighestWins:
+			return a_values.front();
+
+		case Type::kTopX:
+			{
+				const auto count = (std::min)(static_cast<std::size_t>(a_topX), a_values.size());
+				float total = a_values[0];
+				for (std::size_t x = 1; x < count; ++x) {
+					total += a_values[x] / (3.0f * static_cast<float>(x));
+				}
+				return total;
+			}
+
+		case Type::kSquareRoot:
+			{
+				float squares = 0.0f;
+				float sum = 0.0f;
+				for (const float v : a_values) {
+					squares += v * v;
+					sum += v;
+				}
+				const float root = std::sqrt(squares);
+				return sum < 0.0f ? -root : root;
+			}
+
+		case Type::kAverage:
+			{
+				float total = 0.0f;
+				for (const float v : a_values) {
+					total += v;
+				}
+				return total / static_cast<float>(a_values.size());
+			}
+
+		case Type::kSubtractOne:  // deviation sums; the value IS the deviation here
+		case Type::kAdditive:
+		default:
+			{
+				float total = 0.0f;
+				for (const float v : a_values) {
+					total += v;
+				}
+				return total;
+			}
+		}
+	}
 }

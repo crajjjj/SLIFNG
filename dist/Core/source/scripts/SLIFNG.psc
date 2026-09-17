@@ -28,9 +28,10 @@ Function UnregisterMod(Actor kActor, String modName) Global Native
 ;   0 = Top X (DEFAULT: largest + second/3 + third/6)   1 = Highest wins
 ;   2 = Subtract and add one (1 + sum of deviations)    3 = Square root
 ;   4 = Average                                         5 = Additive (plain sum)
-; Applies to NODE scales only; direct morph contributions always sum, as in
-; the reference. Switching recomputes and re-applies every tracked actor in
-; one pass - with no stale leftovers, unlike the reference.
+; Folds ACROSS MODS on one target - node scales and sliders alike (a mod's
+; own node+morph layers still add; see CONTRACT sec.4.3). Switching
+; recomputes and re-applies every tracked actor in one pass - with no stale
+; leftovers, unlike the reference.
 Function SetAggregationMode(Int mode) Global Native
 Int Function GetAggregationMode() Global Native
 

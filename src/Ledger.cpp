@@ -233,46 +233,71 @@ namespace SLIFNG
 		if (actorIt == _actors.end()) {
 			return 0.0f;  // morph neutral
 		}
+		const std::string morphTarget = std::string{ kMorphPrefix } + a_sliderLower;
 
-		// SLIF's composition, verbatim: "slif_<morphName>" (the plain sum of
-		// every mod's direct contribution - the calculation type never applies
-		// to morphs) plus "slif_scale_<morphName>" (what the node targets drive
-		// into the slider through the actor's body profile, computed from each
-		// target's FOLDED value, so Top X / additive / etc. act exactly once).
-		float value = DirectMorphLocked(a_actor, a_sliderLower);
-
-		// Distinct node targets on this actor.
-		std::vector<std::string> nodeTargets;
+		// One value per MOD: its direct contribution (raw, the reference's
+		// morph bookkeeping) plus its node values transformed through the
+		// actor's body profile. Within a mod the layers ADD; across mods the
+		// calculation type folds - see the Ledger.h comment for why this
+		// deliberately deviates from the reference's unconditional sum.
+		std::vector<float> perMod;
 		for (const auto& [mod, targets] : actorIt->second) {
+			float combined = 0.0f;
+			bool any = false;
+			if (const auto it = targets.find(morphTarget); it != targets.end()) {
+				combined += it->second.value;
+				any = true;
+			}
 			for (const auto& [target, contribution] : targets) {
-				if (!IsMorphTarget(target) &&
-					std::find(nodeTargets.begin(), nodeTargets.end(), target) == nodeTargets.end()) {
-					nodeTargets.push_back(target);
+				// A hidden node target drives NO slider: neutral is the only
+				// honest morph-side reading of "collapsed" (see Ledger.h).
+				// Which sliders a node key drives is a property of THIS
+				// ACTOR's body, so the blend comes from its profile.
+				if (IsMorphTarget(target) || IsHiddenLocked(a_actor, target)) {
+					continue;
+				}
+				const auto* blends = BodyProfile::BlendForID(a_actor, target);
+				if (!blends) {
+					continue;
+				}
+				for (const auto& blend : *blends) {
+					if (Lower(blend.slider) == a_sliderLower) {
+						// The ramp factor keeps a mid-ramp node dragging its
+						// derived slider shares along, so bone and slider
+						// swell in step during incremental inflation.
+						combined += (contribution.Effective() - 1.0f) * blend.weight *
+						            RampFactorLocked(a_actor, target);
+						any = true;
+					}
 				}
 			}
-		}
-		for (const auto& target : nodeTargets) {
-			// A hidden node target drives NO slider: neutral is the only honest
-			// morph-side reading of "collapsed" (see Ledger.h). Which sliders a
-			// node key drives is a property of THIS ACTOR's body, so the blend
-			// comes from its profile, not a global table.
-			if (IsHiddenLocked(a_actor, target)) {
-				continue;
-			}
-			const auto* blends = BodyProfile::BlendForID(a_actor, target);
-			if (!blends) {
-				continue;
-			}
-			for (const auto& blend : *blends) {
-				if (Lower(blend.slider) == a_sliderLower) {
-					// Displayed, not the raw fold: a mid-ramp node drags its
-					// derived sliders along with it, so node and morph move in
-					// step during incremental inflation.
-					value += (DisplayedNodeLocked(a_actor, target) - 1.0f) * blend.weight;
-				}
+			if (any) {
+				perMod.push_back(combined);
 			}
 		}
-		return value;
+		if (perMod.empty()) {
+			return 0.0f;
+		}
+		return Calc::FoldSlider(_mode, std::move(perMod), _topX);
+	}
+
+	// Mid-ramp, a node target SHOWS DisplayedNode instead of its fold; its
+	// transformed slider shares scale by the same progress ratio.
+	float Ledger::RampFactorLocked(RE::FormID a_actor, const std::string& a_target) const
+	{
+		const auto actorIt = _display.find(a_actor);
+		if (actorIt == _display.end()) {
+			return 1.0f;
+		}
+		const auto it = actorIt->second.find(a_target);
+		if (it == actorIt->second.end()) {
+			return 1.0f;
+		}
+		const float fold = FoldNodeLocked(a_actor, a_target);
+		if (std::abs(fold - 1.0f) < 0.0001f) {
+			return 1.0f;
+		}
+		return (it->second - 1.0f) / (fold - 1.0f);
 	}
 
 	float Ledger::DirectMorph(RE::FormID a_actor, const std::string& a_sliderLower) const
