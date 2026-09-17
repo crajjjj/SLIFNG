@@ -7,8 +7,8 @@ the ESP/SEQ, the pinned shims, per-actor body profiles, the FOMOD and a two-page
 MCM all ship; BF NG, Fill Her Up and Sexlab Survival have been observed folding
 correctly together on one actor (`SLIFNG.log`, 2026-09-15).
 
-P6 migration is **built and automatic** (runs on the first load of a legacy
-save; untested against a real one). **P8 ramp: built** (native incremental
+P6 migration is **built and automatic** (rides the MCM versioning feature;
+untested against a real save). **P8 ramp: built** (native incremental
 inflation, MCM toggle). Not started: P6's uninstall path. Not run:
 **P7**, three of its six rows.
 
@@ -23,8 +23,8 @@ already existed.
 Release gates, in order:
 1. **qotsafan's permission** for the `SexLab Inflation Framework.esp` name (P0)
    — the repo is already public, so this is now the pacing item.
-2. ~~P6 legacy-save migration~~ **built, automatic** (first-load pass via
-   SLIF_ScannerAlias.AutoMigrate; the MCM row reports the outcome); still needs one
+2. ~~P6 legacy-save migration~~ **built, automatic** (SkyUI OnVersionUpdate /
+   OnConfigInit -> TryLegacyImport; the MCM row reports the outcome); still needs one
    real migrating-save test.
 3. **P7 rows for Estrus, MME and an old-SLIF save** — never exercised (the
    import button now makes the old-save row testable).
@@ -319,11 +319,24 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       best-effort mapping); the `SLIF_Config` presets API itself stays
       unimplemented — no consumer calls it (CONTRACT §8).
 
-### P6 — Migration & cleanup  ← import BUILT + AUTOMATIC, untested; uninstall path unbuilt
+### P6 — Migration & cleanup  ← import BUILT + AUTOMATIC (MCM versioning), untested; uninstall path unbuilt
 CONTRACT sec.6 promises a save that ran real SLIF migrates with zero user
-action, and it now does: SLIF_ScannerAlias.AutoMigrate runs the StorageUtil
-walk on the first load (guarded by the cosave HasMigrated flag; a save with
-nothing to import is flagged too, so later loads cost one native bool read).
+action, and it now does - through SkyUI's own upgrade channel
+(MCM-Advanced-Features#Versioning): SLIF_Menu.OnVersionUpdate runs
+TryLegacyImport when a save carries an older registration, and OnConfigInit
+covers the fresh-quest cases (new game; or old SLIF uninstalled earlier, its
+StorageUtil ghost still present). One-shot via the cosave HasMigrated flag; a
+save with nothing to import is flagged too.
+
+**The 122 floor.** A migrating save carries the REFERENCE's SLIF_Menu
+registration, stored as config version 122 (SLIF_Main.GetScriptVersion), and
+SkyUI only fires OnVersionUpdate on an INCREASE and never lowers a stored
+version. The config version follows SL Widgets' convention - the mod version
+packed major*10000 + minor*100 + patch, defined once in SLIFNG_Version.psc -
+so the floor makes 0.1.x impossible (packed 1xx <= 122 would silently disable
+every version-driven update on exactly the saves that need them): the first
+legal mod version is 0.2.0 = 200, and it only ever goes up.
+
 The NiOverride side was already automatic (legacy-key cleanup on `oldModName`,
 plus the SLIF_Menu/Scanner/Timer stubs that stop SkyUI's config manager
 aborting). The MCM row is a status display with a manual fallback while the
@@ -361,8 +374,9 @@ DLL cannot read these keys. A one-shot script has to walk them on first
 `OnPlayerLoadGame` and push each row into the native ledger through the existing
 natives, then mark the actor migrated. That also means PapyrusUtil becomes a
 soft dependency for migration only - noted in P3's requirements.
-- [x] **Legacy import DONE — automatic on first load** (was an MCM button;
-      converted 2026-09-17, the row now reports the outcome).
+- [x] **Legacy import DONE — automatic via MCM versioning** (was an MCM
+      button, then an alias hook; settled 2026-09-17 on the SkyUI
+      OnVersionUpdate channel, the row now reports the outcome).
       `SLIFNG_Migrate.psc` walks the legacy StorageUtil ledger (node side via
       `slif_mod_list` -> `<mod>slif_node_list` -> `<mod><node>` + bounds; morph
       side via `slif_morph_mod_list` -> `slif_morph_list_<mod>` ->

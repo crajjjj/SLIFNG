@@ -18,7 +18,7 @@ any save with a female player.
 Just load the save and quit. Expect in the log, in order:
 
 ```
-SLIFNG v0.1.0 is loading...
+SLIFNG v0.2.0 is loading...
 Cosave serialization initialized.
 Papyrus functions bound.
 [Skee] BodyMorph interface vN
@@ -143,10 +143,12 @@ skeleton nodes), contributions use a sub-header per target with short indented
 rows per mod, and the skee readback only gets a row when it DISAGREES with what
 we wrote.
 
-## T4 — Auto-migration (legacy save)
+## T4 — Auto-migration (legacy save, via MCM versioning)
 
-Load a save that ran reference SLIF (with SLIF NG replacing it). With no
-clicking at all, expect within a second of load:
+Load a save that ran reference SLIF (with SLIF NG replacing it). The save
+carries the reference MCM's stored config version 122; ours registers 200, so
+SkyUI fires SLIF_Menu.OnVersionUpdate, which runs the import. With no
+clicking at all, expect within a couple of seconds of load:
 
 ```
 [API] Inflate(... mod='Beeing Female', key='npc belly' ...)   <- the walk
@@ -155,8 +157,13 @@ clicking at all, expect within a second of load:
 
 plus the notification "SLIF NG: imported N value(s) from the old SLIF save".
 MCM > Settings > Old-SLIF import must read "done (automatic)". A second load
-must log NOTHING new (one native bool guards it). A fresh save must silently
-flag itself and never scan again.
+must log NOTHING new (the cosave flag guards it, and SkyUI stores 200 so the
+version update never re-fires). A fresh game flags itself via OnConfigInit
+and never scans again.
+
+Regression to watch: the config revision must stay ABOVE 122 forever - SkyUI
+only fires version updates on an increase, and a migrating save starts at the
+reference's 122.
 
 ## T5 — Incremental inflation
 

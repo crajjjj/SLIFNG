@@ -35,21 +35,35 @@ bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
 
 ; ---------------------------------------------------------------- versioning
-; SkyUI fires OnConfigInit ONCE and `Pages` is a script PROPERTY, so it lives in
-; the save from then on: a page added in a later build stays invisible to anyone
-; already running the mod. Three sibling projects solve this three ways; this
-; takes the useful half of each.
+; The SkyUI MCM versioning feature, in the SL Widgets idiom - see
+; github.com/schlangster/skyui/wiki/MCM-Advanced-Features#Versioning.
 ;
-; Packed (M)MmmPP -- 100 => 0.01.00, 10203 => 1.02.03. Same scheme as
-; ArousedBodyMorphs. Bump alongside the mod version whenever Pages, ModName, or
-; the option layout changes.
+; SkyUI fires OnConfigInit ONCE and `Pages` is a script PROPERTY, so it lives
+; in the save from then on: a page added in a later build stays invisible to
+; anyone already running the mod. OnVersionUpdate is the official channel for
+; fixing that AND for one-shot save upgrades. The contract:
+;   * The version number lives in ONE place, SLIFNG_Version.psc, packed from
+;     the mod version as major*10000 + minor*100 + patch (SL Widgets'
+;     slw_util convention: 0.2.0 -> 200, 1.2.3 -> 10203); this GetVersion()
+;     only delegates. Bump the mod version whenever Pages, ModName, the
+;     option layout, or the save-side data needs an upgrade step.
+;   * OnConfigInit puts a FRESH install directly into the final state.
+;   * OnVersionUpdate is a LADDER of cumulative blocks,
+;         If (a_version >= N && CurrentVersion < N)
+;     one per packed revision, each with a Debug.Trace - APPEND a new block
+;     for a new revision, never edit an old one, so a save can climb any
+;     number of versions in one load.
+;
+; THE FLOOR IS 122, NOT 1: a migrating save stores the reference SLIF_Menu's
+; config version 122 and SkyUI only fires updates on an increase, so the
+; packed version must stay above 122 forever - 0.2.0 (200) is the first
+; legal mod version. Details in SLIFNG_Version.psc.
 Int Function GetVersion()
-	return 101
+	Return SLIFNG_Version.GetVersion()
 EndFunction
 
-String Function VersionString()
-	Int v = GetVersion()
-	return (v / 10000) + "." + ((v / 100) % 100) + "." + (v % 100)
+String Function ModVersion()
+	return SLIFNG_Version.GetVersionString()
 EndFunction
 
 Int Function ExpectedPageCount()
@@ -57,16 +71,51 @@ Int Function ExpectedPageCount()
 EndFunction
 
 Event OnConfigInit()
+	{Fires ONCE, when the quest starts fresh: a new game, or SLIF NG added to a
+	save that never had quest 0x800 running (e.g. the old SLIF was uninstalled
+	earlier - its StorageUtil ghost may still be there, so the import runs
+	here too).}
 	BuildPages()
+	TryLegacyImport()
 EndEvent
 
 Event OnVersionUpdate(int a_version)
-	{Deliberately LIGHT. This runs during SkyUI's registration with the script
-	lock contended - reaching across to another quest or alias here froze the
-	game in ArousedBodyMorphs' predecessor. Setting our own properties is safe;
-	anything else belongs in OnGameReload.}
-	BuildPages()
+	{Fires on game reload when GetVersion() outgrew the version stored in the
+	save - for a migrating save that stored value is the REFERENCE SLIF_Menu's
+	122, which is exactly the save CONTRACT sec.6 is about.
+
+	Lock-aware: this runs while SkyUI's config manager holds its registration
+	lock, so no calls into OTHER script INSTANCES here (that pattern froze
+	ArousedBodyMorphs' predecessor). Our own properties, Global functions and
+	natives only - none of those can contend the lock.}
+
+	; a_version is the new version, CurrentVersion is the old version
+	If (a_version >= 200 && CurrentVersion < 200)
+		Debug.Trace(self + ": Updating script to version 200")
+		; Arriving from reference SLIF (122) or a pre-200 SLIF NG dev build:
+		; the save's Pages property still holds the OLD menu layout, and the
+		; StorageUtil ledger may still be the reference's.
+		BuildPages()
+		TryLegacyImport()
+	EndIf
 EndEvent
+
+; P6, automatic, via MCM versioning: walk the reference's StorageUtil state
+; into the ledger (SLIFNG_Migrate) with zero user action. The cosave flag makes
+; it one-shot per save whichever event lands first; a save with nothing to
+; import is flagged too, so it is never re-scanned. All Global + native calls:
+; safe under SkyUI's registration lock.
+Function TryLegacyImport()
+	if SLIFNG.HasMigrated()
+		return
+	endif
+	if SLIFNG_Migrate.CountLegacyActors() == 0
+		SLIFNG.SetMigrated(true)
+		return
+	endif
+	Int moved = SLIFNG_Migrate.Run()
+	Debug.Notification("SLIF NG: imported " + moved + " value(s) from the old SLIF save")
+EndFunction
 
 Event OnConfigOpen()
 	; Self-heal, borrowed from SLO Aroused NG's `Pages.length < 4` guard: if a
@@ -102,7 +151,7 @@ Function RenderSettingsPage()
 	; pads whichever column runs out first.
 	SetCursorFillMode(LEFT_TO_RIGHT)
 
-	AddHeaderOption("SLIF NG " + VersionString())
+	AddHeaderOption("SLIF NG " + ModVersion())
 	AddHeaderOption("Diagnostics")
 
 	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
@@ -312,7 +361,7 @@ Event OnOptionHighlight(int a_option)
 	elseIf a_option == _oTarget
 		SetInfoText("Switch between the player and whatever is under your crosshair. Close the menu, look at an NPC, reopen.")
 	elseIf a_option == _oImport
-		SetInfoText("Runs by itself on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
+		SetInfoText("Runs by itself through the MCM version update on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
 	elseIf a_option == _oGradual
 		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. Hiding a node and unregistering stay instant. Off = instant, the old SLIF's default.")
 	elseIf a_option == _oRefresh

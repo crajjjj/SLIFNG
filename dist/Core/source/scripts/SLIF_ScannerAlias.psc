@@ -14,30 +14,15 @@ EndFunction
 
 Event OnInit()
 	RegisterForModEvents()
-	AutoMigrate()
 EndEvent
 
 Event OnPlayerLoadGame()
 	RegisterForModEvents()
-	AutoMigrate()
+	; P6 legacy migration is NOT here: it rides the MCM versioning feature
+	; (SLIF_Menu.OnVersionUpdate / OnConfigInit -> TryLegacyImport), which is
+	; the SkyUI-sanctioned one-shot upgrade channel and fires exactly when a
+	; save carries an older registration - the reference's included.
 EndEvent
-
-; P6, automatic: on the first load of a save that ran reference SLIF, walk its
-; StorageUtil state into the ledger (SLIFNG_Migrate) with zero user action -
-; CONTRACT sec.6's "migrates with zero user action", literally. The cosave
-; flag makes every later load a single native bool read; a save with nothing
-; to import is flagged too, so it is never re-scanned.
-Function AutoMigrate()
-	if SLIFNG.HasMigrated()
-		return
-	endif
-	if SLIFNG_Migrate.CountLegacyActors() == 0
-		SLIFNG.SetMigrated(true)
-		return
-	endif
-	Int moved = SLIFNG_Migrate.Run()
-	Debug.Notification("SLIF NG: imported " + moved + " value(s) from the old SLIF save")
-EndFunction
 
 ; -- pinned handlers ----------------------------------------------------------
 ; WARNING: the event carries (modName, node); SLIF_Main.unregisterNode takes
