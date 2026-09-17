@@ -14,50 +14,27 @@
 //
 // Unknown or dead keys are bug-compatible silent no-ops (logged, never applied).
 //
-// MVP: the morph-first mapping ships hardcoded, mirroring BF NG's proven
-// BodyMorph/default.ini blends. P2 moves these tables into per-body INI
-// profiles with per-actor resolution.
+// WHICH sliders (if any) a target drives is NOT vocabulary any more: that is a
+// property of the actor's BODY, so it lives in the per-body profiles
+// (BodyProfile). A target with no blend in the actor's profile is driven by a
+// skeleton NODE scale - which is also the reference's own out-of-the-box
+// behaviour (its shipped bodymorphs config has every percent at 0).
 
 namespace SLIFNG::Vocabulary
 {
-	struct MorphBlend
-	{
-		const char* slider;  // BodySlide slider name (skee morph)
-		float weight;        // slider value per 1.0 of node-scale deviation
-	};
-
-	// UNIT CONVERSION - node scale and morph weight are NOT the same scale.
-	// A consumer's node value is a multiplier (1.0 = neutral, and BF NG's SLIF
-	// magnitudes run to 8.5); a BodySlide slider is a 0..1 blend where 1.0 is
-	// already the full shape. Mapping deviation 1:1 onto the slider is what made
-	// a Sexlab Survival belly of 2.2 write PregnancyBelly=1.2 - past full-term
-	// from a meal.
-	//
-	// The calibration comes from BF NG, which drives BOTH backends and states
-	// the exchange rate itself (FWSystemConfig.OnConfigInit): with SLIF it uses
-	// BellyMaxScale 7.5 / BreastsMaxScale 10.0, and with its own BodyMorph
-	// backend it uses 1.0 for the same visual, mapped through a profile whose
-	// sliders top out at 1.0. So full deviation 7.5 == belly slider 1.0, and
-	// full deviation 10.0 == breast slider 1.0.
-	inline constexpr float kBellyPerDeviation = 1.0f / 7.5f;   // 0.1333
-	inline constexpr float kBreastPerDeviation = 1.0f / 10.0f;  // 0.1
-
 	struct NodeTarget
 	{
-		const char* key;              // canonical slif_* key (lowercase)
-		const char* nodes[2];         // skeleton node(s) for the NiTransform fallback (nullptr = unused)
-		MorphBlend morphs[2];         // morph-first mapping ({nullptr,0} = none -> node fallback)
+		const char* key;       // canonical slif_* key (lowercase)
+		const char* nodes[2];  // skeleton node(s) for the node path (nullptr = unused)
 	};
 
 	// Live keys. slif_breast / slif_butt are "sync" pairs in the reference:
 	// both L/R nodes always receive the same value.
 	inline constexpr NodeTarget kTargets[] = {
-		{ "slif_belly", { "NPC Belly", nullptr },
-			{ { "PregnancyBelly", kBellyPerDeviation }, { nullptr, 0.0f } } },
-		{ "slif_breast", { "NPC L Breast", "NPC R Breast" },
-			{ { "BreastsSH", kBreastPerDeviation }, { "BreastsNewSH", kBreastPerDeviation } } },
-		{ "slif_butt", { "NPC L Butt", "NPC R Butt" }, { { nullptr, 0.0f }, { nullptr, 0.0f } } },
-		{ "slif_scrotum", { "NPC GenitalsScrotum [GenScrot]", nullptr }, { { nullptr, 0.0f }, { nullptr, 0.0f } } },
+		{ "slif_belly", { "NPC Belly", nullptr } },
+		{ "slif_breast", { "NPC L Breast", "NPC R Breast" } },
+		{ "slif_butt", { "NPC L Butt", "NPC R Butt" } },
+		{ "slif_scrotum", { "NPC GenitalsScrotum [GenScrot]", nullptr } },
 	};
 
 	// Bug-compatible dead keys: real SLIF 1.2.2 drops these silently

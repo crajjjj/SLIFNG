@@ -2,6 +2,7 @@
 
 #include "API/SKEE.h"
 #include "BodyProfile.h"
+#include "Calc.h"
 #include "Ledger.h"
 #include "Skee.h"
 #include "Vocabulary.h"
@@ -174,7 +175,7 @@ namespace SLIFNG::Report
 		}
 
 		Header(out, "Aggregation");
-		Row(out, "Mode", ledger.GetMode() == AggregationMode::kAdditive ? "Additive" : "Highest wins");
+		Row(out, "Mode", Calc::TypeName(ledger.GetMode()));
 		return out;
 	}
 

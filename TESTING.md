@@ -39,50 +39,37 @@ cgf "SLIFNG_Debug.Ping"          <- notification proves dll+pex+registration
 cgf "SLIFNG_Debug.SmokeTest"     <- scripted end-to-end run
 ```
 
-SmokeTest exercises, in order: belly inflate x2 (SmokeA); an overlapping x1.5
-(SmokeB, masked under highest-wins); a repeat send (must log
-`-> unchanged (early-out)`); **a direct `PregnancyBelly` morph from SmokeC —
-the same slider `slif_belly` drives, so the two must FOLD, not clobber**;
-the dead key `slif_breast01` (must log `dead key ... bug-compatible no-op`);
-an unknown key `slif_bogus` (must WARN `unknown node key`); an unrelated
-morph; a switch to additive and back (watch the belly grow then shrink);
-then teardown — unregistering SmokeA must leave SmokeB/SmokeC's inflation
-**intact**, and only the final unregister empties the ledger and clears
-everything.
+SmokeTest exercises, in order: belly inflate x2 (SmokeA); an overlapping
+x1.5 (SmokeB); a repeat send (must log `-> unchanged (early-out)`); **a
+direct `PregnancyBelly` morph from SmokeC - direct morphs ADD to what the
+node fold drives through the body profile, they never fold**; a raw
+`"NPC Belly"` send (SmokeD - FHU's spelling, must route to the same
+slif_belly target); the dead key `slif_breast01` (must log
+`dead key ... bug-compatible no-op`); an unknown key `slif_bogus` (must WARN
+`unknown node key`); an unrelated morph; a walk through the calculation
+types (Top X -> highest wins -> additive -> Top X - watch the belly step
+down, then jump, then settle); then teardown - unregistering SmokeA must
+leave the other mods' inflation **intact**, and only the final unregister
+empties the ledger and clears everything.
 
-The highest-value assertions, all regression checks for bugs found in review:
+The calculation types are SLIF's own six, SLIF's numbering, SLIF's default
+(**0 = Top X**: largest + second/3 + third/6). Node folds skip non-positive
+contributions and fall back to neutral 1.0; direct morph contributions are a
+plain raw sum, always. `cgf "SLIFNG_Debug.Mode" N` switches at runtime.
 
-0. **`Inflate(SmokeD, "NPC Belly", 1.8)` must be ACCEPTED**, logging
-   `raw node 'npc belly' routed to canonical target 'slif_belly'` — never
-   `unknown node key`. This is exactly what Fill Her Up sends; before the fix
-   FHU's inflation *and* deflation were both silently dead.
+The highest-value assertions:
 
-1. After `Morph(SmokeC, "PregnancyBelly", 0.4)`, the `PregnancyBelly` readback
-   is still `1` (SmokeA's node-key deviation wins) — **not** `0.4`. Under
-   additive it becomes `1.9`, not `0.4` or `1.5`.
-2. `UnregisterMod(SmokeA)` must NOT flatten the body — SmokeB/SmokeC still
+1. With SmokeA 2.0 + SmokeB 1.5 + SmokeD 1.8 on slif_belly, the DEFAULT fold
+   is `2.0 + 1.8/3 + 1.5/6 = 2.85` - Top X, not 2.0 (highest) and not 5.3
+   (additive). Mode 1 shows 2.0; mode 5 shows 5.3.
+2. `PregnancyBelly` readback = SmokeC's direct 0.4 PLUS the profile blend of
+   the belly fold - the two sources add instead of clobbering or folding.
+3. `UnregisterMod(SmokeA)` must NOT flatten the body - SmokeB/C/D still
    drive it. Only the last unregister logs `cleared all owned output`.
-3. The slider name in every `[Apply]` line is `PregnancyBelly`, original case
-   — never `pregnancybelly`.
+4. The slider name in every `[Apply]` line keeps its original case
+   (`PregnancyBelly`, never `pregnancybelly`).
 
-Expected key lines:
-
-```
-[API] Inflate(00000014 'Prisoner', mod='SmokeA', key='slif_belly', value=2 ...)
-[Apply] ... node-key 'slif_belly' agg 2 (highest) -> morph path: 'PregnancyBelly'=1 (readback 1) ... 3D loaded
-[API] Inflate(... mod='SmokeB' ... value=1.5 ...)
-[Apply] ... agg 2 (highest) ...                      <- overlap masked, still 2
-[API]   -> unchanged (early-out)
-[API]   -> dead key 'slif_breast01' (bug-compatible no-op ...)
-[API]   -> unknown node key 'slif_bogus' ...
-[API] SetAggregationMode(1)
-[Apply] ... agg 2.5 (additive) ...
-[Dump] ===== ledger: 1 actor(s), mode=... =====
-[Apply] ... agg 1 ... 'PregnancyBelly'=0 ...          <- after unregister: neutral
-[Dump] ... (no ledger entries after the second dump)
-```
-
-`readback` must equal the value set — that is skee confirming the write took.
+`readback` must equal the value set - that is skee confirming the write took.
 
 ## T2 — Cosave round-trip
 
@@ -93,7 +80,7 @@ Save, quit to desktop, relaunch, load that save. Expect:
 
 ```
 [Ledger] loaded 1 actor(s)
-[ReapplyAll] 1 target(s) re-applied ...
+[ReapplyAll] 1 actor(s) re-applied ...
 [Apply] ... 'slif_belly' agg 1.8 ...
 ```
 

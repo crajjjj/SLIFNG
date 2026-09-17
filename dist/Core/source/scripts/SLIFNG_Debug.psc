@@ -7,7 +7,7 @@ and verified from SLIFNG.log without any consumer mod or gameplay.
   cgf "SLIFNG_Debug.IPlayer" "TestMod" "slif_belly" 2.0
   cgf "SLIFNG_Debug.MPlayer" "TestMod" "PregnancyBelly" 0.6
   cgf "SLIFNG_Debug.UPlayer" "TestMod"
-  cgf "SLIFNG_Debug.Mode" 1
+  cgf "SLIFNG_Debug.Mode" 1        ; 0 Top X (default) .. 5 Additive
   cgf "SLIFNG_Debug.Verbose" false
   cgf "SLIFNG_Debug.Scale" 0.5
   cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
@@ -37,6 +37,8 @@ Function UPlayer(String modName) Global
 	SLIFNG.UnregisterMod(Game.GetPlayer(), modName)
 EndFunction
 
+; SLIF's calculation types, SLIF's numbering: 0 Top X (the default),
+; 1 Highest wins, 2 Subtract and add one, 3 Square root, 4 Average, 5 Additive.
 Function Mode(Int mode) Global
 	SLIFNG.SetAggregationMode(mode)
 EndFunction
@@ -83,32 +85,33 @@ Function SmokeTest() Global
 	Actor player = Game.GetPlayer()
 	Debug.Notification("SLIF NG smoke test - watch the log")
 
-	; -- node-key aggregation ------------------------------------------------
-	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, "")   ; belly x2 -> PregnancyBelly 1.0
-	SLIFNG.Inflate(player, "SmokeB", "slif_belly", 1.5, -1.0, -1.0, -1.0, "")   ; overlap: highest keeps 1.0
+	; -- node-key aggregation (default calc = Top X, as in SLIF) --------------
+	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, "")   ; alone: fold 2.0
+	SLIFNG.Inflate(player, "SmokeB", "slif_belly", 1.5, -1.0, -1.0, -1.0, "")   ; Top X: 2.0 + 1.5/3 = 2.5
 	SLIFNG.Inflate(player, "SmokeA", "slif_belly", 2.0, -1.0, -1.0, -1.0, "")   ; must early-out
 
 	; -- CROSS-SOURCE: a direct morph on the SAME slider slif_belly drives.
-	;    Highest-wins keeps 1.0; additive gives 1.0 + 0.5 + 0.4 = 1.9.
-	;    Before the fix these clobbered each other instead of folding.
+	;    Slider value = direct sum + blend(fold): morphs never fold, they add
+	;    (the reference's slif_<morph> + slif_scale_<morph> composition).
 	SLIFNG.Morph(player, "SmokeC", "PregnancyBelly", 0.4, -1.0, -1.0, -1.0, "")
 
 	; -- RAW NODE NAME: exactly what FHU sends ("NPC Belly", not slif_belly).
 	;    Must route to the slif_belly target - same ledger entry family, so it
 	;    aggregates with SmokeA/B instead of being rejected or clobbering.
-	SLIFNG.Inflate(player, "SmokeD", "NPC Belly", 1.8, -1.0, -1.0, -1.0, "")
+	SLIFNG.Inflate(player, "SmokeD", "NPC Belly", 1.8, -1.0, -1.0, -1.0, "")    ; Top X: 2 + 1.8/3 + 1.5/6 = 2.85
 
 	; -- contract edge cases --------------------------------------------------
 	SLIFNG.Inflate(player, "SmokeA", "slif_breast01", 3.0, -1.0, -1.0, -1.0, "") ; dead key no-op
 	SLIFNG.Inflate(player, "SmokeA", "slif_bogus", 3.0, -1.0, -1.0, -1.0, "")    ; unknown key
 	SLIFNG.Morph(player, "SmokeA", "BreastsNewSH", 0.5, -1.0, -1.0, -1.0, "")    ; unrelated slider
 
-	; -- mode switch recomputes everything ------------------------------------
-	SLIFNG.SetAggregationMode(1)
+	; -- calc-type switch recomputes everything -------------------------------
+	SLIFNG.SetAggregationMode(1)                                                 ; highest wins: 2.0
 	SLIFNG.DumpLedger()
-	Utility.Wait(3.0)                                                            ; additive: biggest belly
-	SLIFNG.SetAggregationMode(0)
-	Utility.Wait(2.0)                                                            ; shrinks back to highest
+	Utility.Wait(3.0)
+	SLIFNG.SetAggregationMode(5)                                                 ; additive (plain sum): 5.3
+	Utility.Wait(3.0)
+	SLIFNG.SetAggregationMode(0)                                                 ; back to Top X: 2.85
 
 	; -- teardown: SmokeA leaves B and C behind (must NOT wipe them), the
 	;    last unregister empties the ledger and clears all owned output.

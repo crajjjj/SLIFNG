@@ -158,33 +158,50 @@ node-transform AND body-morph contributions under that key for the actor:
 | FHU (morph path) | `"sr_FillHerUp.esp"` |
 | Sexlab Survival | `""` (none) |
 
-### 4.3 Multi-mod aggregation — DECIDED: configurable, default highest-wins
-Per (actor, target): each mod's clamped value is stored separately in the
-ledger; the applied result is a pure fold over those contributions, computed
-at apply time. Two modes, selectable globally (MCM) and overridable per
-target (P5 presets):
+### 4.3 Multi-mod aggregation — RE-DECIDED (2026-09-17): SLIF's own six
+### calculation types, SLIF's numbering, SLIF's default (Top X)
 
-- **Highest wins** (DEFAULT): maximum contribution shows, others are masked.
-- **Additive**: morphs = plain sum (0.0-neutral); node scales = sum of
-  deviations from neutral, `1.0 + SUM(v_i - 1.0)` (1.5 + 1.4 -> 1.9, never a
-  naive multiplier sum). The per-target `maximum` clamps AFTER aggregation —
-  the safety valve against compounding.
+> This section previously read "configurable, default highest-wins" with a
+> two-mode fold of our own design. Overridden by a direct decision: **keep
+> SLIF's formulas — they are heavily field-tested** — and because the default
+> a migrating save has been LOOKING at is Top X, not highest-wins (SLIF reads
+> `calculation_type` from Config.json with default 0, and the surveyed
+> install has no such key).
 
-Because aggregation is a fold over stored inputs, switching modes recomputes
-and re-applies in one pass with no data migration (unlike the reference, where
-a calc-type change left stale applied values). Overlap is real: FHU's default
-`InflateMorph` and BF NG's belly morph are both `PregnancyBelly` — under
-highest-wins the larger one shows and the smaller is masked; diagnostics (P4)
-shows the active mode per target and masked/summed status. The reference's
-other calc types (Top X, subtract-one, square-root, average) are NOT
-implemented — no consumer distinguishes them; the fold is one function if one
-is ever genuinely missed.
+Per (actor, target): each mod's value is stored separately in the ledger
+(bounded per contribution: `SetBounds(value, min, max) * mult`, inverted
+bounds tolerated by ordering them); the applied result is
+`SLIF_Calc.addCalculationType` reproduced verbatim over those contributions
+(engine: `Calc::Fold`). Contributions `<= 0` are skipped, exactly as the
+reference skips them. Types, by SLIF's Config.json numbering:
 
-Floor: highest-wins never returns below neutral (1.0 node / 0.0 morph), so a
-contribution *below* neutral can never win - it can only be masked. Additive
-does honour below-neutral contributions, clamped at both ends by the
-per-contribution bounds. (Negative morph values are legitimate input - see
-sec.4.1 - they simply cannot win a highest-wins fold.)
+| # | Type | Fold over the sorted (desc) positive contributions |
+|---|------|---|
+| 0 | **Top X (DEFAULT)** | `v0 + v1/3 + v2/6` (top_x = 3, each further place `/ (3*x)`) |
+| 1 | Highest wins | `v0` |
+| 2 | Subtract and add one | `1 + SUM(v_i - 1)`, floored at 0 |
+| 3 | Square root | `sqrt(SUM(v_i^2))` |
+| 4 | Average | plain average |
+| 5 | Additive | plain sum (1.5 + 1.4 -> 2.9 — the reference's own additive) |
+
+Every type except subtract-one falls back to the neutral 1.0 when the result
+is `<= 0`. There is NO post-fold clamp (the per-contribution bounds are the
+only clamp) and a below-neutral contribution CAN show — e.g. a lone 0.5 under
+highest-wins applies as 0.5. Both are reference behaviour, kept.
+
+**Morphs never fold.** Direct morph contributions are a plain raw sum across
+mods, always (`SLIF_Morph_Util.CalculateMorphValue` — the reference stores
+morph min/max/mult and never applies them), and the applied slider value is
+that sum PLUS what node targets drive into the slider through the actor's
+body profile, computed from each target's FOLDED value. This is the
+reference's `slif_<morphName>` + `slif_scale_<morphName>` composition.
+
+Because aggregation is a pure fold over stored inputs, switching types
+recomputes and re-applies in one pass with no data migration (unlike the
+reference, where a calc-type change left stale applied values). Overlap is
+real: FHU's default `InflateMorph` and BF NG's belly morph are both
+`PregnancyBelly` — under Top X the largest leads and the second adds a third
+of itself; diagnostics (P4) shows the active type per target.
 
 Implementation consequence: morphs are NOT applied under per-mod skee keys
 (skee would compose those additively). The engine aggregates and writes ONE
@@ -255,6 +272,13 @@ SLIF migrates with zero user action:
   float `"<modName><node>"` and
   `"<modName><node>_min|_max|_mult|_increment"`,
   morphs: `"slif_<modName>_<morphName>"`, `"slif_<morphName>"`
+- **`"slif_<morphName>"` is not just a migration read — it is kept WRITTEN.**
+  Sexlab Survival reads it straight out of StorageUtil every game hour
+  (`_SLS_BodyInflationTracking.psc:27` — no API involved), so the SLIF_Morph
+  shim mirrors the engine's combined direct-morph total under that exact name
+  on every morph()/unregisterMorph(). Best-effort: a whole-mod
+  unregisterActor leaves a stale mirror, but SLS re-derives right after
+  unregistering, and nothing else reads it.
 - NiOverride/skee key namespace used for applied output:
   **`"SexLab Inflation Framework.esp"`** — keep it, so stale transforms written
   by real SLIF are found and owned (or cleanly removed) by SLIF NG.

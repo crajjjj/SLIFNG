@@ -1,7 +1,5 @@
 #include "BodyProfile.h"
 
-#include "Vocabulary.h"
-
 #include <filesystem>
 #include <fstream>
 
@@ -26,23 +24,17 @@ namespace SLIFNG::BodyProfile
 			return std::string{ a_text.substr(first, last - first + 1) };
 		}
 
-		// The built-in blends, used when no .ini ships or none matches. Keeps the
-		// framework working on a bare install rather than silently doing nothing.
+		// The fallback when no .ini ships or none matches: NODE scaling for every
+		// key, no morphs - which is exactly what reference SLIF does out of the
+		// box (its shipped bodymorphs config has every percent at 0.0). Morphs
+		// are something a body profile grants, and the installer is where a body
+		// gets chosen; with no profile there is no slider knowledge to invent.
 		Profile BuiltInDefault()
 		{
 			Profile p;
-			p.name = "built-in default";
+			p.name = "node scaling (SLIF default)";
 			p.file = "(compiled in)";
 			p.isDefault = true;
-			for (const auto& target : Vocabulary::kTargets) {
-				Target t;
-				for (const auto& blend : target.morphs) {
-					if (blend.slider) {
-						t.morphs.push_back({ blend.slider, blend.weight });
-					}
-				}
-				p.targets.emplace(target.key, std::move(t));
-			}
 			return p;
 		}
 

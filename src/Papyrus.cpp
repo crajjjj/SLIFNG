@@ -1,5 +1,6 @@
 #include "Papyrus.h"
 
+#include "Calc.h"
 #include "Ledger.h"
 #include "Report.h"
 #include "Skee.h"
@@ -173,14 +174,22 @@ namespace SLIFNG::Papyrus
 			Skee::UnregisterDeferred(a_actor, std::move(affected));
 		}
 
+		// SLIF's Config.json calculation_type numbering: 0 Top X (the reference
+		// default), 1 Highest wins, 2 Subtract and add one, 3 Square root,
+		// 4 Average, 5 Additive.
 		void SetAggregationMode(RE::StaticFunctionTag*, std::int32_t a_mode)
 		{
 			logger::info("[API] SetAggregationMode({})", a_mode);
+			if (a_mode < 0 || !Calc::IsValidType(static_cast<std::uint32_t>(a_mode))) {
+				logger::warn("[API]   -> calculation type {} out of range 0-5 — ignored", a_mode);
+				return;
+			}
 			auto& ledger = Ledger::GetSingleton();
-			const auto mode = a_mode == 1 ? AggregationMode::kAdditive : AggregationMode::kHighestWins;
+			const auto mode = static_cast<Calc::Type>(a_mode);
 			if (mode != ledger.GetMode()) {
 				ledger.SetMode(mode);
-				// Mode switch = recompute + one re-apply pass (CONTRACT sec.4.3).
+				// Type switch = recompute + one re-apply pass (CONTRACT sec.4.3) -
+				// unlike the reference, where changing it left stale applied values.
 				Skee::ReapplyAllDeferred();
 			}
 		}
@@ -381,6 +390,18 @@ namespace SLIFNG::Papyrus
 			return Ledger::GetSingleton().TargetScale(a_scaleId.c_str());
 		}
 
+		// The reference's "slif_<morphName>": the cross-mod direct-morph total.
+		// The SLIF_Morph shim mirrors it into StorageUtil under that exact name,
+		// because Sexlab Survival reads it straight out of StorageUtil
+		// (_SLS_BodyInflationTracking) rather than through any API.
+		float GetCombinedMorph(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_morph)
+		{
+			if (!a_actor || a_morph.empty()) {
+				return 0.0f;
+			}
+			return Ledger::GetSingleton().DirectMorph(a_actor->GetFormID(), Lower(a_morph.c_str()));
+		}
+
 		bool HasMigrated(RE::StaticFunctionTag*) { return Ledger::GetSingleton().Migrated(); }
 
 		void SetMigrated(RE::StaticFunctionTag*, bool a_done)
@@ -464,6 +485,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetMasterScale", script, GetMasterScale);
 		a_vm->RegisterFunction("SetTargetScale", script, SetTargetScale);
 		a_vm->RegisterFunction("GetTargetScale", script, GetTargetScale);
+		a_vm->RegisterFunction("GetCombinedMorph", script, GetCombinedMorph);
 		a_vm->RegisterFunction("HasMigrated", script, HasMigrated);
 		a_vm->RegisterFunction("SetMigrated", script, SetMigrated);
 		a_vm->RegisterFunction("IsMorphEngineReady", script, IsMorphEngineReady);

@@ -12,7 +12,10 @@ namespace SLIFNG
 		// v2: aggregation mode + slider display-name table.
 		// v3: user magnitude scaling (master + per-target).
 		// v4: one-shot legacy-import marker.
-		constexpr std::uint32_t kLedgerVersion = 5;  // v5 added the hidden-node map
+		// v5: the hidden-node map.
+		// v6: the mode field switched to SLIF's calculation_type numbering
+		//     (0 Top X .. 5 Additive) and gained the top_x count beside it.
+		constexpr std::uint32_t kLedgerVersion = 6;
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
@@ -119,7 +122,6 @@ namespace SLIFNG
 			return AggregateSliderLocked(a_actor, SliderOf(target));
 		}
 
-		constexpr float neutral = 1.0f;  // node scales
 		// A hidden target OVERRIDES the fold: DD's chastity belt must win over
 		// whatever Beeing Female or FHU is asking for, not merely compete.
 		if (const auto hiddenIt = _hidden.find(a_actor); hiddenIt != _hidden.end()) {
@@ -128,45 +130,32 @@ namespace SLIFNG
 				return pin->second;
 			}
 		}
+		return FoldNodeLocked(a_actor, target);
+	}
+
+	// SLIF_Calc.addCalculationType over the per-mod effective contributions -
+	// the reference's own math, verbatim (the arithmetic lives in Calc::Fold).
+	// The former highest/additive pair with its post-fold bounds clamp is gone:
+	// "keep SLIF formulas" means the per-contribution clamp is the only clamp,
+	// and a below-neutral contribution CAN show (SLIF only floors a fold
+	// result that lands at or below zero).
+	float Ledger::FoldNodeLocked(RE::FormID a_actor, const std::string& a_target) const
+	{
 		const auto actorIt = _actors.find(a_actor);
 		if (actorIt == _actors.end()) {
-			return neutral;
+			return 1.0f;
 		}
-
-		float highest = neutral;
-		float deviationSum = 0.0f;
-		float clampMax = -std::numeric_limits<float>::infinity();
-		float clampMin = std::numeric_limits<float>::infinity();
-		bool any = false;
+		std::vector<float> values;
 		for (const auto& [mod, targets] : actorIt->second) {
-			const auto it = targets.find(target);
-			if (it == targets.end()) {
-				continue;
+			const auto it = targets.find(a_target);
+			if (it != targets.end()) {
+				values.push_back(it->second.Effective());
 			}
-			const float effective = it->second.Effective();
-			any = true;
-			highest = (std::max)(highest, effective);
-			deviationSum += effective - neutral;
-			clampMax = (std::max)(clampMax, it->second.EffectiveMax());
-			clampMin = (std::min)(clampMin, it->second.EffectiveMin());
 		}
-		if (!any) {
-			return neutral;
+		if (values.empty()) {
+			return 1.0f;
 		}
-
-		switch (_mode) {
-		case AggregationMode::kAdditive:
-			// Sum of deviations from neutral (1.5 + 1.4 -> 1.9), clamped AFTER
-			// aggregation by the per-contribution bounds - the safety valve
-			// against compounding (CONTRACT 4.3), at BOTH ends so a stack of
-			// below-neutral contributions cannot drive a node scale to <= 0.
-			// `any` guarantees both bounds were set, so a legitimate bound of 0
-			// clamps to 0 rather than reading as "unbounded".
-			return std::clamp(neutral + deviationSum, clampMin, clampMax);
-		case AggregationMode::kHighestWins:
-		default:
-			return highest;
-		}
+		return Calc::Fold(_mode, std::move(values), _topX);
 	}
 
 	float Ledger::AggregateSlider(RE::FormID a_actor, const std::string& a_sliderLower) const
@@ -181,56 +170,70 @@ namespace SLIFNG
 		if (actorIt == _actors.end()) {
 			return 0.0f;  // morph neutral
 		}
-		const std::string morphTarget = std::string{ kMorphPrefix } + a_sliderLower;
 
-		float highest = 0.0f;
-		float sum = 0.0f;
-		float clampMax = -std::numeric_limits<float>::infinity();
-		float clampMin = std::numeric_limits<float>::infinity();
-		bool any = false;
+		// SLIF's composition, verbatim: "slif_<morphName>" (the plain sum of
+		// every mod's direct contribution - the calculation type never applies
+		// to morphs) plus "slif_scale_<morphName>" (what the node targets drive
+		// into the slider through the actor's body profile, computed from each
+		// target's FOLDED value, so Top X / additive / etc. act exactly once).
+		float value = DirectMorphLocked(a_actor, a_sliderLower);
 
+		// Distinct node targets on this actor.
+		std::vector<std::string> nodeTargets;
 		for (const auto& [mod, targets] : actorIt->second) {
 			for (const auto& [target, contribution] : targets) {
-				// Every source that drives this one skee slider folds together here:
-				// a direct morph target, or a node key whose blend maps onto it.
-				// Bounds are projected through the same transform as the value, so
-				// additive keeps its safety valve in slider space too.
-				std::optional<float> driven;
-				float boundHi = 0.0f;
-				float boundLo = 0.0f;
-				if (target == morphTarget) {
-					driven = contribution.Effective();
-					boundHi = contribution.EffectiveMax();
-					boundLo = contribution.EffectiveMin();
-				} else if (!IsMorphTarget(target) && !IsHiddenLocked(a_actor, target)) {
-					// A hidden node target drives NO slider: neutral is the only
-					// honest morph-side reading of "collapsed" (see Ledger.h).
-					// Which sliders a node key drives is a property of THIS ACTOR's
-					// body, so the blend comes from its profile, not a global table.
-					if (const auto* blends = BodyProfile::BlendForID(a_actor, target)) {
-						for (const auto& blend : *blends) {
-							if (Lower(blend.slider) == a_sliderLower) {
-								driven = (contribution.Effective() - 1.0f) * blend.weight;
-								boundHi = (contribution.EffectiveMax() - 1.0f) * blend.weight;
-								boundLo = (contribution.EffectiveMin() - 1.0f) * blend.weight;
-								break;
-							}
-						}
-					}
-				}
-				if (driven) {
-					any = true;
-					highest = (std::max)(highest, *driven);
-					sum += *driven;
-					clampMax = (std::max)(clampMax, (std::max)(boundHi, boundLo));
-					clampMin = (std::min)(clampMin, (std::min)(boundHi, boundLo));
+				if (!IsMorphTarget(target) &&
+					std::find(nodeTargets.begin(), nodeTargets.end(), target) == nodeTargets.end()) {
+					nodeTargets.push_back(target);
 				}
 			}
 		}
-		if (!any) {
+		for (const auto& target : nodeTargets) {
+			// A hidden node target drives NO slider: neutral is the only honest
+			// morph-side reading of "collapsed" (see Ledger.h). Which sliders a
+			// node key drives is a property of THIS ACTOR's body, so the blend
+			// comes from its profile, not a global table.
+			if (IsHiddenLocked(a_actor, target)) {
+				continue;
+			}
+			const auto* blends = BodyProfile::BlendForID(a_actor, target);
+			if (!blends) {
+				continue;
+			}
+			for (const auto& blend : *blends) {
+				if (Lower(blend.slider) == a_sliderLower) {
+					value += (FoldNodeLocked(a_actor, target) - 1.0f) * blend.weight;
+				}
+			}
+		}
+		return value;
+	}
+
+	float Ledger::DirectMorph(RE::FormID a_actor, const std::string& a_sliderLower) const
+	{
+		std::scoped_lock lock(_lock);
+		return DirectMorphLocked(a_actor, a_sliderLower);
+	}
+
+	// SLIF_Morph_Util.CalculateMorphValue: the raw stored values, summed. No
+	// bounds, no multiplier, no calculation type - the reference stores morph
+	// min/max/mult but never applies them, and Sexlab Survival reads this exact
+	// number back out of StorageUtil as "slif_<morphName>".
+	float Ledger::DirectMorphLocked(RE::FormID a_actor, const std::string& a_sliderLower) const
+	{
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
 			return 0.0f;
 		}
-		return _mode == AggregationMode::kAdditive ? std::clamp(sum, clampMin, clampMax) : highest;
+		const std::string morphTarget = std::string{ kMorphPrefix } + a_sliderLower;
+		float total = 0.0f;
+		for (const auto& [mod, targets] : actorIt->second) {
+			const auto it = targets.find(morphTarget);
+			if (it != targets.end()) {
+				total += it->second.value;
+			}
+		}
+		return total;
 	}
 
 	bool Ledger::Migrated() const
@@ -517,9 +520,8 @@ namespace SLIFNG
 	void Ledger::DumpToLog() const
 	{
 		std::scoped_lock lock(_lock);
-		logger::info("[Dump] ===== ledger: {} actor(s), mode={}, master scale {} =====",
-			_actors.size(), _mode == AggregationMode::kAdditive ? "additive" : "highest-wins",
-			_masterScale);
+		logger::info("[Dump] ===== ledger: {} actor(s), calc={} (top_x={}), master scale {} =====",
+			_actors.size(), Calc::TypeName(_mode), _topX, _masterScale);
 		for (const auto& [id, scale] : _targetScales) {
 			logger::info("[Dump]   user scale '{}' = {}", id, scale);
 		}
@@ -550,6 +552,7 @@ namespace SLIFNG
 		}
 
 		Write(a_intfc, static_cast<std::uint32_t>(inst._mode));
+		Write(a_intfc, inst._topX);
 		Write(a_intfc, static_cast<std::uint32_t>(inst._migrated ? 1 : 0));
 
 		Write(a_intfc, inst._masterScale);
@@ -592,8 +595,8 @@ namespace SLIFNG
 			}
 		}
 
-		logger::info("[Ledger] saved {} actor(s), mode={}", inst._actors.size(),
-			inst._mode == AggregationMode::kAdditive ? "additive" : "highest-wins");
+		logger::info("[Ledger] saved {} actor(s), calc={}", inst._actors.size(),
+			Calc::TypeName(inst._mode));
 	}
 
 	void Ledger::OnGameLoaded(SKSE::SerializationInterface* a_intfc)
@@ -607,7 +610,8 @@ namespace SLIFNG
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
-		inst._mode = AggregationMode::kHighestWins;
+		inst._mode = Calc::Type::kTopX;
+		inst._topX = Calc::kDefaultTopX;
 
 		std::uint32_t type = 0;
 		std::uint32_t version = 0;
@@ -628,9 +632,14 @@ namespace SLIFNG
 				// saves upgrade in place instead of losing their inflation.
 				if (version >= 2) {
 					const auto mode = Read<std::uint32_t>(a_intfc, length);
-					inst._mode = mode == static_cast<std::uint32_t>(AggregationMode::kAdditive)
-					                 ? AggregationMode::kAdditive
-					                 : AggregationMode::kHighestWins;
+					if (version >= 6) {
+						inst._mode = Calc::IsValidType(mode) ? static_cast<Calc::Type>(mode)
+						                                     : Calc::Type::kTopX;
+						inst._topX = (std::max)(1u, Read<std::uint32_t>(a_intfc, length));
+					} else {
+						// v2-v5 stored the old two-value enum: 0 highest, 1 additive.
+						inst._mode = mode == 1 ? Calc::Type::kAdditive : Calc::Type::kHighestWins;
+					}
 
 					if (version >= 4) {
 						inst._migrated = Read<std::uint32_t>(a_intfc, length) != 0;
@@ -711,11 +720,12 @@ namespace SLIFNG
 				inst._targetScales.clear();
 				inst._masterScale = 1.0f;
 				inst._migrated = false;
-				inst._mode = AggregationMode::kHighestWins;
+				inst._mode = Calc::Type::kTopX;
+				inst._topX = Calc::kDefaultTopX;
 			}
 		}
-		logger::info("[Ledger] loaded {} actor(s), mode={}", inst._actors.size(),
-			inst._mode == AggregationMode::kAdditive ? "additive" : "highest-wins");
+		logger::info("[Ledger] loaded {} actor(s), calc={} (top_x={})", inst._actors.size(),
+			Calc::TypeName(inst._mode), inst._topX);
 	}
 
 	void Ledger::OnRevert(SKSE::SerializationInterface*)
@@ -728,7 +738,8 @@ namespace SLIFNG
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
-		inst._mode = AggregationMode::kHighestWins;
+		inst._mode = Calc::Type::kTopX;
+		inst._topX = Calc::kDefaultTopX;
 		logger::info("[Ledger] reverted");
 	}
 }

@@ -145,11 +145,22 @@ Int Function ImportFlags()
 	return OPTION_FLAG_NONE
 EndFunction
 
+; SLIF's own six calculation types, SLIF's numbering (0 = Top X is the
+; reference's default). Applies to node scales; direct morphs always sum.
 String Function ModeName()
-	if SLIFNG.GetAggregationMode() == 1
+	int mode = SLIFNG.GetAggregationMode()
+	if mode == 1
+		return "Highest wins"
+	elseIf mode == 2
+		return "Subtract and add one"
+	elseIf mode == 3
+		return "Square root"
+	elseIf mode == 4
+		return "Average"
+	elseIf mode == 5
 		return "Additive"
 	endIf
-	return "Highest wins"
+	return "Top X"
 EndFunction
 
 String Function EngineStatus()
@@ -249,11 +260,12 @@ EndEvent
 
 Event OnOptionSelect(int a_option)
 	if a_option == _oMode
-		if SLIFNG.GetAggregationMode() == 1
-			SLIFNG.SetAggregationMode(0)
-		else
-			SLIFNG.SetAggregationMode(1)
+		; Click cycles through the six types; wraps after Additive.
+		int nextMode = SLIFNG.GetAggregationMode() + 1
+		if nextMode > 5
+			nextMode = 0
 		endIf
+		SLIFNG.SetAggregationMode(nextMode)
 		SetTextOptionValue(_oMode, ModeName())
 	elseIf a_option == _oVerbose
 		_verbose = !_verbose
@@ -279,7 +291,7 @@ EndEvent
 
 Event OnOptionHighlight(int a_option)
 	if a_option == _oMode
-		SetInfoText("Highest wins: the largest contribution shows, the others are masked.\nAdditive: contributions stack, clamped by their bounds.")
+		SetInfoText("How mods driving the same node combine - SLIF's own six types, applied to node scales (morphs always sum).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.\nClick to cycle.")
 	elseIf a_option == _oMaster
 		SetInfoText("Scales EVERYTHING this framework applies. 1.00x leaves mods exactly as they intended; 0.00x suppresses all inflation. Applies instantly to every tracked actor.")
 	elseIf a_option == _oVerbose

@@ -2,6 +2,7 @@
 
 #include "API/SKEE.h"
 #include "BodyProfile.h"
+#include "Calc.h"
 #include "Ledger.h"
 #include "Vocabulary.h"
 
@@ -98,7 +99,7 @@ namespace SLIFNG::Skee
 		{
 			auto& ledger = Ledger::GetSingleton();
 			const bool verbose = g_verbose.load(std::memory_order_relaxed);
-			const char* mode = ledger.GetMode() == AggregationMode::kAdditive ? "additive" : "highest";
+			const char* mode = Calc::TypeName(ledger.GetMode());
 
 			// --- morph target: fold every source driving this one slider ---
 			if (IsMorphTarget(a_lowerTarget)) {
@@ -125,33 +126,36 @@ namespace SLIFNG::Skee
 				return false;
 			}
 
-			// --- node key with a morph mapping: drive each mapped slider ---
-			if (target->morphs[0].slider) {
+			// --- node key the ACTOR'S body morphs: drive each profile slider ---
+			// Which sliders (if any) a key drives is the actor's body profile's
+			// call, not a global table: a UBE actor and a 3BA actor in the same
+			// save write different sliders for the same slif_breast.
+			const auto* blends = BodyProfile::BlendFor(a_actor, a_lowerTarget);
+			if (blends && !blends->empty()) {
 				if (!IsReady()) {
 					logger::warn("[Apply] {:08X} key '{}': BodyMorph unavailable — NOT applied",
 						a_actor->GetFormID(), a_lowerTarget);
 					return false;
 				}
 				std::string detail;
-				for (const auto& blend : target->morphs) {
-					if (blend.slider) {
-						const float folded = WriteSlider(a_actor, Lower(blend.slider), blend.slider);
-						if (verbose) {
-							detail += std::format(" '{}'={} (readback {})", blend.slider, folded,
-								g_bodyMorph->GetMorph(a_actor, blend.slider, kAppliedKey));
-						}
+				for (const auto& blend : *blends) {
+					const float folded = WriteSlider(a_actor, Lower(blend.slider), blend.slider);
+					if (verbose) {
+						detail += std::format(" '{}'={} (readback {})", blend.slider, folded,
+							g_bodyMorph->GetMorph(a_actor, blend.slider.c_str(), kAppliedKey));
 					}
 				}
 				if (verbose) {
-					logger::info("[Apply] {:08X} '{}' node-key '{}' agg {} ({}) -> morph path:{} — 3D {}",
+					logger::info("[Apply] {:08X} '{}' node-key '{}' agg {} ({}, profile '{}') -> morph path:{} — 3D {}",
 						a_actor->GetFormID(), a_actor->GetName(), a_lowerTarget,
-						ledger.Aggregate(a_actor->GetFormID(), a_lowerTarget), mode, detail,
+						ledger.Aggregate(a_actor->GetFormID(), a_lowerTarget), mode,
+						BodyProfile::ResolvedName(a_actor), detail,
 						a_actor->Is3DLoaded() ? "loaded" : "UNLOADED");
 				}
 				return true;
 			}
 
-			// --- node fallback (no morph mapping: slif_butt, slif_scrotum) ---
+			// --- node path (the profile lists no sliders for this key) ---
 			if (!IsNodeReady()) {
 				logger::warn("[Apply] {:08X} key '{}': NiTransform unavailable — NOT applied",
 					a_actor->GetFormID(), a_lowerTarget);

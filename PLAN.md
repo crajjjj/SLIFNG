@@ -69,7 +69,7 @@ SLIF_ScannerAlias.psc  ──►  SLIF_Main.psc / SLIF_Morph.psc     (pinned shi
                         - clamp (min/max/mult); keyed per-mod ledger
                           (actor → mod → target → value), co-save serialized
                           with SLANG patterns (ResolveFormID, bounds checks)
-                        - aggregation: highest-wins per (actor, target),
+                        - aggregation: SLIF's six calc types (Top X default),
                           ONE applied value under the single SLIF skee key
                           (CONTRACT §4.3)
                         - oldModName legacy-key cleanup
@@ -152,11 +152,11 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
 
 ### P1 — MVP (native core + pinned shims, instant apply) — DONE, RUNNING
 - [x] `SLIFNG.dll` core: keyed per-mod ledger + serialization (from the P0
-      skeleton), clamp, highest-wins aggregate, vocabulary map (6 keys),
+      skeleton), clamp, SLIF's calculation-type fold, vocabulary map (6 keys),
       `oldModName` legacy-key cleanup — aggregation implemented as a
-      parameterized fold (mode enum: highest | additive) even though P1 ships
-      highest-only wiring, so the P4 toggle and P5 per-target overrides bolt
-      on without touching the ledger — apply via skee morph-first with
+      parameterized fold (Calc::Fold, SLIF's six types, Top X default -
+      re-decided 2026-09-17, see CONTRACT 4.3), so the P4 selector and P5
+      per-target overrides bolt on without touching the ledger — apply via skee morph-first with
       NiTransform node fallback — **one** apply/model-update per call, never
       per step (the reference's worst perf bug was per-step rebuilds).
 - [x] Native Papyrus surface `SLIFNG.psc` (native functions the shims call:
@@ -414,7 +414,7 @@ VM, exposed as a per-consumer-mod toggle. Pure engine work in our own DLL.
 ## Out of scope (permanently, unless a real consumer appears)
 
 The SLIF `Presets.json` / `SLIF_Config` presets API (user presets are a SLIF NG
-feature — P5 — not an API compatibility item), queue UI, six calculation types,
+feature — P5 — not an API compatibility item), queue UI,
 per-actor value editor, list-category system, `SLIF_Config` JSON path API,
 translations beyond English at MVP.
 
@@ -422,10 +422,12 @@ translations beyond English at MVP.
 
 1. ~~Node-vs-morph~~ **DECIDED: morph-first with node fallback** (P0
    screenshots validate, not decide).
-2. ~~Aggregation default~~ **DECIDED: configurable fold, default
-   highest-wins** (CONTRACT §4.3): global MCM toggle (P4) + per-target
-   override (P5); additive = deviation-sum for node scales, plain sum for
-   morphs, clamped after aggregation; mode switch = recompute + one re-apply.
+2. ~~Aggregation default~~ **RE-DECIDED 2026-09-17: SLIF's own six
+   calculation types, verbatim, default Top X** (CONTRACT §4.3). The earlier
+   two-mode design (highest/additive with a post-fold clamp) is gone: keep
+   SLIF's tested formulas. MCM cycles all six; type switch = recompute + one
+   re-apply. Direct morphs always plain-sum (never folded), as in the
+   reference.
 3. Does SLIF NG absorb BF NG's own BodyMorph backend later (one scaling path
    instead of five `VisualScaling` modes)?
 4. ~~Release identity~~ **DECIDED: standalone repo** (this folder); after the

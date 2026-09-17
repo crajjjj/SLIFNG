@@ -58,6 +58,13 @@
                                 </dependencyType>
                             </typeDescriptor>
                         </plugin>
+                        <plugin name="None - node scaling (SLIF default)">
+                            <description>No body profile: every target is driven by a skeleton NODE scale, exactly what SexLab Inflation Framework itself does out of the box (its shipped morph config has every slider percentage at zero). Pick this for a body not listed here, for a mixed setup you have not sorted out yet, or to look identical to real SLIF. Needs XPMSSE (which you almost certainly have). UBE characters still get their race-matched morph profile.</description>
+                            <files/>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
                     </plugins>
                 </group>
             </optionalFileGroups>

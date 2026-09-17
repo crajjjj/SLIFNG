@@ -12,14 +12,10 @@
 // Lowercasing matches Papyrus string semantics (a consumer may spell the same
 // slider two ways), but skee is fed the ORIGINAL spelling - see _sliderNames.
 
+#include "Calc.h"
+
 namespace SLIFNG
 {
-	enum class AggregationMode : std::uint32_t
-	{
-		kHighestWins = 0,
-		kAdditive = 1,
-	};
-
 	struct Contribution
 	{
 		float value{ 0.0f };
@@ -36,10 +32,6 @@ namespace SLIFNG
 			return std::clamp(value, lo, hi) * mult;
 		}
 
-		// The same projection applied to the bound, so a fold can clamp its
-		// aggregate with the per-contribution ceiling/floor (CONTRACT 4.3).
-		[[nodiscard]] float EffectiveMax() const { return (std::max)(min, max) * mult; }
-		[[nodiscard]] float EffectiveMin() const { return (std::min)(min, max) * mult; }
 	};
 
 	inline constexpr std::string_view kMorphPrefix = "morph:";
@@ -82,21 +74,31 @@ namespace SLIFNG
 		// the targets that lost a contribution (each needs a re-apply).
 		std::vector<std::string> RemoveMod(RE::FormID a_actor, const std::string& a_mod);
 
-		// The configurable fold for a NODE-SCALE target (CONTRACT sec.4.3).
-		// Neutral (1.0) when no contributions.
+		// The fold for a NODE-SCALE target: SLIF's own addCalculationType,
+		// reproduced exactly (six types, Top X by default - CONTRACT sec.4.3).
+		// Neutral (1.0) when no positive contributions.
 		[[nodiscard]] float Aggregate(RE::FormID a_actor, const std::string& a_target) const;
 
-		// The fold for ONE skee slider, across every source that drives it:
-		// direct "morph:<slider>" contributions AND node-key contributions whose
-		// vocabulary blend maps onto this slider. This is what keeps BF NG's
-		// slif_belly and FHU's morph:pregnancybelly aggregating instead of
-		// clobbering each other. Neutral is 0.0.
+		// The value for ONE skee slider, composed the way the reference composes
+		// it (SLIF_Morph_Util.SetAndUpdateMorphs): the plain SUM of every mod's
+		// direct "morph:<slider>" contribution ("slif_<morphName>") PLUS what the
+		// node targets drive into the slider through the actor's body profile,
+		// computed from each node target's FOLDED value ("slif_scale_<morphName>").
+		// Direct morphs always sum - the calculation type applies to node scales
+		// only, exactly as in the reference. Neutral is 0.0.
 		[[nodiscard]] float AggregateSlider(RE::FormID a_actor, const std::string& a_sliderLower) const;
 
 		// The consumer's original spelling for a lowercase slider (what skee is
 		// given); falls back to the lowercase form if never seen.
 		[[nodiscard]] std::string SliderName(const std::string& a_sliderLower) const;
 		void RememberSlider(const std::string& a_sliderName);
+
+		// The reference's "slif_<morphName>": the raw sum of every mod's direct
+		// contribution to one slider. Raw, not bounded - SLIF stores morph
+		// min/max/mult but never applies them (SLIF_Morph_Util.CalculateMorphValue
+		// sums the stored values verbatim), and consumers like Sexlab Survival
+		// read this exact number back out of StorageUtil.
+		[[nodiscard]] float DirectMorph(RE::FormID a_actor, const std::string& a_sliderLower) const;
 
 		// ---- user magnitude scaling (PLAN P5) -------------------------------
 		// Applied at APPLY time, on top of the fold, so it never touches stored
@@ -159,8 +161,10 @@ namespace SLIFNG
 		[[nodiscard]] bool Migrated() const;
 		void SetMigrated(bool a_done);
 
-		AggregationMode GetMode() const { return _mode; }
-		void SetMode(AggregationMode a_mode) { _mode = a_mode; }
+		Calc::Type GetMode() const { return _mode; }
+		void SetMode(Calc::Type a_mode) { _mode = a_mode; }
+		std::uint32_t GetTopX() const { return _topX; }
+		void SetTopX(std::uint32_t a_topX) { _topX = a_topX > 0 ? a_topX : 1; }
 
 		// Diagnostics: write the full ledger state (or one actor's) to the log -
 		// every contribution, every fold result, the active mode.
@@ -183,6 +187,8 @@ namespace SLIFNG
 		// Unlocked internals, for callers already holding _lock.
 		void RememberSliderLocked(const std::string& a_sliderName);
 		[[nodiscard]] float AggregateSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
+		[[nodiscard]] float FoldNodeLocked(RE::FormID a_actor, const std::string& a_target) const;
+		[[nodiscard]] float DirectMorphLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
 		[[nodiscard]] std::vector<std::string> TargetsOfLocked(RE::FormID a_actor) const;
 
 		mutable std::recursive_mutex _lock;
@@ -196,6 +202,8 @@ namespace SLIFNG
 		std::unordered_map<std::string, float> _targetScales;
 		float _masterScale{ 1.0f };
 		bool _migrated{ false };
-		AggregationMode _mode{ AggregationMode::kHighestWins };
+		// SLIF's Config.json calculation_type numbering; its default is Top X.
+		Calc::Type _mode{ Calc::Type::kTopX };
+		std::uint32_t _topX{ Calc::kDefaultTopX };
 	};
 }

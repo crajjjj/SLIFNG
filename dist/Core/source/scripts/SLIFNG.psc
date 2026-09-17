@@ -19,8 +19,14 @@ Function UnregisterNode(Actor kActor, String slifKey, String modName) Global Nat
 Function UnregisterMorph(Actor kActor, String morphName, String modName) Global Native
 Function UnregisterMod(Actor kActor, String modName) Global Native
 
-; 0 = highest wins (default), 1 = additive. Switching recomputes and
-; re-applies every tracked actor in one pass (CONTRACT sec.4.3).
+; Calculation type - SLIF's own six, SLIF's own Config.json numbering, SLIF's
+; own default (CONTRACT sec.4.3):
+;   0 = Top X (DEFAULT: largest + second/3 + third/6)   1 = Highest wins
+;   2 = Subtract and add one (1 + sum of deviations)    3 = Square root
+;   4 = Average                                         5 = Additive (plain sum)
+; Applies to NODE scales only; direct morph contributions always sum, as in
+; the reference. Switching recomputes and re-applies every tracked actor in
+; one pass - with no stale leftovers, unlike the reference.
 Function SetAggregationMode(Int mode) Global Native
 Int Function GetAggregationMode() Global Native
 
@@ -44,6 +50,11 @@ Function ShowNode(Actor kActor, String modName, String slifKey) Global Native
 ; target ("slif_belly" or "morph:<slider>").
 Float Function GetContribution(Actor kActor, String modName, String target) Global Native
 Float Function GetApplied(Actor kActor, String target) Global Native
+
+; The reference's "slif_<morphName>": the cross-mod sum of direct morph
+; contributions for one slider. SLIF_Morph mirrors it into StorageUtil under
+; that exact name - Sexlab Survival reads it from StorageUtil directly.
+Float Function GetCombinedMorph(Actor kActor, String morphName) Global Native
 
 ; Diagnostics: write the full ledger (or one actor's entries) to SLIFNG.log -
 ; contributions, fold results, active mode. See SLIFNG_Debug.psc for
