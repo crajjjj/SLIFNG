@@ -1,0 +1,81 @@
+site_name: SLIF NG
+site_description: A modern, zero-configuration replacement for SexLab Inflation Framework SE - native engine, same API, same math.
+site_url: https://crajjjj.github.io/SLIFNG/
+repo_name: crajjjj/SLIFNG
+repo_url: https://github.com/crajjjj/SLIFNG
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Old SLIF vs. SLIF NG: comparison.md
+  - For Players:
+    - Getting Started: players/getting-started.md
+    - Bodies, Nodes & Morphs: players/bodies.md
+    - MCM Reference: players/mcm.md
+    - Supported Mods: players/compatibility.md
+    - Troubleshooting & Console Tools: players/troubleshooting.md
+  - For Mod Authors:
+    - Overview & Architecture: authors/overview.md
+    - Write API (SLIF-compatible): authors/write-api.md
+    - Query API (Papyrus & C++): authors/query-api.md
+    - Aggregation Math: authors/math.md
+    - Body Profile Format: authors/body-profiles.md
+    - Building from Source: authors/building.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+
+plugins:
+  - search

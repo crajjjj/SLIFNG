@@ -1,0 +1,69 @@
+# Body Profile Format
+
+Profiles live in `Data/SLIFNG/Bodies/*.ini`. They answer the one question skee cannot: *which BodySlide sliders does this actor's body actually have?* (skee's morph store accepts any name and silently drops unknown ones at apply time, so the only honest source is a file that says so.)
+
+## Resolution, per actor
+
+1. Every `.ini` in the folder loads at game start (alphabetical). `default.ini` is the fallback - the installer writes your body choice there.
+2. A profile may carry matchers: `Race=` (substring of the race EditorID - hard per-actor evidence; this is how UBE characters get UBE sliders inside a 3BA game) and `Plugin=` (a plugin's presence).
+3. First matching profile wins; otherwise `default.ini`; with no files at all, the built-in fallback is **node scaling only** - old SLIF's own out-of-the-box behaviour.
+
+Reloading: edit the INI, then `cgf "SLIFNG_Debug.Body"`-style reload is not needed - just reload a save (profiles are read at data load; the MCM actor page shows what each actor resolved to).
+
+## Schema
+
+```ini
+[Profile]
+Name=CBBE 3BA
+;Race=UBE_            ; optional matchers - see above
+;Plugin=UBE_AllRace.esp
+
+[slif_belly]
+FullScale=7.5         ; the node-scale DEVIATION at which sliders reach their Max
+Morph1=PregnancyBelly ; EXACT case, as in the body's .osp <Slider name="...">
+Morph1Max=1.0         ; slider value at FullScale
+[slif_breast]
+FullScale=10.0
+Morph1=BreastsNewSH
+Morph1Max=0.4
+Morph2=DoubleMelon
+Morph2Max=0.25
+Morph3=BreastsSmall
+Morph3Max=-0.2        ; negative = the slider runs in reverse
+```
+
+The applied share per slider is `(nodeValue - 1.0) * MorphMax / FullScale`, so a neutral actor gets exactly zero. Up to 16 `MorphN` entries per section; numbering must not skip.
+
+**A section you do not write means "this body cannot morph that"** and the target drives its skeleton bone instead - that is the supported way to say it, and it is why the node fallback is reachable at all. `slif_butt` and `slif_scrotum` ship unmapped on every profile for exactly this reason.
+
+## Custom regions
+
+Any section whose name is **not** a canonical `slif_*` key defines a *semantic region*, addressable by consumers as the key `region:<section>`:
+
+```ini
+[Weight]
+FullScale=2.0
+Morph1=ChubbyWaist
+Morph1Max=0.6
+Morph2=ChubbyButt
+Morph2Max=0.4
+```
+
+A consumer then sends intent, not slider names:
+
+```papyrus
+SLIF_Main.inflate(akActor, "My Mod", "region:weight", 1.4)
+```
+
+Node-scale semantics (`1.0` = neutral, folds across mods like any target), profile sliders only - there is no skeleton bone behind a region. On a profile without the section it is a logged no-op. This is the mechanism that lets a consumer (SGO4 being the intended first adopter) drop its own per-body FOMOD entirely: the profile decides sliders per body, the mod just says how much.
+
+A commented `[Weight]` template ships in the CBBE 3BA profile.
+
+## Shipped profiles
+
+| File | Matcher | Notes |
+|---|---|---|
+| `default.ini` | none (installer's choice) | CBBE 3BA / CBBE / BHUNP variant, or absent for node-only |
+| `UBE.ini` | `Race=UBE_` + `Plugin=UBE_AllRace.esp` | Always installed; slider names verified against the UBE 2.0 .osp, including the literal `" n|p"` suffix |
+
+Slider names in the CBBE 3BA and UBE profiles are verified against their reference `.osp` files; BHUNP's are sourced from old SLIF's own UUNP table and unverified against a live body - if a slider does not exist in your `morphs.tri`, skee silently drops it, so wrong names degrade to "nothing happens", never to errors.

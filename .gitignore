@@ -18,3 +18,4 @@ build/
 # NOTE: dist/ IS tracked on purpose - it is the shippable mod, mirroring
 # Beeing Female NG: the compiled .pex, the .esp/.seq and SLIFNG.dll are the
 # artifacts users install, so they are versioned with the sources that made them.
+site/

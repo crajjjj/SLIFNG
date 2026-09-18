@@ -84,6 +84,12 @@ New: a read API for asking what the framework holds.
   handshake pattern as skee). Read-only by design; both mirrors answer from
   the same core, so they can never disagree.
 
+## Documentation site
+
+Full documentation - player guide, MCM reference, the developer API, the
+aggregation math - lives at **https://crajjjj.github.io/SLIFNG/** (built from
+[docs/](docs/)).
+
 ## Documents
 
 - **[CONTRACT.md](CONTRACT.md)** - the pinned compatibility contract: exact
@@ -113,7 +119,7 @@ Already cloned without submodules? `git submodule update --init --recursive`
 
 ## Status
 
-**0.2.1, feature-complete and in testing - not yet released.** The engine,
+**0.3.0, feature-complete and in testing - not yet released.** The engine,
 shims, ESP, FOMOD, MCM, automatic migration, incremental inflation and the
 author API all ship and run in a live load order; Beeing Female NG, Fill Her
 Up and Sexlab Survival have been observed working together on one actor, and
