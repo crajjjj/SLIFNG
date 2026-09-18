@@ -35,11 +35,13 @@ mods call, natively, and diagnoses instead of failing silently.
 | **Body support** | One global body config for the whole game | Per-actor profiles: UBE characters auto-detected by race, everyone else uses your installer choice; verified slider names |
 | **Morphs vs nodes** | Node scaling only, unless you configure morphs yourself | Same default (node scaling), but the installer can switch belly/breasts to real BodySlide morphs |
 | **Several mods, one slider** | Morph contributions always stack, even under "highest wins" | The calculation type applies to sliders the same way it applies to nodes |
-| **Incremental inflation** | A Papyrus drain loop, per-step rebuilds; off by default | Native ramp, off the script engine entirely; on by default, MCM toggle |
+| **Incremental inflation** | A Papyrus drain loop, per-step rebuilds; off by default | Native ramp, off the script engine entirely; on by default, with an MCM speed multiplier that retimes growth already in progress |
 | **Old-save migration** | n/a | Automatic on first load; your characters keep their shape |
 | **Diagnostics** | Silent when something is wrong | Actor page in the MCM: who inflates what, what it becomes on your body, what RaceMenu actually shows; everything logged |
 | **State in your save** | Hundreds of StorageUtil keys in the Papyrus save | One compact native co-save record; self-heals on every load |
-| **For mod authors** | Write-only unless you dig | Query API in Papyrus and C++ (see below) |
+| **For mod authors** | Write-only unless you dig | Query API in Papyrus and C++, plus an event when a body finishes changing (see below) |
+| **Semantic regions** | n/a | A mod can inflate "weight" or "muscle" without naming a single slider; the body profile decides what that means per body |
+| **Load order** | A full plugin slot | ESL-flagged: no slot at all |
 | **Gone** | Grow/shrink/absorb spells, actor scanner, scrotum timer, presets JSON API, 17 translations, ~70 functions nothing calls | Deliberately dropped; an unknown call logs one loud, searchable line instead of failing quietly |
 
 The compatibility rules - including the handful of deliberate behaviour
@@ -65,8 +67,10 @@ event argument-order swap) - are all written down in
 3. Load your game. If the save ran old SLIF, the import runs by itself and
    reports how many values it carried over. Done.
 
-Settings live in one MCM page (calculation type, incremental inflation,
-overall magnitude); the second page is per-actor diagnostics.
+The plugin is ESL-flagged, so it costs no load-order slot.
+
+Settings live in one MCM page (calculation type, incremental inflation and
+its speed, overall magnitude); the second page is per-actor diagnostics.
 
 ## For mod authors
 
@@ -74,15 +78,31 @@ The write API is old SLIF's, unchanged - `SLIF_Main.inflate`,
 `SLIF_Morph.morph`, the mod events, all pinned from 1.2.2 bytecode. If your
 mod worked against SLIF, it works here.
 
-New: a read API for asking what the framework holds.
+New on top of it:
 
-- **Papyrus**: `SLIFNG.psc` - `IsTracked`, `GetTrackedActors`,
-  `GetNodeTargets`, `GetMorphTargets`, `GetModsDriving`, plus the value
-  getters (`GetValue`, `GetApplied`, `GetContribution`, `GetCombinedMorph`).
-- **C++ (SKSE plugins)**: copy [src/API/SLIFNG_API.h](src/API/SLIFNG_API.h)
-  into your project and exchange the interface over SKSE messaging (same
-  handshake pattern as skee). Read-only by design; both mirrors answer from
-  the same core, so they can never disagree.
+- **A read API** for asking what the framework holds. *Papyrus*: `SLIFNG.psc` -
+  `IsTracked`, `GetTrackedActors`, `GetNodeTargets`, `GetMorphTargets`,
+  `GetModsDriving`, plus the value getters (`GetValue`, `GetApplied`,
+  `GetContribution`, `GetCombinedMorph`). *C++ (SKSE plugins)*: copy
+  [src/API/SLIFNG_API.h](src/API/SLIFNG_API.h) into your project and exchange
+  the interface over SKSE messaging (same handshake pattern as skee).
+  Read-only by design; both mirrors answer from the same core, so they can
+  never disagree.
+- **`SLIFNG_Settled`**, a mod event fired when a target *stops* changing -
+  deliberately not per step. The signal you need if you place something on a
+  body and must wait for it to finish resizing first.
+- **`HasTarget` / `DrivenBy`** - would this write do anything on this actor,
+  and does it move the skeleton bone or only vertices? The second matters if
+  you rig anything to a bone, because morphs move no bones at all.
+- **Semantic regions** - send `region:weight` and let the actor's body profile
+  decide which sliders that means, so one call is correct on 3BA, UBE and
+  BHUNP alike. Ship a small overlay INI if a body does not define the region
+  you need; it adds to the user's profile instead of replacing it.
+
+Every release attaches **`SLIFNG-API-<version>+.zip`**: the C++ header, the
+three `.psc` a consumer compiles against, sample region overlays, and a
+`VERSIONS.txt` of the numbers to gate on. You do not need SLIF NG installed to
+build against it, and it creates no hard dependency.
 
 ## Documentation site
 
@@ -119,11 +139,14 @@ Already cloned without submodules? `git submodule update --init --recursive`
 
 ## Status
 
-**0.3.0, feature-complete and in testing - not yet released.** The engine,
-shims, ESP, FOMOD, MCM, automatic migration, incremental inflation and the
-author API all ship and run in a live load order; Beeing Female NG, Fill Her
-Up and Sexlab Survival have been observed working together on one actor, and
-a real old-SLIF save has been migrated. Before a public release: the
-remaining compatibility-matrix rows (Estrus, Devious Devices, Milk Mod
-Economy, a Beeing Female birth reset), and qotsafan's permission for shipping
-the `SexLab Inflation Framework.esp` plugin name.
+**Released, 0.4.2.** The engine, shims, ESP, FOMOD, MCM, automatic migration,
+incremental inflation and the author API all ship and run in a live load
+order. Beeing Female NG, Fill Her Up and Sexlab Survival have been observed
+working together on one actor; a real old-SLIF save has been migrated; and
+co-save persistence, the native ramp, the settle event and the ESL flag are
+each verified in game against `SLIFNG.log`.
+
+Still open: the remaining compatibility-matrix rows (Estrus, Devious Devices,
+Milk Mod Economy, a Beeing Female birth reset), and qotsafan's permission
+before any Nexus release, since the mod ships the
+`SexLab Inflation Framework.esp` plugin name.
