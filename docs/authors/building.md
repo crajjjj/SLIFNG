@@ -28,6 +28,21 @@ Sources live in `dist/Core/source/scripts/`, compiled output in `dist/Core/Scrip
 !!! warning "Always rebuild the whole script set"
     Papyrus bakes call arities into compiled callers. If a native signature in `SLIFNG.psc` changes, every shim that calls it must be recompiled in the same pass - a partial rebuild produces scripts that abort at run time with no compile error.
 
+## MCM translations
+
+Every string the MCM shows is a `$SLIFNG_*` key. The prose lives in `dist/Core/Interface/Translations/SexLab Inflation Framework_<LANGUAGE>.txt`: UTF-16 LE **with BOM**, one `$key<TAB>value` per line, `;` for a comment, `\n` for a line break.
+
+The file name is the **data file's** name, not `ModName` - the game resolves translations per active plugin ("`modname` is replaced by the name of the mod data file", [SkyUI: Localization](https://github.com/schlangster/skyui/wiki/MCM-Advanced-Features)) - so it has to keep the plugin's name, spaces and all.
+
+Two properties of that lookup shape the keys:
+
+- It is **whole-string**: `"$KEY"` is replaced, `"$KEY " + count` is not. A runtime value goes in through SkyUI's argument form instead - the script passes `"$KEY{" + value + "}"` and the txt keys it as `$KEY{}` with a `{}` where the value lands (that is how the pending import count reaches its row). That form is SkyUI's, not the game's: it works on menu strings but not on `Debug.Notification`, which is why the two migration notifications that report a count stay English.
+- A language with **no file of its own shows raw keys**, not English. So the English file ships copied under every language name; translating one is editing a copy in place, and nothing in the scripts changes.
+
+The Actor page's report rows are built by the engine (actor and slider names, mod keys, numbers) and are deliberately not translated - they are the same diagnostics that go into `SLIFNG.log` and into bug reports.
+
+Page names are stored in the save, so switching them to keys needs the save-side rebuild too: `OnConfigOpen` compares `Pages[0]` against the expected key and calls `BuildPages()` when it differs, which catches saves whose stored config version is already current.
+
 ## Repository layout
 
 ```
@@ -42,6 +57,7 @@ src/                      the SKSE plugin
   APIServer.cpp           serves API/SLIFNG_API.h over SKSE messaging
   API/SLIFNG_API.h        the public header other plugins copy
 dist/Core/                the shippable mod (ESP, SEQ, scripts, DLL, profiles)
+  Interface/Translations/ the MCM's strings, one file per language
 dist/Bodies/              the FOMOD's per-body default.ini variants
 dist/fomod/               installer metadata
 CONTRACT.md               the pinned compatibility contract - read this first

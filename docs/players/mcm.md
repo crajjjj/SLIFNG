@@ -62,3 +62,17 @@ A snapshot of one actor - the player, or whatever is under your crosshair (toggl
 | **Aggregation** | The active calculation type. |
 
 **Reset this actor** wipes everything SLIF NG stores for the shown actor and clears the applied inflation, behind a confirmation. Mods may or may not re-send their values afterwards - some push every game tick, others only on events (a meal, a scene, a pregnancy update) - so use it to clear stuck state, not as an undo.
+
+## Language
+
+The menu goes through SkyUI's translation system, so it can be translated without touching a script. The strings live in
+
+```
+Data/Interface/Translations/SexLab Inflation Framework_<LANGUAGE>.txt
+```
+
+one file per language, and SLIF NG ships all of them - every language currently holds the English text, so nobody sees raw `$SLIFNG_...` keys. To translate the menu into your language, open the file for it (`..._GERMAN.txt`, `..._RUSSIAN.txt`, ...) in a UTF-16 capable editor, translate the text to the **right** of each tab, leave the `$keys` on the left alone, and reload the game. Keep the file UTF-16 LE with its BOM; `\n` is a line break and a `;` line is a comment.
+
+Two things stay in English on purpose: the Actor page's report rows, which are diagnostics meant to be pasted into a bug report, and the two migration notifications that report a count, because a corner-of-the-screen notification cannot take a substituted value the way a menu string can.
+
+Translations are welcome as pull requests on [GitHub](https://github.com/crajjjj/SLIFNG).

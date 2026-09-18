@@ -36,6 +36,27 @@ int _oReset
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
 
+; ------------------------------------------------------------- translation
+; Every string this menu shows is a $key, resolved from
+; Data/Interface/Translations/<data file>_<LANGUAGE>.txt - for us
+; "SexLab Inflation Framework_ENGLISH.txt", because the game looks that file up
+; by the DATA FILE name, not by ModName (SkyUI wiki, Localization: "modname is
+; replaced by the name of the mod data file"). SL Widgets is the house
+; reference for the rest of the idiom: one $PREFIX_ per mod, keys in the psc,
+; prose only in the txt.
+;
+; The lookup is WHOLE-STRING - "$KEY" is replaced, "$KEY " + count is NOT - so
+; a runtime value goes in through SkyUI's argument form instead: pass
+; "$KEY{" + value + "}" and the txt holds the key as "$KEY{}" with a "{}"
+; where the value lands (ImportLabel; Apropos2 and Mini Needs do the same).
+; That form is SkyUI's, not the game's: it works on menu strings, not on
+; Debug.Notification, which is why the two counted notifications stay English.
+;
+; A language with no file of its own shows raw $keys, not English - which is
+; why the English file ships copied under every language name.
+String Property PAGE_SETTINGS = "$SLIFNG_Page_Settings" AutoReadOnly Hidden
+String Property PAGE_ACTOR = "$SLIFNG_Page_Actor" AutoReadOnly Hidden
+
 ; ---------------------------------------------------------------- versioning
 ; The SkyUI MCM versioning feature, in the SL Widgets idiom - see
 ; github.com/schlangster/skyui/wiki/MCM-Advanced-Features#Versioning.
@@ -100,6 +121,15 @@ Event OnVersionUpdate(int a_version)
 		BuildPages()
 		TryLegacyImport()
 	EndIf
+
+	If (a_version >= 403 && CurrentVersion < 403)
+		Debug.Trace(self + ": Updating script to version 403")
+		; 0.4.3 moved every menu string to translation keys, the PAGE NAMES
+		; included - a save from before it still holds the literal "Settings"
+		; and "Actor", which would leave the tabs showing untranslated text and
+		; OnPageReset falling through to the Settings branch for both.
+		BuildPages()
+	EndIf
 EndEvent
 
 ; P6, automatic, via MCM versioning: walk the reference's StorageUtil state
@@ -116,6 +146,9 @@ Function TryLegacyImport()
 		return
 	endif
 	Int moved = SLIFNG_Migrate.Run()
+	; English on purpose: SkyUI's "$KEY{arg}" substitution is a MENU feature, and
+	; the HUD notification path has nothing like it - a composed string there
+	; would only ever print verbatim.
 	Debug.Notification("SLIF NG: imported " + moved + " value(s) from the old SLIF save")
 EndFunction
 
@@ -123,20 +156,28 @@ Event OnConfigOpen()
 	; Self-heal, borrowed from SLO Aroused NG's `Pages.length < 4` guard: if a
 	; save somehow carries a stale page array while reporting a current version,
 	; rebuild anyway rather than showing a menu with pages missing.
-	if Pages.length != ExpectedPageCount()
+	;
+	; The name check is what carries the translation switch: a save written
+	; before it stores the old hard-coded "Settings"/"Actor" and needs the
+	; array rebuilt even though the page COUNT never changed - and its stored
+	; config version can already be the current one, so no version-ladder block
+	; would fire for it.
+	if Pages.length != ExpectedPageCount() || Pages[0] != PAGE_SETTINGS
 		BuildPages()
 	endIf
 EndEvent
 
 Function BuildPages()
+	; ModName is the mod's own name, not prose: it stays untranslated, the way
+	; SL Widgets keeps "SLWidgets".
 	ModName = "SLIF NG"
 	Pages = new String[2]
-	Pages[0] = "Settings"
-	Pages[1] = "Actor"
+	Pages[0] = PAGE_SETTINGS
+	Pages[1] = PAGE_ACTOR
 EndFunction
 
 Event OnPageReset(String a_page)
-	if a_page == "Actor"
+	if a_page == PAGE_ACTOR
 		RenderActorPage()
 	else
 		RenderSettingsPage()
@@ -153,33 +194,34 @@ Function RenderSettingsPage()
 	; pads whichever column runs out first.
 	SetCursorFillMode(LEFT_TO_RIGHT)
 
+	; The mod's own name and its version number are not prose - no key.
 	AddHeaderOption("SLIF NG " + ModVersion())
-	AddHeaderOption("Diagnostics")
+	AddHeaderOption("$SLIFNG_Hdr_Diagnostics")
 
-	_oVersion = AddTextOption("Engine API version", SLIFNG.GetVersion())
-	_oVerbose = AddToggleOption("Verbose logging", _verbose)
+	_oVersion = AddTextOption("$SLIFNG_Opt_EngineApi", SLIFNG.GetVersion())
+	_oVerbose = AddToggleOption("$SLIFNG_Opt_Verbose", _verbose)
 
-	_oEngine  = AddTextOption("RaceMenu / skee", EngineStatus())
-	_oDump    = AddTextOption("Dump to SLIFNG.log", "")
+	_oEngine  = AddTextOption("$SLIFNG_Opt_Engine", EngineStatus())
+	_oDump    = AddTextOption("$SLIFNG_Opt_Dump", "")
 
-	_oActors  = AddTextOption("Tracked actors", SLIFNG.TrackedActorCount())
+	_oActors  = AddTextOption("$SLIFNG_Opt_Tracked", SLIFNG.TrackedActorCount())
 	AddEmptyOption()
 
-	AddHeaderOption("Behaviour")
-	AddHeaderOption("Migration")
+	AddHeaderOption("$SLIFNG_Hdr_Behaviour")
+	AddHeaderOption("$SLIFNG_Hdr_Migration")
 
 	; ONE overall magnitude only. Per-slider multipliers exist in the engine
 	; (SLIFNG.SetTargetScale) but are deliberately not surfaced here - a load
 	; order can drive dozens of sliders and a page of per-slider knobs is the
 	; exact complexity this framework exists to avoid. Presets (P5) set them.
-	_oMode    = AddMenuOption("Calculation type", ModeName())
-	_oImport  = AddTextOption("Old-SLIF import", ImportLabel(), ImportFlags())
+	_oMode    = AddMenuOption("$SLIFNG_Opt_Mode", ModeName())
+	_oImport  = AddTextOption("$SLIFNG_Opt_Import", ImportLabel(), ImportFlags())
 
-	_oGradual = AddToggleOption("Incremental inflation", SLIFNG.IsIncrementalInflation())
-	_oSpeed   = AddSliderOption("Inflation speed", SLIFNG.GetRampSpeed(), "{2}x", SpeedFlags())
+	_oGradual = AddToggleOption("$SLIFNG_Opt_Gradual", SLIFNG.IsIncrementalInflation())
+	_oSpeed   = AddSliderOption("$SLIFNG_Opt_Speed", SLIFNG.GetRampSpeed(), "{2}x", SpeedFlags())
 	AddEmptyOption()
 
-	_oMaster  = AddSliderOption("Overall magnitude", SLIFNG.GetMasterScale(), "{2}x")
+	_oMaster  = AddSliderOption("$SLIFNG_Opt_Master", SLIFNG.GetMasterScale(), "{2}x")
 	AddEmptyOption()
 EndFunction
 
@@ -189,11 +231,13 @@ EndFunction
 ; run (e.g. the alias failed to fill).
 String Function ImportLabel()
 	if SLIFNG.HasMigrated()
-		return "done (automatic)"
+		return "$SLIFNG_Import_Done"
 	elseIf SLIFNG_Migrate.CountLegacyActors() == 0
-		return "nothing to import"
+		return "$SLIFNG_Import_None"
 	endIf
-	return "pending: " + SLIFNG_Migrate.CountLegacyActors() + " actor(s)"
+	; SkyUI's argument form: the txt keys this as "$SLIFNG_Import_Pending{}" and
+	; drops the count into the "{}" in its value.
+	return "$SLIFNG_Import_Pending{" + SLIFNG_Migrate.CountLegacyActors() + "}"
 EndFunction
 
 Int Function ImportFlags()
@@ -210,12 +254,12 @@ EndFunction
 ; SetMenuDialogStartIndex/Accept index maps 1:1 onto the native value.
 String[] Function ModeNames()
 	String[] names = new String[6]
-	names[0] = "Top X"
-	names[1] = "Highest wins"
-	names[2] = "Subtract and add one"
-	names[3] = "Square root"
-	names[4] = "Average"
-	names[5] = "Additive"
+	names[0] = "$SLIFNG_Mode_TopX"
+	names[1] = "$SLIFNG_Mode_Highest"
+	names[2] = "$SLIFNG_Mode_SubAddOne"
+	names[3] = "$SLIFNG_Mode_Sqrt"
+	names[4] = "$SLIFNG_Mode_Average"
+	names[5] = "$SLIFNG_Mode_Additive"
 	return names
 EndFunction
 
@@ -230,11 +274,11 @@ EndFunction
 
 String Function EngineStatus()
 	if !SLIFNG.IsMorphEngineReady()
-		return "NOT FOUND"
+		return "$SLIFNG_Engine_NotFound"
 	elseIf !SLIFNG.IsNodeEngineReady()
-		return "morphs only"
+		return "$SLIFNG_Engine_MorphsOnly"
 	endIf
-	return "OK"
+	return "$SLIFNG_Engine_OK"
 EndFunction
 
 ; ================================================================== Actor ====
@@ -248,9 +292,9 @@ EndFunction
 
 String Function TargetName()
 	if _useCrosshair
-		return "Crosshair target"
+		return "$SLIFNG_Target_Crosshair"
 	endIf
-	return "Player"
+	return "$SLIFNG_Target_Player"
 EndFunction
 
 Function RenderActorPage()
@@ -262,18 +306,21 @@ Function RenderActorPage()
 
 	Actor subject = SelectedActor()
 
-	_oTarget  = AddTextOption("Showing", TargetName())
-	_oRefresh = AddTextOption("Refresh", "")
-	_oLog     = AddTextOption("Write to SLIFNG.log", "")
-	_oReset   = AddTextOption("Reset this actor", "")
+	_oTarget  = AddTextOption("$SLIFNG_Opt_Showing", TargetName())
+	_oRefresh = AddTextOption("$SLIFNG_Opt_Refresh", "")
+	_oLog     = AddTextOption("$SLIFNG_Opt_LogActor", "")
+	_oReset   = AddTextOption("$SLIFNG_Opt_Reset", "")
 
 	if !subject
-		AddHeaderOption("Nothing under the crosshair")
+		AddHeaderOption("$SLIFNG_Hdr_NoTarget")
 		AddEmptyOption()
 		return
 	endIf
 
 	; Interleaved {label, value, ...}; an empty value means the pair is a header.
+	; NOT translated: these come from the engine and are diagnostics - actor and
+	; slider names, mod keys, numbers - the same text that goes to SLIFNG.log
+	; and into bug reports.
 	String[] left = SLIFNG.GetActorReportLeft(subject)
 	String[] right = SLIFNG.GetActorReportRight(subject)
 
@@ -361,9 +408,9 @@ Event OnOptionSelect(int a_option)
 	if a_option == _oReset
 		; The wipe itself is instant; whether the shape comes back is up to
 		; the mods - some re-send every tick, some only on events.
-		if ShowMessage("Wipe everything SLIF NG stores for this actor and clear the applied inflation?\n\nMods MAY OR MAY NOT re-send their values afterwards: some push every cycle tick, others only on events (a meal, a scene, a pregnancy update), so the shape can stay flat until they do.", true, "$Yes", "$No")
+		if ShowMessage("$SLIFNG_Msg_ResetActor", true, "$Yes", "$No")
 			SLIFNG.UnregisterMod(SelectedActor(), "All Mods")
-			Debug.Notification("SLIF NG: actor storage cleared")
+			Debug.Notification("$SLIFNG_Notif_ActorCleared")
 			ForcePageReset()
 		endIf
 	elseIf a_option == _oGradual
@@ -377,9 +424,10 @@ Event OnOptionSelect(int a_option)
 		SetToggleOptionValue(_oVerbose, _verbose)
 	elseIf a_option == _oDump
 		SLIFNG.DumpLedger()
-		Debug.Notification("SLIF NG: state written to SLIFNG.log")
+		Debug.Notification("$SLIFNG_Notif_Dumped")
 	elseIf a_option == _oImport
 		Int moved = SLIFNG_Migrate.Run()
+		; composed with a count, English - see TryLegacyImport
 		Debug.Notification("SLIF NG: imported " + moved + " contribution(s)")
 		ForcePageReset()   ; redraw so the option greys out
 	elseIf a_option == _oTarget
@@ -389,34 +437,34 @@ Event OnOptionSelect(int a_option)
 		ForcePageReset()
 	elseIf a_option == _oLog
 		SLIFNG.LogActorReport(SelectedActor())
-		Debug.Notification("SLIF NG: actor report written to SLIFNG.log")
+		Debug.Notification("$SLIFNG_Notif_ReportWritten")
 	endIf
 EndEvent
 
 Event OnOptionHighlight(int a_option)
 	if a_option == _oMode
-		SetInfoText("How several mods driving the same target combine - SLIF's own six types, applied across mods to nodes and sliders alike (one mod's own node+morph layers still add).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.")
+		SetInfoText("$SLIFNG_Info_Mode")
 	elseIf a_option == _oMaster
-		SetInfoText("How BIG everything this framework applies ends up. 1.00x is exactly what mods asked for; 0.50x halves every belly and breast; 0.00x suppresses all inflation. This is the final size, not how fast a body gets there - for that see Inflation speed. Applies instantly to every tracked actor.")
+		SetInfoText("$SLIFNG_Info_Master")
 	elseIf a_option == _oVerbose
-		SetInfoText("Logs every API call and every apply, with a skee readback per slider. Useful for diagnosis; turn it off for normal play.")
+		SetInfoText("$SLIFNG_Info_Verbose")
 	elseIf a_option == _oDump
-		SetInfoText("Writes every tracked actor's contributions and fold results to SKSE\\SLIFNG.log.")
+		SetInfoText("$SLIFNG_Info_Dump")
 	elseIf a_option == _oEngine
-		SetInfoText("Whether SLIF NG found RaceMenu's skee interfaces. 'morphs only' means node scaling is unavailable.")
+		SetInfoText("$SLIFNG_Info_Engine")
 	elseIf a_option == _oTarget
-		SetInfoText("Switch between the player and whatever is under your crosshair. Close the menu, look at an NPC, reopen.")
+		SetInfoText("$SLIFNG_Info_Target")
 	elseIf a_option == _oImport
-		SetInfoText("Runs by itself through the MCM version update on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
+		SetInfoText("$SLIFNG_Info_Import")
 	elseIf a_option == _oSpeed
-		SetInfoText("How QUICKLY a body grows or shrinks when a mod changes it. Higher is faster. This changes the speed of the change only - never the size it ends up at, which is Overall magnitude below. Takes effect at once, including on a body that is changing right now. Very low settings can stretch a change over a minute or more, which can look like nothing is happening.")
+		SetInfoText("$SLIFNG_Info_Speed")
 	elseIf a_option == _oGradual
-		SetInfoText("Bodies grow into a new size over a moment instead of snapping to it. On by default; use Inflation speed to pace it. A chastity belt closing, or a mod letting go of an actor, still applies instantly. Off = every change is immediate, which is what the old SLIF did.")
+		SetInfoText("$SLIFNG_Info_Gradual")
 	elseIf a_option == _oRefresh
-		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
+		SetInfoText("$SLIFNG_Info_Refresh")
 	elseIf a_option == _oReset
-		SetInfoText("Wipes every stored contribution for this actor and clears the applied inflation. Mods may or may not re-send their values afterwards - some only push on events - so use this to clear stuck state, not as an undo.")
+		SetInfoText("$SLIFNG_Info_Reset")
 	elseIf a_option == _oLog
-		SetInfoText("Writes exactly what this page shows to SKSE\\SLIFNG.log, so it can be pasted into a bug report.")
+		SetInfoText("$SLIFNG_Info_Log")
 	endIf
 EndEvent
