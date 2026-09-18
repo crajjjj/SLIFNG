@@ -200,8 +200,13 @@ namespace SLIFNG::Report
 				// Keys OTHER mods hold on this same slider. skee SUMS keys, so
 				// these stack on top of ours invisibly - the usual culprit when
 				// a belly is bigger than every number above explains.
+				// Tagged "(external)" because that is the load-bearing fact: the
+				// mod writes straight to skee under its own key, so it is in no
+				// ledger and NO calculation type arbitrates it. The tag rides in
+				// the value column - the label is already at its width budget.
 				for (const auto& [foreignKey, foreignValue] : Skee::ForeignMorphKeys(a_actor, name)) {
-					Row(out, "  also " + foreignKey.substr(0, 22), Num(foreignValue));
+					Row(out, "  also " + foreignKey.substr(0, 22),
+						std::format("{} (external)", Num(foreignValue)));
 				}
 			}
 		}

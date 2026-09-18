@@ -36,7 +36,7 @@ Red flags and what they mean:
 
 Nine problems out of ten are answered by MCM > SLIF NG > Actor for the affected character:
 
-- **Body bigger than expected?** Look for `also <key>` rows under Applied - another mod is writing the same slider under its own RaceMenu key, and RaceMenu *sums* keys. That stacking is outside SLIF NG's control (until that mod routes through it).
+- **Body bigger than expected?** Look for `also <key> ... (external)` rows under Applied - another mod is writing the same slider under its own RaceMenu key, and RaceMenu *sums* keys, so the visible body is your numbers **plus** that one. `(external)` means exactly that: the mod writes straight to skee, so it is in no ledger and no calculation type arbitrates it. OBody is the common one, and legitimately so - a per-NPC baseline shape is not an inflation. Nothing to fix unless the total is wrong for you; the stacking ends only if that mod routes through SLIF.
 - **Nothing visible at all?** Check `Body / Skeleton nodes` (a missing `NPC Belly` means no XPMSSE or a broken skeleton) and `RaceMenu / skee` on the Settings page.
 - **Morphs not moving?** The profile's sliders must exist in your body's `morphs.tri` - the body must be built in BodySlide with *Build Morphs* checked. `> drives bone scale` rows mean the profile maps that target to the bone, not to sliders. If the sliders are simply named differently on your body (the BHUNP profile's names are unverified), correct them in an [overlay](bodies.md#changing-a-profile-without-losing-it-on-update) rather than in the profile itself, which the next update overwrites.
 - **Stuck shape?** *Reset this actor* wipes SLIF NG's state for that character (mods may or may not re-send - some only push on events).
