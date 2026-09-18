@@ -3,7 +3,7 @@
 
 The kit is what another mod needs to integrate with SLIF NG, and nothing else:
 the C++ query header, the three Papyrus scripts a consumer compiles against,
-and a README.
+sample region overlays, and a README.
 
 Versions in VERSIONS.txt are read straight out of the sources that define them
 (the Papyrus API version from Papyrus.cpp, the query interface version from
@@ -25,6 +25,10 @@ RELEASE = os.path.join(ROOT, "Release")
 # Consumer-facing scripts. Verified self-contained: a consumer compiles against
 # these three plus PapyrusUtil and the vanilla sources, nothing else.
 PAPYRUS = ["SLIF_Main.psc", "SLIF_Morph.psc", "SLIFNG.psc"]
+
+# Sample region overlays, one per body, shipped verbatim from tools/api-kit.
+# Slider names in them are verified against each body's own .osp.
+EXAMPLES = ["MyMod-CBBE 3BA.ini", "MyMod-UBE.ini"]
 
 
 def grab(path, pattern, what):
@@ -56,6 +60,10 @@ def main():
     for name in PAPYRUS:
         shutil.copy2(os.path.join(SRC, name), os.path.join(staging, "papyrus"))
     shutil.copy2(os.path.join(KIT, "README.md"), staging)
+    os.makedirs(os.path.join(staging, "examples"))
+    for name in EXAMPLES:
+        shutil.copy2(os.path.join(KIT, "examples", name),
+                     os.path.join(staging, "examples"))
 
     with open(os.path.join(staging, "VERSIONS.txt"), "w", newline="\n") as fh:
         fh.write("\n".join([

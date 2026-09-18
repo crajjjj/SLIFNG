@@ -14,6 +14,7 @@ cpp/SLIFNG_API.h        C++ inter-plugin query API (SKSE plugins)
 papyrus/SLIF_Main.psc   node inflation - the pinned SLIF surface
 papyrus/SLIF_Morph.psc  body-slider morphs - the pinned SLIF surface
 papyrus/SLIFNG.psc      SLIF NG's own native surface (writes + enumeration)
+examples/*.ini          sample region overlays, one per body (see below)
 VERSIONS.txt            the versions to gate on
 ```
 
@@ -126,7 +127,16 @@ A **region** is a semantic key: your mod says *how much*, and the actor's body p
 which sliders that means - so one call works on 3BA, UBE and BHUNP without your mod knowing a
 single slider name. If the region you need isn't defined yet, ship a small overlay file
 (`Data/SLIFNG/Bodies/Regions/YourMod-<body>.ini`) rather than a whole profile, which would
-override the user's body choice. Format and rules: the `README.txt` in that folder, and
+override the user's body choice.
+
+`examples/` holds a working pair - `MyMod-CBBE 3BA.ini` and `MyMod-UBE.ini` - defining the same
+two regions from each body's own sliders, which is the whole pattern: **one small file per body
+you support, all naming the same regions, and your mod keeps sending one call**. Rename them
+after your mod (the filename is what stops two mods colliding) and tune the values. Every slider
+in them is verified against that body's `.osp`; a name a body lacks is silently dropped by skee,
+so a typo degrades to "nothing happens" rather than to an error.
+
+Full rules: the `README.txt` that ships in that folder, and
 <https://crajjjj.github.io/SLIFNG/authors/body-profiles/#region-overlays>.
 
 Mod names compare case-insensitively, and `"All Mods"` reads the aggregate.
