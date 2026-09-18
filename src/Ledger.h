@@ -249,7 +249,10 @@ namespace SLIFNG
 		std::unordered_map<std::string, float> _targetScales;
 		float _masterScale{ 1.0f };
 		bool _migrated{ false };
-		bool _gradual{ false };  // instant by default, as the reference ships
+		// ON by default - a deliberate SLIF NG choice (the reference shipped
+		// instant): bodies swelling in steps reads better than snapping, and
+		// the toggle is one MCM click away. A v7+ cosave keeps its saved value.
+		bool _gradual{ true };
 		// SLIF's Config.json calculation_type numbering; its default is Top X.
 		Calc::Type _mode{ Calc::Type::kTopX };
 		std::uint32_t _topX{ Calc::kDefaultTopX };

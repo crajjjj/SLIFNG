@@ -389,7 +389,7 @@ Event OnOptionHighlight(int a_option)
 	elseIf a_option == _oImport
 		SetInfoText("Runs by itself through the MCM version update on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
 	elseIf a_option == _oGradual
-		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. Hiding a node and unregistering stay instant. Off = instant, the old SLIF's default.")
+		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. On by default. Hiding a node and unregistering stay instant; Off = everything snaps, which is what the old SLIF shipped.")
 	elseIf a_option == _oRefresh
 		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
 	elseIf a_option == _oReset

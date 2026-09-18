@@ -422,8 +422,9 @@ rather than queue. Sliders derived from a ramping node follow it through the
 ledger's display override; one coalesced apply per actor per tick. Hide,
 unregister, and direct morphs stay instant; ramps pause while the game is
 paused, snap on unload/reload, and are cancelled when the toggle switches
-off. Off (instant) by default - the reference's own shipped default
-(SLIF_Util.GetDefaultInflationType = 1). MCM: "Incremental inflation".
+off. ON by default since 0.2.1 - a deliberate departure from the
+reference's instant default (SLIF_Util.GetDefaultInflationType = 1); instant
+is one MCM click away. MCM: "Incremental inflation".
 - [x] Interpolation off the Papyrus VM, per-row rate, one apply per actor
       per tick. Never a Papyrus drain loop.
 

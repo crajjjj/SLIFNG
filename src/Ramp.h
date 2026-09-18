@@ -24,9 +24,10 @@
 //    where the ramp was headed anyway.
 //
 // The on/off switch (Ledger::SetGradual) mirrors the reference's per-preset
-// inflation_type as one global toggle; the shipped default is instant, which
-// is also the reference's shipped default (SLIF_Util.GetDefaultInflationType
-// returns 1 = instant).
+// inflation_type as one global toggle. SLIF NG ships it ON - a deliberate
+// departure from the reference's instant default
+// (SLIF_Util.GetDefaultInflationType returns 1 = instant): stepped swelling
+// reads better, and instant is one MCM click away.
 
 #include <chrono>
 

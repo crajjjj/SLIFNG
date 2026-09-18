@@ -762,7 +762,7 @@ namespace SLIFNG
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
-		inst._gradual = false;
+		inst._gradual = true;  // the default for saves that predate the flag
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 
@@ -879,7 +879,7 @@ namespace SLIFNG
 				inst._targetScales.clear();
 				inst._masterScale = 1.0f;
 				inst._migrated = false;
-				inst._gradual = false;
+				inst._gradual = true;
 				inst._display.clear();
 				inst._mode = Calc::Type::kTopX;
 				inst._topX = Calc::kDefaultTopX;
@@ -900,7 +900,7 @@ namespace SLIFNG
 		inst._targetScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
-		inst._gradual = false;
+		inst._gradual = true;
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 		logger::info("[Ledger] reverted");

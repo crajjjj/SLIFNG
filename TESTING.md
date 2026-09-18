@@ -167,14 +167,14 @@ Regression to watch: the config revision must stay ABOVE 122 forever - SkyUI
 only fires version updates on an increase, and a migrating save starts at the
 reference's 122.
 
-## T5 — Incremental inflation
+## T5 — Incremental inflation (ON by default)
 
 ```
-cgf "SLIFNG_Debug.Gradual" true
 cgf "SLIFNG_Debug.IPlayer" "RampTest" "slif_belly" 3.0
 ```
 
-The belly must swell in visible steps (0.1 per quarter second by default -
+Incremental is the shipped default (`cgf "SLIFNG_Debug.Gradual" false` for
+instant). The belly must swell in visible steps (0.1 per quarter second by default -
 about 5 seconds to reach 3.0), not snap; `[Apply]` lines tick in the log with
 the display value climbing. `GetValue(player, "All Mods", "slif_belly")`
 mid-ramp returns the in-flight value, as the reference's queue did. Opening a

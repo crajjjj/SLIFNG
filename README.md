@@ -35,7 +35,7 @@ mods call, natively, and diagnoses instead of failing silently.
 | **Body support** | One global body config for the whole game | Per-actor profiles: UBE characters auto-detected by race, everyone else uses your installer choice; verified slider names |
 | **Morphs vs nodes** | Node scaling only, unless you configure morphs yourself | Same default (node scaling), but the installer can switch belly/breasts to real BodySlide morphs |
 | **Several mods, one slider** | Morph contributions always stack, even under "highest wins" | The calculation type applies to sliders the same way it applies to nodes |
-| **Incremental inflation** | A Papyrus drain loop, per-step rebuilds | Native ramp, off the script engine entirely; same on/off idea, MCM toggle |
+| **Incremental inflation** | A Papyrus drain loop, per-step rebuilds; off by default | Native ramp, off the script engine entirely; on by default, MCM toggle |
 | **Old-save migration** | n/a | Automatic on first load; your characters keep their shape |
 | **Diagnostics** | Silent when something is wrong | Actor page in the MCM: who inflates what, what it becomes on your body, what RaceMenu actually shows; everything logged |
 | **State in your save** | Hundreds of StorageUtil keys in the Papyrus save | One compact native co-save record; self-heals on every load |

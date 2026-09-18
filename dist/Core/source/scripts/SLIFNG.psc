@@ -62,10 +62,11 @@ Float Function GetApplied(Actor kActor, String target) Global Native
 Float Function GetCombinedMorph(Actor kActor, String morphName) Global Native
 
 ; ---- incremental inflation (the reference's "Inflation Type") ---------------
-; Off (instant) by default - the reference's shipped default too. When on,
-; node-value CHANGES step toward their new fold by each row's increment every
-; quarter second, entirely off the Papyrus VM; hide/unregister stay instant.
-; Turning it off snaps every in-flight ramp to its final value.
+; ON by default (a deliberate SLIF NG choice; the reference shipped instant).
+; When on, node-value CHANGES step toward their new fold by each row's
+; increment every quarter second, entirely off the Papyrus VM;
+; hide/unregister stay instant. Turning it off snaps every in-flight ramp to
+; its final value.
 Function SetIncrementalInflation(Bool enabled) Global Native
 Bool Function IsIncrementalInflation() Global Native
 
