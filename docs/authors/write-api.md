@@ -2,6 +2,9 @@
 
 Everything here is old SLIF's own surface, pinned from 1.2.2 bytecode. Signatures are **frozen**: Papyrus bakes argument lists into compiled callers, so names, order, types and count never change. If your mod already integrates with SLIF, you have nothing to do.
 
+!!! tip "Integration kit"
+    Every release attaches `SLIFNG-API-<version>+.zip` ([releases](https://github.com/crajjjj/SLIFNG/releases)) — the C++ query header, the three `.psc` a consumer compiles against (`SLIF_Main`, `SLIF_Morph`, `SLIFNG`), and a `VERSIONS.txt` of the numbers to gate on. You do **not** need SLIF NG installed to build against it, and it adds no hard dependency. Build it yourself with `python tools/pack-api-kit.py`.
+
 ## Values in one paragraph
 
 Node targets are multiplicative scales, `1.0` = neutral (Beeing Female sends `scale + 1`). Morphs are additive weights, `0.0` = neutral, and **exactly `0.0` clears your contribution**. `minimum/maximum/multiplier/increment` accept `-1.0` for "keep the defaults" (0 / 100 / 1.0 / 0.1); your value is clamped into `[min, max]` and multiplied by `multiplier` before aggregation. `increment` is the per-quarter-second step when incremental inflation is on. `oldModName` names the NiOverride key your mod used *before* handing control over - it is cleaned once per actor per session, which is how a mid-save handover avoids double inflation.

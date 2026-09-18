@@ -49,6 +49,21 @@ PLAN.md                   architecture and phase history
 TESTING.md                the log-driven smoke procedure (cgf drivers)
 ```
 
+## Packaging a release
+
+```sh
+python tools/pack-api-kit.py    # -> Release/SLIFNG-API-<version>+.zip
+```
+
+Packages the integration kit: `src/API/SLIFNG_API.h`, the three consumer-facing scripts, the
+README from `tools/api-kit/`, and a `VERSIONS.txt` whose numbers are read out of the sources
+that define them (`kApiVersion` from `Papyrus.cpp`, `kQueryVersion` from `SLIFNG_API.h`, the mod
+version from `SLIFNG_Version.psc`) so they cannot drift from what the mod reports at runtime.
+
+The mod archive itself is `dist/` zipped with `Core`, `Bodies` and `fomod` at the root — that is
+the FOMOD the installer reads. Both zips go on the GitHub release; `Release/` is build output and
+is not tracked.
+
 ## Testing
 
 There is no test suite in the usual sense; there is a **log-driven smoke procedure**. `TESTING.md` walks it: `cgf "SLIFNG_Debug.SmokeTest"` exercises the whole pipeline from the console with no consumer mod installed, and every assertion is a line you can grep in `SLIFNG.log`. The compatibility matrix in `PLAN.md` (P7) is the release gate.
