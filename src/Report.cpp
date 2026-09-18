@@ -133,15 +133,19 @@ namespace SLIFNG::Report
 				any = true;
 			}
 			// What the node value BECOMES on this actor's body, so the page
-			// answers "how does slif_belly relate to my morphs" by itself:
-			// either the profile transforms it into sliders (weight per +1.0
-			// of scale), or it stays a skeleton bone scale.
+			// answers "how does slif_belly relate to my morphs" by itself.
+			// This is the RESULT - the slider value these contributions
+			// currently produce - not the profile's conversion rate: sitting
+			// directly under the mod rows, a rate reads as one more mod's
+			// contribution and invites exactly the wrong subtraction.
 			if (!IsMorphTarget(target)) {
 				const auto* blends = BodyProfile::BlendFor(a_actor, target);
 				if (blends && !blends->empty()) {
+					// Node scales are 1.0-neutral, so only the deviation drives
+					// sliders; same arithmetic the apply path uses.
+					const float deviation = ledger.Aggregate(formID, target) - 1.0f;
 					for (const auto& blend : *blends) {
-						Row(out, "  > drives " + blend.slider,
-							std::format("{} / +1.0", Num(blend.weight)));
+						Row(out, "  > drives " + blend.slider, Num(deviation * blend.weight));
 					}
 				} else {
 					Row(out, "  > drives",
