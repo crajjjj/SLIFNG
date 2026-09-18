@@ -93,6 +93,77 @@ It fires **once per target**, so an actor whose belly and breasts both settle se
 
 Requires `SLIFNG.GetVersion() >= 5`.
 
+## Recipe: acting on a finished shape
+
+The case this surface exists for: a mod that attaches something to a body and must place it correctly *after* SLIF NG has finished resizing her. OLactis is the worked example - it equips an invisible armor addon carrying two particle emitters rigged to the breast bones, and the emitters have to sit on the nipple.
+
+Three questions have to be answered from outside SLIF NG, and each maps to one call:
+
+| Question | Answer |
+|---|---|
+| When is it safe to measure? | the `SLIFNG_Settled` event - never mid-ramp |
+| How much has she grown? | the event's `value` (or `GetApplied`) - node-space, identical on every body |
+| Did the **bone** move? | `DrivenBy` - decides whether compensation is needed at all |
+
+```papyrus
+Scriptname MyEmitters extends Quest
+
+Armor Property EmitterArmor Auto
+
+Event OnInit()
+    Hook()
+EndEvent
+
+Event OnPlayerLoadGame()
+    Hook()                       ; registrations do not survive a save
+EndEvent
+
+Function Hook()
+    if Game.IsPluginInstalled("SexLab Inflation Framework.esp") && SLIFNG.GetVersion() >= 5
+        RegisterForModEvent("SLIFNG_Settled", "OnSlifSettled")
+    endIf
+EndFunction
+
+Event OnSlifSettled(String eventName, String target, Float value, Form sender)
+    if target != "slif_breast"
+        return                   ; belly, butt, sliders... not ours
+    endIf
+    Actor who = (sender as Actor)
+    if who
+        Refit(who, value)
+    endIf
+EndEvent
+
+Function Refit(Actor who, Float scale)
+    Float offset = BaseOffset(who)          ; your own 0-weight / 100-weight lerp
+
+    ; Emitters hang off NPC L/R Breast03. Under NODE scaling the parent bone
+    ; carries them and they are already in place; under SLIDERS only vertices
+    ; move, so they would be left behind.
+    if SLIFNG.DrivenBy(who, "slif_breast") == "sliders"
+        offset = offset + GrowthOffset(scale)
+    endIf
+
+    ApplyEmitters(who, offset)              ; set offsets, THEN equip
+EndFunction
+```
+
+Four things that example is doing deliberately:
+
+- **Gate on `GetVersion()`, not the mod version.** It returns `0` when the DLL is absent, so one check covers "no SLIF", "old SLIF" and "SLIF NG too old".
+- **Re-register in `OnPlayerLoadGame`.** Mod event registrations do not survive a save. This is the most common integration bug there is.
+- **No SLIF script is a property.** Property types resolve at script *load*, so `SLIFNG Property ...` would make the whole script fail to load with SLIF absent. Global calls resolve lazily at call time - which is what makes an optional dependency possible.
+- **The `DrivenBy` branch is not optional.** On a bone-driven body, adding a growth offset would double-count, because the bone already carried the attachment outward.
+
+### Where the boundary is
+
+**SLIF NG owns "how much", your mod owns "where".** We know slider values and node scales; we have no idea where a nipple is. That is mesh geometry - it would mean walking the deformed `NiAVObject` tree and knowing which vertices count as a nipple on each body, which is both a different domain and body-specific in a way the profile format deliberately is not.
+
+So offset math stays in the consumer. What SLIF NG guarantees is that the three inputs above are correct, body-agnostic and correctly timed; given those, the offset is a pure function.
+
+!!! note "Why morphs cannot just move the bone"
+    It would be tempting for SLIF NG to apply a small node scale alongside morphs so attachments follow automatically. It does not, and should not: that would visibly double-scale the body to fix one consumer's attachment problem. Morphs moving vertices and not bones is inherent to how BodySlide works, not a gap to paper over.
+
 ## C++ (other SKSE plugins)
 
 Copy [`src/API/SLIFNG_API.h`](https://github.com/crajjjj/SLIFNG/blob/main/src/API/SLIFNG_API.h) into your project - it is self-contained (only a forward declaration of `RE::Actor`) - and exchange the interface over SKSE messaging, the same handshake pattern skee itself uses:
