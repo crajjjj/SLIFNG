@@ -25,6 +25,15 @@
 // A profile maps each vocabulary key to a morph blend. A key the profile does
 // NOT list has no usable slider on that body and falls through to the node
 // path - which is what makes the fallback reachable at all.
+//
+// OVERLAYS (Bodies/Regions/*.ini) add or replace sections in a profile without
+// editing it. A profile is a whole file and only one wins per actor, so without
+// this a consumer mod could not contribute a custom region at all: it would
+// have to overwrite the user's body choice to add one section. An overlay names
+// the profile it applies to by Name= (the body is what decides slider names,
+// not the actor), so a mod ships one small file per body it knows, each under
+// its own filename - nothing ever file-conflicts in a mod manager. Merging
+// happens once at load, so nothing downstream of ForActor changes.
 
 namespace SLIFNG::BodyProfile
 {
@@ -46,6 +55,9 @@ namespace SLIFNG::BodyProfile
 		std::string race;      // substring matched against the race EditorID
 		std::vector<std::string> plugins;  // any one present => match
 		bool isDefault{ false };
+		// Overlays only: the profile Name=s this applies to, lowercased ("*" = all).
+		// Empty on a profile; non-empty is what marks a file as an overlay.
+		std::vector<std::string> appliesTo;
 		std::unordered_map<std::string, Target> targets;  // canonical key -> blend
 	};
 
@@ -63,6 +75,13 @@ namespace SLIFNG::BodyProfile
 	// path. The FormID overload exists for the ledger fold, which only holds ids.
 	[[nodiscard]] const std::vector<Blend>* BlendFor(RE::Actor* a_actor, const std::string& a_key);
 	[[nodiscard]] const std::vector<Blend>* BlendForID(RE::FormID a_actor, const std::string& a_key);
+
+	// Whether this actor's profile actually drives a_key with sliders. Lets a
+	// consumer branch BEFORE writing, instead of inferring from a write that
+	// returns false for several unrelated reasons: for a region (profile-only,
+	// no bone behind it) false means the call would be a logged no-op, so the
+	// consumer can fall back to a canonical key.
+	[[nodiscard]] bool HasTarget(RE::Actor* a_actor, const std::string& a_key);
 
 	// Actor -> profile assignments are session state; drop them with the save.
 	void ClearCache();

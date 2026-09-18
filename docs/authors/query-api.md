@@ -20,6 +20,7 @@ Float Function GetContribution(Actor kActor, String modName, String target) Glob
 Float Function GetCombinedMorph(Actor kActor, String morphName) Global Native  ; the slif_<morph> total
 
 ; enumeration - "what is there to ask about"
+Bool     Function HasTarget(Actor kActor, String target) Global Native  ; would a write do anything?
 Bool     Function IsTracked(Actor kActor) Global Native
 Actor[]  Function GetTrackedActors() Global Native
 String[] Function GetNodeTargets(Actor kActor) Global Native    ; canonical keys with stored state
@@ -33,6 +34,24 @@ Float Function GetTargetScale(...) / GetActorTargetScale(...) Global Native
 ```
 
 A `scaleId` is the lowercase slider name for a morph target or the canonical key for a node target (`"pregnancybelly"`, `"slif_butt"`). Apply multiplies `master * target * actor`.
+
+### `HasTarget` — ask before you write
+
+A write returns `false` for several unrelated reasons (unchanged value, dead key, unknown key, no engine), so it cannot tell you *why* nothing happened. `HasTarget` answers the one question you need first: **would writing to this target do anything on this actor?**
+
+```papyrus
+if SLIFNG.HasTarget(kActor, "region:weight")
+    SLIF_Main.inflate(kActor, "My Mod", "region:weight", 1.4)
+else
+    SLIF_Main.inflate(kActor, "My Mod", "slif_belly", 1.15)   ; bone fallback
+endif
+```
+
+- A **canonical key** (`slif_belly`) or a **morph** (`morph:X`) is always `true` — worst case the skeleton node drives it.
+- A **region** (`region:weight`) is `true` only when this actor's profile (or an [overlay](body-profiles.md#region-overlays)) defines that section, because a region is sliders or nothing.
+- Dead keys (`slif_breast01`) and unknown spellings are `false`.
+
+Requires `SLIFNG.GetVersion() >= 3`; on an older build the function does not exist, so guard the call site if you support both.
 
 ## C++ (other SKSE plugins)
 
@@ -51,9 +70,14 @@ if (msg.query) {  // null when SLIF NG is not installed - no link-time coupling
     const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
     const bool  busy  = msg.query->IsTracked(actor);
 }
+if (msg.query2) {  // query version 2+; null on an older SLIF NG
+    const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+}
 ```
 
-`IQueryInterface1` carries: `Version`, `IsTracked`, `TrackedActorCount`, `GetValue`, `GetMinValue`, `GetMaxValue`, `GetApplied`, `GetCombinedMorph`, `GetCalculationType`, `IsIncrementalInflation`. It is **read-only by design** - mutations go through the pinned Papyrus surface, which is the compatibility contract. The pointer stays valid for the process lifetime and every call is thread-safe (the store is mutex-guarded); breaking changes would ship as an `IQueryInterface2` beside it, never by editing v1.
+`IQueryInterface1` carries: `Version`, `IsTracked`, `TrackedActorCount`, `GetValue`, `GetMinValue`, `GetMaxValue`, `GetApplied`, `GetCombinedMorph`, `GetCalculationType`, `IsIncrementalInflation`. `IQueryInterface2` adds `HasTarget`. Both are **read-only by design** - mutations go through the pinned Papyrus surface, which is the compatibility contract. The pointer stays valid for the process lifetime and every call is thread-safe (the store is mutex-guarded).
+
+Interfaces are versioned by **addition**: an existing `IQueryInterfaceN` is never edited, so a plugin built against an older header keeps working untouched. The exchange struct grows with each one, and SLIF NG treats its size as a lower bound - it fills `query` for everyone and only writes `query2` when your dispatch was large enough to hold it. Always null-check the pointer you are about to use.
 
 ## Legacy StorageUtil mirror
 

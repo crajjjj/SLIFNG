@@ -20,6 +20,9 @@
 //   if (msg.query) {
 //       const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 //   }
+//   if (msg.query2) {   // newer surface; null on an older SLIF NG
+//       const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+//   }
 //
 // msg.query stays null when SLIF NG is not installed - no link-time coupling.
 // The pointer is valid for the lifetime of the game process; every call is
@@ -41,9 +44,9 @@ namespace RE
 
 namespace SLIFNG_API
 {
-	// Bump only on breaking changes to IQueryInterface1's layout; additions
-	// come as IQueryInterface2 alongside it, never by editing this one.
-	inline constexpr std::uint32_t kQueryVersion = 1;
+	// Bump when a new IQueryInterfaceN is added; never edit an existing one's
+	// layout. Version() reports the newest interface this SLIF NG serves.
+	inline constexpr std::uint32_t kQueryVersion = 2;
 
 	class IQueryInterface1
 	{
@@ -82,6 +85,21 @@ namespace SLIFNG_API
 		virtual bool IsIncrementalInflation() const = 0;
 	};
 
+	// Added in query version 2. Null on an older SLIF NG - check before use.
+	class IQueryInterface2 : public IQueryInterface1
+	{
+	public:
+		// Would a write to this target do anything on this actor?
+		//
+		// A canonical key ("slif_belly") or a morph ("morph:X") is always true:
+		// worst case the skeleton node drives it. A semantic region
+		// ("region:weight") is true only when this actor's body profile defines
+		// that section, because a region is sliders or nothing - so this is the
+		// branch to take before sending one, with a canonical key as fallback.
+		// Dead keys and unknown spellings are false.
+		virtual bool HasTarget(RE::Actor* a_actor, const char* a_target) const = 0;
+	};
+
 	struct InterfaceExchangeMessage
 	{
 		enum : std::uint32_t
@@ -90,5 +108,9 @@ namespace SLIFNG_API
 		};
 
 		IQueryInterface1* query{ nullptr };
+		// Query version 2+. Stays null both when SLIF NG is absent and when it
+		// is older than this header - the struct grew, and SLIF NG only writes
+		// this field if your dispatch was large enough to hold it.
+		IQueryInterface2* query2{ nullptr };
 	};
 }

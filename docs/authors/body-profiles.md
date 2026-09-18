@@ -59,6 +59,49 @@ Node-scale semantics (`1.0` = neutral, folds across mods like any target), profi
 
 A commented `[Weight]` template ships in the CBBE 3BA profile.
 
+Because a region can silently do nothing, a consumer should ask first and keep a fallback:
+
+```papyrus
+if SLIFNG.HasTarget(akActor, "region:weight")
+    SLIF_Main.inflate(akActor, "My Mod", "region:weight", 1.4)
+else
+    SLIF_Main.inflate(akActor, "My Mod", "slif_belly", 1.15)   ; bone fallback
+endif
+```
+
+See [`HasTarget`](query-api.md#hastarget-ask-before-you-write) (needs `SLIFNG.GetVersion() >= 3`).
+
+## Region overlays
+
+A profile is a whole file and only one wins per actor, so a consumer mod cannot add a region to it without overwriting the user's body choice. **Overlays** solve that: every `.ini` in `Data/SLIFNG/Bodies/Regions/` has its sections merged into the profiles it names, at load, without touching them.
+
+```ini
+; Data/SLIFNG/Bodies/Regions/SGO4-3BA.ini
+[Overlay]
+Profile=CBBE 3BA        ; matches a profile's Name=, or * for every body
+
+[MuscleMass]
+FullScale=2.0
+Morph1=MuscleDefinition
+Morph1Max=0.7
+```
+
+Same schema as a profile, plus `[Overlay] Profile=`. It matches on the profile's **`Name=`**, not on race or plugin, because a region is a set of sliders and sliders are a property of the *body* - and `Name=` is the only thing that identifies which body a profile describes, whether that profile is `default.ini` or a matcher-selected file like `UBE.ini`.
+
+Two audiences:
+
+- **Mod authors.** Ship one small file per body you know (`MyMod-3BA.ini`, `MyMod-UBE.ini`), each naming its own `Profile=`. Name files after your mod so they can never collide - overlays are separate files, so any number of mods coexist.
+- **Users.** Correct or tune a slider for your own body without editing a shipped profile that the next update overwrites.
+
+Rules:
+
+- A whole **section** is the unit: an overlay section *replaces* the profile's. That is what makes fixing a wrong shipped slider name possible.
+- Overlays apply in **alphabetical order, last wins**. Name yours `zz-*.ini` to beat everything else. A collision between two overlays is written to `SLIFNG.log`, never silent.
+- They can redefine canonical keys (`[slif_belly]`) too, not just custom regions.
+- Merging happens once at load, so there is no per-actor cost.
+
+`SLIFNG.log` records every overlay it loaded and which profiles it merged into; the folder ships a `README.txt` with the same reference.
+
 ## Shipped profiles
 
 | File | Matcher | Notes |

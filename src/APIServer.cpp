@@ -12,7 +12,7 @@ namespace SLIFNG::APIServer
 		// One static implementation behind the public pure-virtual contract.
 		// Everything routes through Query so a C++ caller and a Papyrus caller
 		// can never get different answers.
-		class QueryImpl final : public SLIFNG_API::IQueryInterface1
+		class QueryImpl final : public SLIFNG_API::IQueryInterface2
 		{
 		public:
 			static QueryImpl* GetSingleton()
@@ -24,6 +24,11 @@ namespace SLIFNG::APIServer
 			std::uint32_t Version() const override
 			{
 				return SLIFNG_API::kQueryVersion;
+			}
+
+			bool HasTarget(RE::Actor* a_actor, const char* a_target) const override
+			{
+				return Query::HasTarget(a_actor, a_target);
 			}
 
 			bool IsTracked(RE::Actor* a_actor) const override
@@ -75,16 +80,27 @@ namespace SLIFNG::APIServer
 			}
 		};
 
+		// The exchange struct GROWS as interfaces are added, so its size is a
+		// lower bound, never an equality test: a consumer built against the v1
+		// header dispatches a smaller struct and must still be served, and we
+		// must never write a field past what it allocated.
+		constexpr std::size_t kExchangeSizeV1 = sizeof(SLIFNG_API::IQueryInterface1*);
+
 		void OnPluginMessage(SKSE::MessagingInterface::Message* a_msg)
 		{
 			if (!a_msg || a_msg->type != SLIFNG_API::InterfaceExchangeMessage::kMessageType ||
-				!a_msg->data || a_msg->dataLen != sizeof(SLIFNG_API::InterfaceExchangeMessage)) {
+				!a_msg->data || a_msg->dataLen < kExchangeSizeV1) {
 				return;
 			}
 			auto* exchange = static_cast<SLIFNG_API::InterfaceExchangeMessage*>(a_msg->data);
 			exchange->query = QueryImpl::GetSingleton();
-			logger::info("[API] query interface v{} handed to '{}'", SLIFNG_API::kQueryVersion,
-				a_msg->sender ? a_msg->sender : "<unnamed plugin>");
+			const bool wantsV2 = a_msg->dataLen >= sizeof(SLIFNG_API::InterfaceExchangeMessage);
+			if (wantsV2) {
+				exchange->query2 = QueryImpl::GetSingleton();
+			}
+			logger::info("[API] query interface v{} handed to '{}' (consumer header: v{})",
+				SLIFNG_API::kQueryVersion, a_msg->sender ? a_msg->sender : "<unnamed plugin>",
+				wantsV2 ? 2 : 1);
 		}
 	}
 

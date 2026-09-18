@@ -45,6 +45,21 @@ contributions under, and it is what lets several mods inflate the same actor wit
 enumerating tracked actors, and querying another mod's row are SLIF NG additions - plain SLIF
 has no equivalent, so gate these on the version.
 
+**Ask before you write** when the target might not exist on this body:
+
+```papyrus
+if SLIFNG.HasTarget(akActor, "region:weight")
+	SLIF_Main.inflate(akActor, "My Mod", "region:weight", 1.4)
+else
+	SLIF_Main.inflate(akActor, "My Mod", "slif_belly", 1.15)   ; bone fallback
+endif
+```
+
+A write returns `false` for several unrelated reasons, so it can't tell you *why* nothing
+happened; `HasTarget` can. Canonical keys and morphs are always true (worst case the skeleton
+node drives them); a `region:` key is true only when the actor's body profile defines it.
+Needs `SLIFNG.GetVersion() >= 3`, and `msg.query2->HasTarget(...)` is the C++ equivalent.
+
 ## Detection and version gating
 
 ```papyrus
@@ -76,6 +91,9 @@ SKSE::GetMessagingInterface()->Dispatch(
 if (msg.query) {                       // null = SLIF NG not installed
     const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 }
+if (msg.query2) {                      // null on a SLIF NG older than this header
+    const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+}
 ```
 
 The interface is **read-only by design** - mutations go through the Papyrus surface above,
@@ -83,9 +101,11 @@ which is the one pinned, SLIF-compatible entry point. The returned pointer is va
 process lifetime and every call is thread-safe. An absent row returns **your** default, never an
 invented neutral, so you can always tell "nothing tracked" from "tracked at neutral".
 
-Feature-detect with `IQueryInterface1::Version()`. The interface is versioned by addition:
-breaking layout changes would arrive as `IQueryInterface2` alongside this one, never by editing
-it.
+Interfaces are versioned by **addition** - an existing `IQueryInterfaceN` is never edited - so a
+plugin built against an older header keeps working untouched. The exchange struct grows with
+each one, and SLIF NG treats its size as a lower bound: it fills `query` for every consumer and
+writes `query2` only when your dispatch was large enough to hold it. Null-check the pointer you
+are about to use; `Version()` reports the newest interface this build serves.
 
 ## Target spellings
 
@@ -97,6 +117,13 @@ Everywhere a target key is taken, all three of these are accepted and resolve to
 | raw skeleton node | `NPC Belly` | what Fill Her Up sends |
 | `morph:<slider>` | `morph:PregnancyBelly` | a BodySlide slider, read side |
 | `region:<name>` | `region:weight` | SLIF NG only - resolved through the actor's body profile |
+
+A **region** is a semantic key: your mod says *how much*, and the actor's body profile decides
+which sliders that means - so one call works on 3BA, UBE and BHUNP without your mod knowing a
+single slider name. If the region you need isn't defined yet, ship a small overlay file
+(`Data/SLIFNG/Bodies/Regions/YourMod-<body>.ini`) rather than a whole profile, which would
+override the user's body choice. Format and rules: the `README.txt` in that folder, and
+<https://crajjjj.github.io/SLIFNG/authors/body-profiles/#region-overlays>.
 
 Mod names compare case-insensitively, and `"All Mods"` reads the aggregate.
 

@@ -8,6 +8,9 @@ min/max/mult accept -1.0 = "keep defaults" (0 / 100 / 1.0).}
 ; API version of the native surface.
 ; 2: increment parameter on Inflate/Morph, incremental inflation, and the
 ;    enumeration surface for mod authors (IsTracked/GetTrackedActors/...).
+; 3: HasTarget - ask whether a target would do anything BEFORE writing to it,
+;    and region overlay files (Bodies/Regions/*.ini) so a consumer mod can
+;    contribute a custom region without owning the user's body profile.
 Int Function GetVersion() Global Native
 
 ; Returns true when the value changed and was applied (false = early-out,
@@ -85,6 +88,21 @@ Bool Function IsIncrementalInflation() Global Native
 ; The values come through GetValue / GetApplied / GetContribution /
 ; GetCombinedMorph above; these answer "what is there to ask about".
 ; C++ plugins get the same surface via messaging - see src/API/SLIFNG_API.h.
+; Would a write to this target actually do anything on this actor?
+; A canonical key ("slif_belly") or a morph ("morph:X") is always true - worst
+; case the skeleton node drives it. A "region:<name>" key is true only when the
+; actor's body profile defines that section, because a region is sliders or
+; nothing; that is the branch to take before sending one:
+;
+;   if SLIFNG.HasTarget(kActor, "region:weight")
+;       SLIF_Main.inflate(kActor, "My Mod", "region:weight", 1.4)
+;   else
+;       SLIF_Main.inflate(kActor, "My Mod", "slif_belly", 1.15)
+;   endif
+;
+; Dead keys and unknown spellings are false. Requires GetVersion() >= 3.
+Bool Function HasTarget(Actor kActor, String target) Global Native
+
 Bool Function IsTracked(Actor kActor) Global Native
 Actor[] Function GetTrackedActors() Global Native
 ; Canonical node keys with a stored contribution ("slif_belly", ...).

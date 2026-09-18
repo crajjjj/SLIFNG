@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BodyProfile.h"
 #include "Ledger.h"
 #include "Vocabulary.h"
 
@@ -121,5 +122,33 @@ namespace SLIFNG::Query
 	inline bool IsTracked(RE::Actor* a_actor)
 	{
 		return a_actor && Ledger::GetSingleton().HasEntries(a_actor->GetFormID());
+	}
+
+	// Would a write to this target do anything on this actor? The branch a
+	// consumer needs BEFORE writing, since a write returns false for several
+	// unrelated reasons and "the profile has no such section" is only visible
+	// in the log otherwise.
+	//
+	// A canonical key or a morph: always true - worst case the skeleton node
+	// drives it, which is the documented fallback. A "region:" key: only when
+	// the actor's profile defines that section, because a region is sliders or
+	// nothing. Dead keys and unknown spellings: false.
+	inline bool HasTarget(RE::Actor* a_actor, const char* a_target)
+	{
+		if (!a_actor || !a_target || !*a_target) {
+			return false;
+		}
+		const std::string lower = Lower(a_target);
+		if (Vocabulary::IsDeadKey(lower)) {
+			return false;  // bug-compatible no-op; never worth writing to
+		}
+		const std::string target = ResolveTarget(a_target);
+		if (target.empty()) {
+			return false;
+		}
+		if (!IsRegionTarget(target)) {
+			return true;
+		}
+		return BodyProfile::HasTarget(a_actor, target);
 	}
 }

@@ -64,7 +64,7 @@ def main():
             "Mod version           : %s  (SLIFNG_Version.GetVersion() == %s)" % (version, packed),
             "Papyrus API version   : %s  (SLIFNG.GetVersion(), 0 when SLIF NG is absent)"
             % papyrus_api,
-            "C++ query interface   : %s  (IQueryInterface1::Version())" % query_api,
+            "C++ query interface   : %s  (Version(); IQueryInterface<N> up to this)" % query_api,
             "",
             "Gate an optional integration on those, NOT on the mod version.",
             "",
@@ -72,7 +72,7 @@ def main():
             "unregister calls) is FROZEN by the compatibility contract, so it needs",
             "no gate at all: it is the same on plain SLIF SE and on SLIF NG.",
             "The read/enumeration surface is SLIF NG only - gate that on",
-            "SLIFNG.GetVersion() (Papyrus) or IQueryInterface1::Version() (C++).",
+            "SLIFNG.GetVersion() (Papyrus) or the query interface version (C++).",
             "",
             "Packaged from SLIF NG %s, and good for that version and later: the" % version,
             "pinned surface cannot change and the query interface only grows.",

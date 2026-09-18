@@ -8,6 +8,10 @@ namespace SLIFNG::BodyProfile
 	namespace
 	{
 		constexpr const char* kFolder = "Data/SLIFNG/Bodies";
+		constexpr const char* kOverlayFolder = "Data/SLIFNG/Bodies/Regions";
+		// An overlay says which profile it applies to by Name=; "*" means every
+		// profile (for a slider spelled the same on every body).
+		constexpr const char* kOverlayAny = "*";
 
 		std::vector<Profile> g_profiles;
 		const Profile* g_default = nullptr;
@@ -91,7 +95,7 @@ namespace SLIFNG::BodyProfile
 				if (section.empty()) {
 					return;
 				}
-				if (section == "profile") {
+				if (section == "profile" || section == "overlay") {
 					for (const auto& [k, v] : pairs) {
 						if (k == "name") {
 							a_out.name = v;
@@ -99,6 +103,9 @@ namespace SLIFNG::BodyProfile
 							a_out.race = Lower(v);
 						} else if (k == "plugin") {
 							a_out.plugins.push_back(v);
+						} else if (k == "profile") {
+							// [Overlay] Profile= - which body this applies to
+							a_out.appliesTo.push_back(Lower(v));
 						}
 					}
 				} else {
@@ -162,6 +169,84 @@ namespace SLIFNG::BodyProfile
 			}
 			return false;
 		}
+
+		std::string Join(const std::vector<std::string>& a_items)
+		{
+			std::string out;
+			for (const auto& item : a_items) {
+				if (!out.empty()) {
+					out += ", ";
+				}
+				out += item;
+			}
+			return out;
+		}
+
+		// Merge Bodies/Regions/*.ini into the profiles they name. A whole SECTION
+		// is the unit: an overlay section replaces a profile's, which is what lets
+		// a user correct a slider name without editing a shipped file that the
+		// next update overwrites. Applied alphabetically so a later file wins, and
+		// a collision between two overlays is logged rather than left silent.
+		// Runs once at load, so ForActor/BlendFor never learn overlays exist.
+		void ApplyOverlays()
+		{
+			std::error_code ec;
+			if (!std::filesystem::is_directory(kOverlayFolder, ec)) {
+				return;
+			}
+			std::vector<std::filesystem::path> files;
+			for (const auto& entry : std::filesystem::directory_iterator(kOverlayFolder, ec)) {
+				if (entry.is_regular_file(ec) && Lower(entry.path().extension().string()) == ".ini") {
+					files.push_back(entry.path());
+				}
+			}
+			std::sort(files.begin(), files.end());
+
+			std::vector<Profile> overlays;
+			for (const auto& file : files) {
+				Profile o;
+				if (!LoadFile(file, o)) {
+					continue;
+				}
+				if (o.appliesTo.empty()) {
+					// Living in Regions/ already says "this is an overlay"; only
+					// the scope is missing. Assume every body, but say so.
+					logger::warn("[BodyProfile] overlay {} has no [Overlay] Profile= - assuming '{}'",
+						o.file, kOverlayAny);
+					o.appliesTo.emplace_back(kOverlayAny);
+				}
+				logger::info("[BodyProfile] overlay '{}' from {} ({} section(s)) -> profile(s): {}",
+					o.name, o.file, o.targets.size(), Join(o.appliesTo));
+				overlays.push_back(std::move(o));
+			}
+			if (overlays.empty()) {
+				return;
+			}
+
+			for (auto& profile : g_profiles) {
+				const std::string profileName = Lower(profile.name);
+				std::unordered_map<std::string, std::string> setBy;  // section -> overlay file
+				for (const auto& overlay : overlays) {
+					const bool applies = std::any_of(overlay.appliesTo.begin(), overlay.appliesTo.end(),
+						[&](const std::string& n) { return n == kOverlayAny || n == profileName; });
+					if (!applies) {
+						continue;
+					}
+					for (const auto& [section, target] : overlay.targets) {
+						if (const auto prev = setBy.find(section); prev != setBy.end()) {
+							logger::warn("[BodyProfile] '{}': section [{}] from {} overridden by {}",
+								profile.name, section, prev->second, overlay.file);
+						}
+						profile.targets[section] = target;
+						setBy[section] = overlay.file;
+					}
+				}
+				if (!setBy.empty()) {
+					logger::info("[BodyProfile] '{}': {} section(s) merged from overlay(s)",
+						profile.name, setBy.size());
+				}
+			}
+		}
 	}
 
 	void Load()
@@ -198,6 +283,9 @@ namespace SLIFNG::BodyProfile
 		if (!hasDefault) {
 			g_profiles.push_back(BuiltInDefault());
 		}
+
+		ApplyOverlays();
+
 		for (const auto& p : g_profiles) {
 			if (p.isDefault) {
 				g_default = &p;
@@ -296,6 +384,12 @@ namespace SLIFNG::BodyProfile
 		}
 		const auto it = g_default->targets.find(ProfileKey(a_key));
 		return it == g_default->targets.end() ? nullptr : &it->second.morphs;
+	}
+
+	bool HasTarget(RE::Actor* a_actor, const std::string& a_key)
+	{
+		const auto* blends = BlendFor(a_actor, a_key);
+		return blends && !blends->empty();
 	}
 
 	void ClearCache()

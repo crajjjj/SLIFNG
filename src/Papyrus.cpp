@@ -18,7 +18,8 @@ namespace SLIFNG::Papyrus
 	{
 		// 2: increment parameter on Inflate/Morph, incremental inflation,
 		//    the enumeration surface for mod authors.
-		constexpr std::int32_t kApiVersion = 2;
+		// 3: HasTarget, and region overlays (Bodies/Regions/*.ini).
+		constexpr std::int32_t kApiVersion = 3;
 
 		// CONTRACT sec.4.1: exactly -1.0 means "not specified, keep the default".
 		// Tested for equality, not `< 0` / `<= 0`: a deliberate multiplier of 0
@@ -559,6 +560,11 @@ namespace SLIFNG::Papyrus
 		// The values themselves come through GetValue/GetApplied/GetContribution;
 		// these answer "what is there to ask about". The same surface is served
 		// to C++ plugins via API/SLIFNG_API.h.
+		bool HasTarget(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_target)
+		{
+			return Query::HasTarget(a_actor, a_target.c_str());
+		}
+
 		bool IsTracked(RE::StaticFunctionTag*, RE::Actor* a_actor)
 		{
 			return Query::IsTracked(a_actor);
@@ -739,6 +745,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetCombinedMorph", script, GetCombinedMorph);
 		a_vm->RegisterFunction("SetIncrementalInflation", script, SetIncrementalInflation);
 		a_vm->RegisterFunction("IsIncrementalInflation", script, IsIncrementalInflation);
+		a_vm->RegisterFunction("HasTarget", script, HasTarget);
 		a_vm->RegisterFunction("IsTracked", script, IsTracked);
 		a_vm->RegisterFunction("GetTrackedActors", script, GetTrackedActors);
 		a_vm->RegisterFunction("GetNodeTargets", script, GetNodeTargets);
