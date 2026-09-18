@@ -54,8 +54,13 @@ namespace SLIFNG::Ramp
 					continue;
 				}
 
+				// The user's speed preference scales the consumer's own increment.
+				// Read per tick rather than baked in at Begin, so dragging the
+				// MCM slider retimes ramps that are already travelling.
+				const float speed = ledger.GetRampSpeed();
 				std::vector<std::string> touched;
-				for (const auto& [target, step] : targets) {
+				for (const auto& [target, rawStep] : targets) {
+					const float step = rawStep * speed;
 					// Re-read the goal every tick: a consumer changing its mind
 					// mid-ramp retargets the ramp instead of fighting it.
 					float goal;

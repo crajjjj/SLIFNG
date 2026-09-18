@@ -117,6 +117,15 @@ namespace SLIFNG
 		[[nodiscard]] bool GetGradual() const;
 		void SetGradual(bool a_on);
 
+		// How fast a ramp travels, as a multiplier on the consumer's own
+		// increment. The step size belongs to the MOD (it is SLIF's per-row
+		// knob, pinned by the contract), so this is the one honest place for
+		// a user preference: it scales what the mod asked for instead of
+		// overriding it. Read every tick, so dragging the slider retimes
+		// ramps already in flight. Clamped to a sane band, never <= 0.
+		[[nodiscard]] float GetRampSpeed() const;
+		void SetRampSpeed(float a_speed);
+
 		// The value for ONE skee slider. Per MOD: its direct "morph:<slider>"
 		// contribution plus what its node values transform into through the
 		// actor's body profile - WITHIN a mod the two layers add (they are one
@@ -279,6 +288,7 @@ namespace SLIFNG
 		// instant): bodies swelling in steps reads better than snapping, and
 		// the toggle is one MCM click away. A v7+ cosave keeps its saved value.
 		bool _gradual{ true };
+		float _rampSpeed{ 1.0f };
 		// SLIF's Config.json calculation_type numbering; its default is Top X.
 		Calc::Type _mode{ Calc::Type::kTopX };
 		std::uint32_t _topX{ Calc::kDefaultTopX };

@@ -21,6 +21,7 @@ int _oEngine
 int _oActors
 int _oMode
 int _oGradual
+int _oSpeed
 int _oMaster
 int _oVerbose
 int _oDump
@@ -175,6 +176,7 @@ Function RenderSettingsPage()
 	_oImport  = AddTextOption("Old-SLIF import", ImportLabel(), ImportFlags())
 
 	_oGradual = AddToggleOption("Incremental inflation", SLIFNG.IsIncrementalInflation())
+	_oSpeed   = AddSliderOption("Inflation speed", SLIFNG.GetRampSpeed(), "{2}x", SpeedFlags())
 	AddEmptyOption()
 
 	_oMaster  = AddSliderOption("Overall magnitude", SLIFNG.GetMasterScale(), "{2}x")
@@ -319,24 +321,40 @@ Event OnOptionMenuAccept(int a_option, int a_index)
 	SetMenuOptionValue(_oMode, ModeName())
 EndEvent
 
-Event OnOptionSliderOpen(int a_option)
-	if a_option != _oMaster
-		return
+; Greyed out while inflation is instant: with no ramp there is nothing to pace.
+int Function SpeedFlags()
+	if SLIFNG.IsIncrementalInflation()
+		return OPTION_FLAG_NONE
 	endIf
-	SetSliderDialogStartValue(SLIFNG.GetMasterScale())
-	SetSliderDialogDefaultValue(1.0)
-	SetSliderDialogRange(0.0, 3.0)
-	SetSliderDialogInterval(0.05)
+	return OPTION_FLAG_DISABLED
+EndFunction
+
+Event OnOptionSliderOpen(int a_option)
+	if a_option == _oMaster
+		SetSliderDialogStartValue(SLIFNG.GetMasterScale())
+		SetSliderDialogDefaultValue(1.0)
+		SetSliderDialogRange(0.0, 3.0)
+		SetSliderDialogInterval(0.05)
+	elseIf a_option == _oSpeed
+		SetSliderDialogStartValue(SLIFNG.GetRampSpeed())
+		SetSliderDialogDefaultValue(1.0)
+		SetSliderDialogRange(0.1, 5.0)
+		SetSliderDialogInterval(0.1)
+	endIf
 EndEvent
 
 Event OnOptionSliderAccept(int a_option, float a_value)
-	if a_option != _oMaster
-		return
+	if a_option == _oMaster
+		; Re-applies every tracked actor: a magnitude change moves no stored
+		; contribution, so it cannot ride the normal value early-out.
+		SLIFNG.SetMasterScale(a_value)
+		SetSliderOptionValue(a_option, a_value, "{2}x")
+	elseIf a_option == _oSpeed
+		; No re-apply: the ramp ticker reads this every step, so anything
+		; in flight retimes itself and anything finished is already there.
+		SLIFNG.SetRampSpeed(a_value)
+		SetSliderOptionValue(a_option, a_value, "{2}x")
 	endIf
-	; Re-applies every tracked actor: a magnitude change moves no stored
-	; contribution, so it cannot ride the normal value early-out.
-	SLIFNG.SetMasterScale(a_value)
-	SetSliderOptionValue(a_option, a_value, "{2}x")
 EndEvent
 
 Event OnOptionSelect(int a_option)
@@ -351,6 +369,8 @@ Event OnOptionSelect(int a_option)
 	elseIf a_option == _oGradual
 		SLIFNG.SetIncrementalInflation(!SLIFNG.IsIncrementalInflation())
 		SetToggleOptionValue(_oGradual, SLIFNG.IsIncrementalInflation())
+		; the speed slider is meaningless while inflation is instant
+		SetOptionFlags(_oSpeed, SpeedFlags())
 	elseIf a_option == _oVerbose
 		_verbose = !_verbose
 		SLIFNG.SetVerboseLogging(_verbose)
@@ -388,6 +408,8 @@ Event OnOptionHighlight(int a_option)
 		SetInfoText("Switch between the player and whatever is under your crosshair. Close the menu, look at an NPC, reopen.")
 	elseIf a_option == _oImport
 		SetInfoText("Runs by itself through the MCM version update on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
+	elseIf a_option == _oSpeed
+		SetInfoText("How fast incremental inflation travels. This multiplies the step each mod asked for rather than replacing it, so a mod that deliberately inflates slowly still does - just faster or slower. 1.00x is what mods intended. Takes effect immediately, including on inflation already in progress.")
 	elseIf a_option == _oGradual
 		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. On by default. Hiding a node and unregistering stay instant; Off = everything snaps, which is what the old SLIF shipped.")
 	elseIf a_option == _oRefresh

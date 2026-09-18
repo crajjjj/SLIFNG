@@ -17,7 +17,7 @@ namespace SLIFNG
 		//     (0 Top X .. 5 Additive) and gained the top_x count beside it.
 		// v7: per-contribution increment; the incremental-inflation flag.
 		// v8: per-actor target scales.
-		constexpr std::uint32_t kLedgerVersion = 8;
+		constexpr std::uint32_t kLedgerVersion = 9;
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
@@ -229,6 +229,20 @@ namespace SLIFNG
 	{
 		std::scoped_lock lock(_lock);
 		_gradual = a_on;
+	}
+
+	float Ledger::GetRampSpeed() const
+	{
+		std::scoped_lock lock(_lock);
+		return _rampSpeed;
+	}
+
+	void Ledger::SetRampSpeed(float a_speed)
+	{
+		std::scoped_lock lock(_lock);
+		// A zero or negative multiplier would stall every ramp forever, and
+		// the tick treats "step" as a distance - so clamp rather than trust.
+		_rampSpeed = std::clamp(a_speed, 0.1f, 5.0f);
 	}
 
 	// SLIF_Calc.addCalculationType over the per-mod effective contributions -
@@ -770,6 +784,7 @@ namespace SLIFNG
 		Write(a_intfc, static_cast<std::uint32_t>(inst._mode));
 		Write(a_intfc, inst._topX);
 		Write(a_intfc, static_cast<std::uint32_t>(inst._gradual ? 1 : 0));
+		Write(a_intfc, inst._rampSpeed);
 		Write(a_intfc, static_cast<std::uint32_t>(inst._migrated ? 1 : 0));
 
 		Write(a_intfc, inst._masterScale);
@@ -841,6 +856,7 @@ namespace SLIFNG
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
 		inst._gradual = true;  // the default for saves that predate the flag
+		inst._rampSpeed = 1.0f;
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 
@@ -873,6 +889,9 @@ namespace SLIFNG
 					}
 					if (version >= 7) {
 						inst._gradual = Read<std::uint32_t>(a_intfc, length) != 0;
+					}
+					if (version >= 9) {
+						inst._rampSpeed = Read<float>(a_intfc, length);
 					}
 
 					if (version >= 4) {
@@ -976,6 +995,7 @@ namespace SLIFNG
 				inst._masterScale = 1.0f;
 				inst._migrated = false;
 				inst._gradual = true;
+				inst._rampSpeed = 1.0f;
 				inst._display.clear();
 				inst._mode = Calc::Type::kTopX;
 				inst._topX = Calc::kDefaultTopX;
@@ -998,6 +1018,7 @@ namespace SLIFNG
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
 		inst._gradual = true;
+		inst._rampSpeed = 1.0f;
 		inst._mode = Calc::Type::kTopX;
 		inst._topX = Calc::kDefaultTopX;
 		logger::info("[Ledger] reverted");

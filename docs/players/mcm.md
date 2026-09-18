@@ -35,6 +35,12 @@ It applies across mods to nodes and to sliders alike; one mod's own node and mor
 
 On (default): bodies step toward new sizes - each mod's own increment, 0.1 by default, per quarter second - instead of snapping. Runs natively, costs the script engine nothing, pauses while the game is paused. Hiding a node (chastity belts) and unregistering stay instant. Off: everything applies instantly, old SLIF's shipped behaviour.
 
+#### Inflation speed
+
+How fast those steps travel, from `0.10x` to `5.00x`. It **multiplies the step each mod asked for** rather than replacing it, so a mod that deliberately inflates slowly still does, just faster or slower in proportion. `1.00x` is what mods intended.
+
+Takes effect immediately, including on inflation already in progress: the ramp reads this value on every step, so dragging the slider retimes what is already moving. Greyed out while *Incremental inflation* is off, since with no ramp there is nothing to pace.
+
 #### Overall magnitude
 
 One multiplier over everything SLIF NG applies. `1.00x` shows exactly what mods intended; `0.00x` suppresses all inflation. Applies immediately, retroactively, and never changes what mods have stored - it is a display knob, not a data edit. (Per-target and per-actor multipliers exist in the [API](../authors/query-api.md) for finer control; they are deliberately not a page of MCM sliders.)

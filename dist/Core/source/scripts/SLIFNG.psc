@@ -11,6 +11,9 @@ min/max/mult accept -1.0 = "keep defaults" (0 / 100 / 1.0).}
 ; 3: HasTarget - ask whether a target would do anything BEFORE writing to it,
 ;    and region overlay files (Bodies/Regions/*.ini) so a consumer mod can
 ;    contribute a custom region without owning the user's body profile.
+; 4: SetRampSpeed/GetRampSpeed - the user's speed preference for incremental
+;    inflation. A multiplier on YOUR increment, so it retimes your ramp
+;    without overriding the step size you asked for.
 Int Function GetVersion() Global Native
 
 ; Returns true when the value changed and was applied (false = early-out,
@@ -83,6 +86,13 @@ Int Function MorphMany(Actor kActor, String modName, String[] morphNames, Float[
 ; its final value.
 Function SetIncrementalInflation(Bool enabled) Global Native
 Bool Function IsIncrementalInflation() Global Native
+
+; How fast incremental inflation travels: a multiplier on the increment YOUR
+; call supplied, so the user can pace ramps without overriding a mod's step.
+; Clamped to 0.1 - 5.0; read every step, so it retimes ramps already moving.
+; Consumers rarely need these - the MCM owns this setting. Requires GetVersion() >= 4.
+Function SetRampSpeed(Float speed) Global Native
+Float Function GetRampSpeed() Global Native
 
 ; ---- query surface for mod authors ------------------------------------------
 ; The values come through GetValue / GetApplied / GetContribution /

@@ -19,7 +19,8 @@ namespace SLIFNG::Papyrus
 		// 2: increment parameter on Inflate/Morph, incremental inflation,
 		//    the enumeration surface for mod authors.
 		// 3: HasTarget, and region overlays (Bodies/Regions/*.ini).
-		constexpr std::int32_t kApiVersion = 3;
+		// 4: SetRampSpeed/GetRampSpeed.
+		constexpr std::int32_t kApiVersion = 4;
 
 		// CONTRACT sec.4.1: exactly -1.0 means "not specified, keep the default".
 		// Tested for equality, not `< 0` / `<= 0`: a deliberate multiplier of 0
@@ -556,6 +557,20 @@ namespace SLIFNG::Papyrus
 			return Ledger::GetSingleton().GetGradual();
 		}
 
+		// Multiplier on the consumer's own increment. No re-apply: the tick
+		// reads it every step, so in-flight ramps retime themselves and a
+		// finished one is already at its fold.
+		void SetRampSpeed(RE::StaticFunctionTag*, float a_speed)
+		{
+			logger::info("[API] SetRampSpeed({})", a_speed);
+			Ledger::GetSingleton().SetRampSpeed(a_speed);
+		}
+
+		float GetRampSpeed(RE::StaticFunctionTag*)
+		{
+			return Ledger::GetSingleton().GetRampSpeed();
+		}
+
 		// ---- enumeration surface for mod authors ----------------------------
 		// The values themselves come through GetValue/GetApplied/GetContribution;
 		// these answer "what is there to ask about". The same surface is served
@@ -745,6 +760,8 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetCombinedMorph", script, GetCombinedMorph);
 		a_vm->RegisterFunction("SetIncrementalInflation", script, SetIncrementalInflation);
 		a_vm->RegisterFunction("IsIncrementalInflation", script, IsIncrementalInflation);
+		a_vm->RegisterFunction("SetRampSpeed", script, SetRampSpeed);
+		a_vm->RegisterFunction("GetRampSpeed", script, GetRampSpeed);
 		a_vm->RegisterFunction("HasTarget", script, HasTarget);
 		a_vm->RegisterFunction("IsTracked", script, IsTracked);
 		a_vm->RegisterFunction("GetTrackedActors", script, GetTrackedActors);
