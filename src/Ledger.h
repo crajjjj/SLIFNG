@@ -162,6 +162,13 @@ namespace SLIFNG
 		[[nodiscard]] bool HasTarget(RE::FormID a_actor, const std::string& a_mod,
 			const std::string& a_target) const;
 
+		// Update ONE mod's stored bounds on one target without touching its
+		// value (SLIF_Main.updateActorList: Estrus Chaurus pushes new MCM max
+		// scales this way). -1.0 keeps the field as stored, mirroring the
+		// reference's SetFloatValueConditional semantics. True if changed.
+		bool UpdateBounds(RE::FormID a_actor, const std::string& a_mod, const std::string& a_target,
+			float a_min, float a_max, float a_mult, float a_increment);
+
 		// ---- hidden nodes (SLIF_Main.hideNode / showNode) -------------------
 		// Devious Devices pins the belly flat under a chastity belt. A hidden
 		// target OVERRIDES the fold rather than joining it, and it is keyed by

@@ -98,6 +98,19 @@ Float Function GetValue(Actor kActor, string modName, string node, float default
 Float Function GetMinValue(Actor kActor, string modName, string node, float default = 0.0) Global
 Float Function GetMaxValue(Actor kActor, string modName, string node, float default = 100.0) Global
 ; callers: Sexlab Survival (GetValue, on a 1-game-hour timer), Estrus Chaurus (all three)
+;
+; TWO SEMANTICS THE GETTERS MUST HONOUR (verified against EC 4.390 bytecode
+; and sources, 2026-09-18):
+;  * EC reads bounds through SINGLE-SIDE keys - GetMinValue/GetMaxValue with
+;    "slif_left_breast" / "slif_left_butt" (reference convert_keys naming one
+;    side of a sync pair). These resolve to the pair target (side aliases in
+;    Vocabulary); the sync fidelity gap of sec.5.1 applies.
+;  * An UNRESOLVED key returns the CALLER'S DEFAULT, never 0.0 (the reference
+;    ConvertToNode passes unknown strings through to an absent StorageUtil
+;    read). EC clamps its pregnancy growth with
+;    GetMaxValue(..., "slif_left_breast", MaxBreastScale) - a 0.0 here crushes
+;    the actor flat. 0.0 is returned only for genuinely invalid parameters
+;    (null actor / empty strings), as validParameters does.
 
 Function hideNode(Actor kActor, String modName, String node, float value = 0.0000001, string oldModName = "") Global
 Function showNode(Actor kActor, String modName, String node) Global
@@ -106,7 +119,11 @@ Function showNode(Actor kActor, String modName, String node) Global
 Function inflateBoth(Actor kActor, string modName, string syncKey, float value, int gender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
 Function resetActor(Actor kActor, string modName = "All Mods", string node = "", float value = 1.0, int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
 Function updateActorList(String modName = "All Mods", string node = "", int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
-; caller: Estrus Chaurus
+; caller: Estrus Chaurus - its MCM pushes NEW min/max bounds through this when
+; the user moves a max-scale slider. Implemented as a bounds-only pass over
+; the ledger (values never move, -1.0 keeps a field as stored) plus a
+; re-apply of whoever changed; the reference's other job (re-pushing drifted
+; applied values) has no equivalent here because nothing can drift.
 
 ; SLIF_Morph.psc, same promotion ---------------------------------------------
 

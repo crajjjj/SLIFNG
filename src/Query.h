@@ -36,12 +36,17 @@ namespace SLIFNG::Query
 
 	inline float Value(RE::Actor* a_actor, const char* a_mod, const char* a_target, float a_default)
 	{
-		if (!a_actor) {
+		if (!a_actor || !a_target || !*a_target) {
 			return 0.0f;  // reference returns 0.0 for invalid parameters
 		}
 		const std::string target = ResolveTarget(a_target);
 		if (target.empty()) {
-			return 0.0f;
+			// UNRESOLVED is not INVALID: the reference's ConvertToNode passes
+			// unknown strings through and the StorageUtil read then hands back
+			// the caller's default. Estrus Chaurus leans on exactly this -
+			// GetMaxValue(..., "slif_left_breast", MaxScale) CLAMPS its breast
+			// growth, and a 0.0 here would crush the actor flat.
+			return a_default;
 		}
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();
@@ -64,12 +69,12 @@ namespace SLIFNG::Query
 
 	inline float MinValue(RE::Actor* a_actor, const char* a_mod, const char* a_target, float a_default)
 	{
-		if (!a_actor) {
+		if (!a_actor || !a_target || !*a_target) {
 			return 0.0f;
 		}
 		const std::string target = ResolveTarget(a_target);
 		if (target.empty()) {
-			return 0.0f;
+			return a_default;  // see Value(): unresolved is not invalid
 		}
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();
@@ -80,12 +85,12 @@ namespace SLIFNG::Query
 
 	inline float MaxValue(RE::Actor* a_actor, const char* a_mod, const char* a_target, float a_default)
 	{
-		if (!a_actor) {
+		if (!a_actor || !a_target || !*a_target) {
 			return 0.0f;
 		}
 		const std::string target = ResolveTarget(a_target);
 		if (target.empty()) {
-			return 0.0f;
+			return a_default;  // see Value(): unresolved is not invalid
 		}
 		auto& ledger = Ledger::GetSingleton();
 		const auto formID = a_actor->GetFormID();

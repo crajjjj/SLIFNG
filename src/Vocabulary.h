@@ -90,11 +90,28 @@ namespace SLIFNG::Vocabulary
 		return nullptr;
 	}
 
-	// Accepts either spelling and yields the canonical target.
+	// Reference convert_keys that name ONE SIDE of a sync pair. OBSERVED:
+	// Estrus Chaurus reads its bounds through them
+	// (SLIF_Main.GetMinValue/GetMaxValue with "slif_left_breast" /
+	// "slif_left_butt"). They resolve to the PAIR target, so the sync
+	// fidelity gap documented at FindByNode applies to them too.
+	inline constexpr const char* kSideAliases[][2] = {
+		{ "slif_left_breast", "slif_breast" },
+		{ "slif_right_breast", "slif_breast" },
+		{ "slif_left_butt", "slif_butt" },
+		{ "slif_right_butt", "slif_butt" },
+	};
+
+	// Accepts any observed spelling and yields the canonical target.
 	inline const NodeTarget* Resolve(const std::string& a_lowerKey)
 	{
 		if (const auto* byKey = Find(a_lowerKey)) {
 			return byKey;
+		}
+		for (const auto& alias : kSideAliases) {
+			if (a_lowerKey == alias[0]) {
+				return Find(alias[1]);
+			}
 		}
 		return FindByNode(a_lowerKey);
 	}

@@ -92,9 +92,13 @@ Function resetActor(Actor kActor, string modName = "All Mods", string node = "",
 	endIf
 EndFunction
 
-; updateActorList: the reference's "re-push everything you have onto everyone"
-; sweep, needed there because its applied values could drift from its store.
-; Ours cannot - every change applies immediately and a load re-derives from the
-; ledger - so this is a genuine no-op, not a stub hiding missing work.
+; updateActorList: what consumers actually use it FOR is pushing NEW BOUNDS
+; onto values they already registered - Estrus Chaurus's MCM calls it with
+; fresh min/max whenever its max-scale sliders move. The reference's other
+; job (re-pushing applied values that drifted from its store) has no
+; equivalent here: nothing can drift. -1.0 leaves a bound as stored.
 Function updateActorList(String modName = "All Mods", string node = "", int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+	if node != ""
+		SLIFNG.UpdateModBounds(modName, node, minimum, maximum, multiplier, increment)
+	endif
 EndFunction

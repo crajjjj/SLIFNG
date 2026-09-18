@@ -462,6 +462,35 @@ namespace SLIFNG::Papyrus
 			return out;
 		}
 
+		// SLIF_Main.updateActorList's real job: a consumer pushes NEW BOUNDS
+		// for values it already registered - Estrus Chaurus's MCM does this
+		// when its max-scale sliders move. The reference re-registered every
+		// actor; here it is one bounds pass over the ledger plus a re-apply of
+		// whoever actually changed. The value itself never moves.
+		void UpdateModBounds(RE::StaticFunctionTag*, RE::BSFixedString a_mod,
+			RE::BSFixedString a_key, float a_min, float a_max, float a_mult, float a_increment)
+		{
+			logger::info("[API] UpdateModBounds(mod='{}', key='{}', min={}, max={}, mult={}, incr={})",
+				a_mod.c_str(), a_key.c_str(), a_min, a_max, a_mult, a_increment);
+			if (a_mod.empty() || a_key.empty()) {
+				return;
+			}
+			const std::string target = Query::ResolveTarget(a_key.c_str());
+			if (target.empty() || IsMorphTarget(target)) {
+				return;
+			}
+			auto& ledger = Ledger::GetSingleton();
+			for (const auto formID : ledger.TrackedActors()) {
+				if (!ledger.UpdateBounds(formID, a_mod.c_str(), target, a_min, a_max, a_mult,
+						a_increment)) {
+					continue;
+				}
+				if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(formID)) {
+					Skee::ApplyDeferred(actor, target);
+				}
+			}
+		}
+
 		bool HasMigrated(RE::StaticFunctionTag*) { return Ledger::GetSingleton().Migrated(); }
 
 		void SetMigrated(RE::StaticFunctionTag*, bool a_done)
@@ -553,6 +582,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetNodeTargets", script, GetNodeTargets);
 		a_vm->RegisterFunction("GetMorphTargets", script, GetMorphTargets);
 		a_vm->RegisterFunction("GetModsDriving", script, GetModsDriving);
+		a_vm->RegisterFunction("UpdateModBounds", script, UpdateModBounds);
 		a_vm->RegisterFunction("HasMigrated", script, HasMigrated);
 		a_vm->RegisterFunction("SetMigrated", script, SetMigrated);
 		a_vm->RegisterFunction("IsMorphEngineReady", script, IsMorphEngineReady);

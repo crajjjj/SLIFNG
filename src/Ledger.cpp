@@ -66,6 +66,40 @@ namespace SLIFNG
 		return it != _sliderNames.end() ? it->second : a_sliderLower;
 	}
 
+	bool Ledger::UpdateBounds(RE::FormID a_actor, const std::string& a_mod,
+		const std::string& a_target, float a_min, float a_max, float a_mult, float a_increment)
+	{
+		std::scoped_lock lock(_lock);
+		const auto actorIt = _actors.find(a_actor);
+		if (actorIt == _actors.end()) {
+			return false;
+		}
+		const auto modIt = actorIt->second.find(Lower(a_mod));
+		if (modIt == actorIt->second.end()) {
+			return false;
+		}
+		const auto it = modIt->second.find(Lower(a_target));
+		if (it == modIt->second.end()) {
+			return false;
+		}
+		auto& entry = it->second;
+		const Contribution before = entry;
+		if (a_min != -1.0f) {
+			entry.min = a_min;
+		}
+		if (a_max != -1.0f) {
+			entry.max = a_max;
+		}
+		if (a_mult != -1.0f) {
+			entry.mult = a_mult;
+		}
+		if (a_increment != -1.0f) {
+			entry.increment = a_increment;
+		}
+		return entry.min != before.min || entry.max != before.max ||
+		       entry.mult != before.mult || entry.increment != before.increment;
+	}
+
 	bool Ledger::RemoveTarget(RE::FormID a_actor, const std::string& a_mod, const std::string& a_target)
 	{
 		std::scoped_lock lock(_lock);

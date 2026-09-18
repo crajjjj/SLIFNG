@@ -83,6 +83,12 @@ String[] Function GetMorphTargets(Actor kActor) Global Native
 ; "morph:<slider>").
 String[] Function GetModsDriving(Actor kActor, String target) Global Native
 
+; Push new bounds onto one mod's existing rows for a node target, across every
+; tracked actor, re-applying whoever changed (SLIF_Main.updateActorList -
+; Estrus Chaurus pushes its MCM max scales this way). -1.0 = keep as stored;
+; values never move.
+Function UpdateModBounds(String modName, String slifKey, Float minimum, Float maximum, Float multiplier, Float increment) Global Native
+
 ; Diagnostics: write the full ledger (or one actor's entries) to SLIFNG.log -
 ; contributions, fold results, active mode. See SLIFNG_Debug.psc for
 ; console-callable wrappers (cgf).
