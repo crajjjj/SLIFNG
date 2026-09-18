@@ -4,6 +4,7 @@
 #include "BodyProfile.h"
 #include "Calc.h"
 #include "Ledger.h"
+#include "Ramp.h"
 #include "Vocabulary.h"
 
 #include <atomic>
@@ -370,6 +371,36 @@ namespace SLIFNG::Skee
 		}
 	}
 
+	// "This target has stopped moving." The signal a consumer needs to act ON a
+	// finished shape (OLactis repositions particle emitters once breasts settle),
+	// which polling cannot answer honestly - mid-ramp and final look identical
+	// from outside. Deliberately NOT per step: at 10 ticks a second that would
+	// be a flood, and every listener would just debounce it back into this.
+	//
+	// Every settle path funnels through ApplyTargets - an instant write, a
+	// ramp's last step, an unregister, a magnitude change - so the one honest
+	// test is "is a ramp still in flight for this target": Tick drops an arrived
+	// target BEFORE applying, so its final step reads as settled exactly once,
+	// and its earlier steps are suppressed.
+	void NotifySettled(RE::Actor* a_actor, const std::string& a_lowerTarget)
+	{
+		auto* source = SKSE::GetModCallbackEventSource();
+		if (!source) {
+			return;
+		}
+		const float settled = Ledger::GetSingleton().Aggregate(a_actor->GetFormID(), a_lowerTarget);
+		if (g_verbose.load(std::memory_order_relaxed)) {
+			logger::info("[Settled] {:08X} '{}' -> {}", a_actor->GetFormID(), a_lowerTarget, settled);
+		}
+		SKSE::ModCallbackEvent event{
+			RE::BSFixedString{ "SLIFNG_Settled" },
+			RE::BSFixedString{ a_lowerTarget.c_str() },
+			settled,
+			a_actor
+		};
+		source->SendEvent(&event);
+	}
+
 	void ApplyTargets(RE::Actor* a_actor, const std::vector<std::string>& a_lowerTargets)
 	{
 		if (!a_actor) {
@@ -382,6 +413,13 @@ namespace SLIFNG::Skee
 		// ONE rebuild for the whole batch, however many sliders it touched.
 		if (rebuild && IsReady()) {
 			g_bodyMorph->ApplyBodyMorphs(a_actor);
+		}
+		// After the geometry is in place, never before: a listener that reads
+		// the body back must see the settled shape, not the one being replaced.
+		for (const auto& target : a_lowerTargets) {
+			if (!Ramp::IsActive(a_actor->GetFormID(), target)) {
+				NotifySettled(a_actor, target);
+			}
 		}
 	}
 

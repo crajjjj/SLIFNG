@@ -397,7 +397,7 @@ Event OnOptionHighlight(int a_option)
 	if a_option == _oMode
 		SetInfoText("How several mods driving the same target combine - SLIF's own six types, applied across mods to nodes and sliders alike (one mod's own node+morph layers still add).\nTop X (SLIF's default): largest + second/3 + third/6.  Highest wins: only the largest shows.\nSubtract and add one: 1 + summed deviations.  Square root: sqrt of summed squares.  Average.  Additive: plain sum.")
 	elseIf a_option == _oMaster
-		SetInfoText("Scales EVERYTHING this framework applies. 1.00x leaves mods exactly as they intended; 0.00x suppresses all inflation. Applies instantly to every tracked actor.")
+		SetInfoText("How BIG everything this framework applies ends up. 1.00x is exactly what mods asked for; 0.50x halves every belly and breast; 0.00x suppresses all inflation. This is the final size, not how fast a body gets there - for that see Inflation speed. Applies instantly to every tracked actor.")
 	elseIf a_option == _oVerbose
 		SetInfoText("Logs every API call and every apply, with a skee readback per slider. Useful for diagnosis; turn it off for normal play.")
 	elseIf a_option == _oDump
@@ -409,9 +409,9 @@ Event OnOptionHighlight(int a_option)
 	elseIf a_option == _oImport
 		SetInfoText("Runs by itself through the MCM version update on the first load of a save that ran the old SLIF - every mod's per-actor values are copied across so a migrating character keeps her shape. This row only reports the outcome; click it only if it somehow still says pending.")
 	elseIf a_option == _oSpeed
-		SetInfoText("How fast incremental inflation travels. This multiplies the step each mod asked for rather than replacing it, so a mod that deliberately inflates slowly still does - just faster or slower. 1.00x is what mods intended. Takes effect immediately, including on inflation already in progress.")
+		SetInfoText("How QUICKLY a body grows or shrinks when a mod changes it. Higher is faster. This changes the speed of the change only - never the size it ends up at, which is Overall magnitude below. Takes effect at once, including on a body that is changing right now. Very low settings can stretch a change over a minute or more, which can look like nothing is happening.")
 	elseIf a_option == _oGradual
-		SetInfoText("Bodies swell toward a new value in steps (each mod's own increment, default 0.1 per quarter second) instead of snapping - the old SLIF's Incremental inflation type, run natively. On by default. Hiding a node and unregistering stay instant; Off = everything snaps, which is what the old SLIF shipped.")
+		SetInfoText("Bodies grow into a new size over a moment instead of snapping to it. On by default; use Inflation speed to pace it. A chastity belt closing, or a mod letting go of an actor, still applies instantly. Off = every change is immediate, which is what the old SLIF did.")
 	elseIf a_option == _oRefresh
 		SetInfoText("Re-read this actor's state. The page is a snapshot, not live.")
 	elseIf a_option == _oReset

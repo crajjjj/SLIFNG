@@ -14,6 +14,7 @@ min/max/mult accept -1.0 = "keep defaults" (0 / 100 / 1.0).}
 ; 4: SetRampSpeed/GetRampSpeed - the user's speed preference for incremental
 ;    inflation. A multiplier on YOUR increment, so it retimes your ramp
 ;    without overriding the step size you asked for.
+; 5: DrivenBy, and the SLIFNG_Settled mod event (see below).
 Int Function GetVersion() Global Native
 
 ; Returns true when the value changed and was applied (false = early-out,
@@ -112,6 +113,32 @@ Float Function GetRampSpeed() Global Native
 ;
 ; Dead keys and unknown spellings are false. Requires GetVersion() >= 3.
 Bool Function HasTarget(Actor kActor, String target) Global Native
+
+; HOW this actor's body realises a target - what HasTarget deliberately will
+; not tell you, since a canonical key is always "yes, something happens".
+;   "sliders" - BodySlide morphs move vertices and NO bone moves. Anything
+;               rigged to that bone (a particle emitter, an attached object)
+;               does NOT follow, and needs its own offset compensation.
+;   "node"    - the skeleton bone is scaled, so its children come along.
+;   "none"    - a region this profile does not define, or an unknown/dead key.
+; Requires GetVersion() >= 5.
+String Function DrivenBy(Actor kActor, String target) Global Native
+
+; ---- SLIFNG_Settled (mod event) ---------------------------------------------
+; Sent when a target STOPS CHANGING on an actor - a plain write, the last step
+; of a ramp, an unregister, or a magnitude change. NOT once per ramp step: at
+; ten steps a second that would be a flood, and this is the moment consumers
+; actually want ("she has finished growing, reposition and fire").
+;
+;   RegisterForModEvent("SLIFNG_Settled", "OnSlifSettled")
+;
+;   Event OnSlifSettled(String eventName, String target, Float value, Form sender)
+;       ; target = "slif_breast" / "morph:PregnancyBelly" / "region:weight"
+;       ; value  = the settled value, same as GetApplied(sender, target)
+;       ; sender = the Actor
+;   EndEvent
+;
+; Re-register in OnPlayerLoadGame like any mod event. Requires GetVersion() >= 5.
 
 Bool Function IsTracked(Actor kActor) Global Native
 Actor[] Function GetTrackedActors() Global Native

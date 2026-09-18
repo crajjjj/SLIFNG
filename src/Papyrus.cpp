@@ -1,5 +1,6 @@
 #include "Papyrus.h"
 
+#include "BodyProfile.h"
 #include "Calc.h"
 #include "Ledger.h"
 #include "Query.h"
@@ -20,7 +21,8 @@ namespace SLIFNG::Papyrus
 		//    the enumeration surface for mod authors.
 		// 3: HasTarget, and region overlays (Bodies/Regions/*.ini).
 		// 4: SetRampSpeed/GetRampSpeed.
-		constexpr std::int32_t kApiVersion = 4;
+		// 5: DrivenBy, and the SLIFNG_Settled mod event.
+		constexpr std::int32_t kApiVersion = 5;
 
 		// CONTRACT sec.4.1: exactly -1.0 means "not specified, keep the default".
 		// Tested for equality, not `< 0` / `<= 0`: a deliberate multiplier of 0
@@ -580,6 +582,33 @@ namespace SLIFNG::Papyrus
 			return Query::HasTarget(a_actor, a_target.c_str());
 		}
 
+		// HOW this actor's body realises a target, which HasTarget deliberately
+		// does not answer (it reports "would a write do anything", and a
+		// canonical key is always yes). The difference is visible: "sliders"
+		// moves vertices and no bone, so anything rigged to that bone - a
+		// particle emitter, an attached object - does NOT follow and needs its
+		// own compensation; "node" scales the bone, so children come along.
+		RE::BSFixedString DrivenBy(RE::StaticFunctionTag*, RE::Actor* a_actor,
+			RE::BSFixedString a_target)
+		{
+			if (!a_actor || a_target.empty()) {
+				return RE::BSFixedString{ "none" };
+			}
+			const std::string target = Query::ResolveTarget(a_target.c_str());
+			if (target.empty()) {
+				return RE::BSFixedString{ "none" };  // dead or unknown key
+			}
+			if (IsMorphTarget(target)) {
+				return RE::BSFixedString{ "sliders" };  // named outright by the caller
+			}
+			if (BodyProfile::HasTarget(a_actor, target)) {
+				return RE::BSFixedString{ "sliders" };
+			}
+			// A region has no bone behind it, so "not in the profile" is nothing
+			// at all; a canonical key falls back to scaling its skeleton node.
+			return RE::BSFixedString{ IsRegionTarget(target) ? "none" : "node" };
+		}
+
 		bool IsTracked(RE::StaticFunctionTag*, RE::Actor* a_actor)
 		{
 			return Query::IsTracked(a_actor);
@@ -763,6 +792,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("SetRampSpeed", script, SetRampSpeed);
 		a_vm->RegisterFunction("GetRampSpeed", script, GetRampSpeed);
 		a_vm->RegisterFunction("HasTarget", script, HasTarget);
+		a_vm->RegisterFunction("DrivenBy", script, DrivenBy);
 		a_vm->RegisterFunction("IsTracked", script, IsTracked);
 		a_vm->RegisterFunction("GetTrackedActors", script, GetTrackedActors);
 		a_vm->RegisterFunction("GetNodeTargets", script, GetNodeTargets);

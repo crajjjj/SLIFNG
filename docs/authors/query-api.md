@@ -53,6 +53,46 @@ endif
 
 Requires `SLIFNG.GetVersion() >= 3`; on an older build the function does not exist, so guard the call site if you support both.
 
+### `DrivenBy`: does the bone actually move?
+
+`HasTarget` answers "would a write do anything"; this answers **how**, which is a different question and the one that matters if you have something rigged to a skeleton bone.
+
+```papyrus
+String how = SLIFNG.DrivenBy(kActor, "slif_breast")
+```
+
+| Result | Meaning |
+|---|---|
+| `sliders` | BodySlide morphs move vertices and **no bone moves** - anything rigged to that bone (a particle emitter, an attached object) does *not* follow and needs its own compensation |
+| `node` | The skeleton bone is scaled, so its children come along automatically |
+| `none` | A region this profile does not define, or an unknown/dead key |
+
+Which one you get depends on the actor's [body profile](body-profiles.md), so ask per actor, not once per game. Requires `SLIFNG.GetVersion() >= 5`.
+
+## `SLIFNG_Settled` (mod event)
+
+Sent when a target **stops changing** on an actor. That covers a plain write, the last step of a ramp, an unregister, and a magnitude change - every path that ends with a final value on the body.
+
+```papyrus
+RegisterForModEvent("SLIFNG_Settled", "OnSlifSettled")   ; re-register in OnPlayerLoadGame
+
+Event OnSlifSettled(String eventName, String target, Float value, Form sender)
+    if target == "slif_breast"
+        ; sender has finished growing - safe to measure and act on the shape
+    endIf
+EndEvent
+```
+
+- `target` - `slif_breast`, `morph:PregnancyBelly`, `region:weight`
+- `value` - the settled value, identical to `GetApplied(sender, target)`
+- `sender` - the Actor
+
+**It is deliberately not per step.** The ramp ticks ten times a second; an event per step would be a flood, and every listener would immediately debounce it back into exactly this. This is the moment consumers actually want: *she has finished changing, act now*.
+
+It fires **once per target**, so an actor whose belly and breasts both settle sends two events. Filter on `target` - there is no way to ask for a subset.
+
+Requires `SLIFNG.GetVersion() >= 5`.
+
 ## C++ (other SKSE plugins)
 
 Copy [`src/API/SLIFNG_API.h`](https://github.com/crajjjj/SLIFNG/blob/main/src/API/SLIFNG_API.h) into your project - it is self-contained (only a forward declaration of `RE::Actor`) - and exchange the interface over SKSE messaging, the same handshake pattern skee itself uses:

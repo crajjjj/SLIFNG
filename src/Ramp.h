@@ -59,6 +59,12 @@ namespace SLIFNG::Ramp
 	// True while any ramp is in flight (diagnostics).
 	[[nodiscard]] std::size_t ActiveCount();
 
+	// Is THIS target still travelling on this actor? The settle notification
+	// keys on it: an apply for a target with no ramp in flight is a final
+	// value, and Tick drops an arrived target BEFORE it applies, so the last
+	// step of a ramp reads as settled exactly once.
+	[[nodiscard]] bool IsActive(RE::FormID a_actor, const std::string& a_lowerTarget);
+
 	// Cancel one target's ramp (its display override included) - used by the
 	// instant paths (unregister, hide/show) so a stale mid-ramp value can never
 	// outlive the thing that was ramping.

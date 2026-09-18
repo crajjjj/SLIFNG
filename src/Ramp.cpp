@@ -156,6 +156,13 @@ namespace SLIFNG::Ramp
 		EnsureTicker();
 	}
 
+	bool IsActive(RE::FormID a_actor, const std::string& a_lowerTarget)
+	{
+		std::scoped_lock lock(g_lock);
+		const auto it = g_active.find(a_actor);
+		return it != g_active.end() && it->second.contains(a_lowerTarget);
+	}
+
 	std::size_t ActiveCount()
 	{
 		std::scoped_lock lock(g_lock);
