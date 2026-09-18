@@ -13,6 +13,8 @@ Node targets are multiplicative scales, `1.0` = neutral (Beeing Female sends `sc
 
 A `node` argument accepts any of: a `slif_*` key (`slif_belly`; `slif_breast` / `slif_butt` are L+R pairs), a **raw skeleton node name** (`"NPC Belly"`), a side alias (`slif_left_breast` resolves to the pair), or a SLIF NG **semantic region** (`region:weight`, see [Body Profile Format](body-profiles.md#custom-regions)). Every spelling of one physical thing lands on the same ledger target. `slif_breast01` and `slif_breast_p` are silent no-ops, bug-compatible with the reference.
 
+The node vocabulary is **closed** - four targets over six XPMSSE bones, listed in [The node targets](../players/bodies.md#the-node-targets). A spelling outside that table and its aliases is rejected with a log line and returns `false`; old SLIF instead used any unrecognised string as a bone name. New targets are added on the morph side, through `morph:<slider>` or a profile region, never as a new bone.
+
 ## SLIF_Main
 
 ```papyrus

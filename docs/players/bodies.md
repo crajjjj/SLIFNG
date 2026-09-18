@@ -18,6 +18,22 @@ Two completely different mechanisms can change a body's shape, and SLIF NG uses 
 !!! note "Outfits"
     A worn outfit only follows a *morph* if the outfit was also built with morphs. A *node* scale moves the bone, so any outfit follows automatically. That is why node scaling remains a first-class path rather than legacy cruft.
 
+## The node targets
+
+There are four, and the list is fixed: they are what old SLIF exposed, so they stay frozen for compatibility. SLIF NG ships no skeleton of its own - it scales bones **XPMSSE** already provides, and a bone your skeleton happens to lack is a silent no-op (the MCM's `Body / Skeleton nodes` row lists the missing ones).
+
+| Key | Shown on the actor page | Skeleton bone(s) |
+|---|---|---|
+| `slif_belly` | `Node Belly (NPC Belly)` | `NPC Belly` |
+| `slif_breast` | `Node Breasts (L+R)` | `NPC L Breast` + `NPC R Breast` |
+| `slif_butt` | `Node Butt (L+R)` | `NPC L Butt` + `NPC R Butt` |
+| `slif_scrotum` | `Node Scrotum` | `NPC GenitalsScrotum [GenScrot]` |
+
+`slif_breast` and `slif_butt` are **sync pairs**: both bones always receive the same value. The side aliases `slif_left_breast`, `slif_right_breast`, `slif_left_butt` and `slif_right_butt` resolve to the pair, not to one side.
+
+!!! note "The list is closed"
+    A mod cannot teach SLIF NG a fifth bone. Anything outside this table and its aliases is rejected with a log line, and [`HasTarget`](../authors/query-api.md#hastarget-ask-before-you-write) answers `false` for it. Old SLIF differed: it used any unrecognised string as a bone name, so it would scale whatever you named. Extension happens on the **morph** side instead, where it *is* data-driven - `morph:<slider>` for a named BodySlide slider, or a `region:<name>` that the body profile maps to sliders.
+
 ## Body profiles
 
 Your installer choice lands as `Data/SLIFNG/Bodies/default.ini` - a small INI that says, per inflation target, which sliders this body drives and how strongly. A target the profile does not list falls back to the skeleton node.
