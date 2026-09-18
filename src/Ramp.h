@@ -33,10 +33,23 @@
 
 namespace SLIFNG::Ramp
 {
-	// Milliseconds between steps. The reference had no defined cadence (VM
-	// latency was the cadence); 250 ms with the default increment of 0.1 moves
-	// a node scale by 0.4/second, in the ballpark of how its queue looked.
-	inline constexpr std::chrono::milliseconds kStepInterval{ 250 };
+	// Milliseconds between steps. The reference had no defined cadence at all
+	// (VM latency was the cadence). SGO4's Papyrus smooth-scaling loop uses
+	// 100 ms, and it pays a full UpdateModelWeight per step on the VM to do it;
+	// natively, with one coalesced apply per actor per tick, that cadence is
+	// cheap - so this matches it and the swelling reads as motion rather than
+	// as four visible jumps a second.
+	inline constexpr std::chrono::milliseconds kStepInterval{ 100 };
+
+	// A consumer's `increment` means distance per QUARTER SECOND - that is what
+	// the contract documents and what every existing caller was tuned against.
+	// Ticking faster must therefore NOT inflate faster: each tick moves its own
+	// fraction of the increment, so shortening the interval buys smoothness at
+	// exactly the same speed. Changing kStepInterval alone would silently
+	// retime every consumer's ramp.
+	inline constexpr std::chrono::milliseconds kIncrementPeriod{ 250 };
+	inline constexpr float kStepFraction =
+		static_cast<float>(kStepInterval.count()) / static_cast<float>(kIncrementPeriod.count());
 
 	// Begin (or retarget) a ramp toward the target's current fold.
 	// a_from: the value the target shows right now (seeds the display override).

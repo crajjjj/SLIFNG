@@ -57,7 +57,10 @@ namespace SLIFNG::Ramp
 				// The user's speed preference scales the consumer's own increment.
 				// Read per tick rather than baked in at Begin, so dragging the
 				// MCM slider retimes ramps that are already travelling.
-				const float speed = ledger.GetRampSpeed();
+				// kStepFraction converts "per quarter second" (the increment's
+				// contractual unit) into "per tick", so the cadence sets
+				// smoothness and only the speed multiplier sets speed.
+				const float speed = ledger.GetRampSpeed() * kStepFraction;
 				std::vector<std::string> touched;
 				for (const auto& [target, rawStep] : targets) {
 					const float step = rawStep * speed;
