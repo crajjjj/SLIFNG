@@ -245,6 +245,17 @@ namespace SLIFNG::BodyProfile
 		return p ? p->name : "(none)";
 	}
 
+	namespace
+	{
+		// Ledger region targets carry a "region:" prefix; INI authors write the
+		// bare section name ([Weight] -> targets["weight"]).
+		std::string ProfileKey(const std::string& a_key)
+		{
+			constexpr std::string_view prefix = "region:";
+			return a_key.starts_with(prefix) ? a_key.substr(prefix.size()) : a_key;
+		}
+	}
+
 	const std::vector<Blend>* BlendFor(RE::Actor* a_actor, const std::string& a_key)
 	{
 		const auto* profile = ForActor(a_actor);
@@ -252,7 +263,7 @@ namespace SLIFNG::BodyProfile
 			return nullptr;
 		}
 		std::scoped_lock lock(g_lock);
-		const auto it = profile->targets.find(a_key);
+		const auto it = profile->targets.find(ProfileKey(a_key));
 		if (it == profile->targets.end()) {
 			// The profile does not describe this key at all: treat it as "this
 			// body cannot morph it" and let the caller use the node path.
@@ -270,7 +281,7 @@ namespace SLIFNG::BodyProfile
 				if (!profile) {
 					return nullptr;
 				}
-				const auto tit = profile->targets.find(a_key);
+				const auto tit = profile->targets.find(ProfileKey(a_key));
 				return tit == profile->targets.end() ? nullptr : &tit->second.morphs;
 			}
 		}
@@ -283,7 +294,7 @@ namespace SLIFNG::BodyProfile
 		if (!g_default) {
 			return nullptr;
 		}
-		const auto it = g_default->targets.find(a_key);
+		const auto it = g_default->targets.find(ProfileKey(a_key));
 		return it == g_default->targets.end() ? nullptr : &it->second.morphs;
 	}
 

@@ -117,10 +117,17 @@ namespace SLIFNG::Report
 				continue;
 			}
 			// Sub-header per target, one short row per mod beneath it. Node
-			// keys render decrypted: "node Belly (NPC Belly)", not slif_belly.
-			Header(out, IsMorphTarget(target)
-					? "Morph " + ledger.SliderName(SliderOf(target))
-					: "Node " + Vocabulary::Describe(target));
+			// keys render decrypted ("Node Belly (NPC Belly)", not slif_belly),
+			// custom regions by their profile section name.
+			std::string head;
+			if (IsMorphTarget(target)) {
+				head = "Morph " + ledger.SliderName(SliderOf(target));
+			} else if (IsRegionTarget(target)) {
+				head = "Region " + target.substr(kRegionPrefix.size());
+			} else {
+				head = "Node " + Vocabulary::Describe(target);
+			}
+			Header(out, head);
 			for (const auto& mod : mods) {
 				Row(out, "  " + mod, Num(ledger.GetContribution(formID, mod, target)));
 				any = true;
@@ -137,7 +144,8 @@ namespace SLIFNG::Report
 							std::format("{} / +1.0", Num(blend.weight)));
 					}
 				} else {
-					Row(out, "  > drives", "bone scale");
+					Row(out, "  > drives",
+						IsRegionTarget(target) ? "(not in this profile)" : "bone scale");
 				}
 			}
 		}
@@ -150,19 +158,22 @@ namespace SLIFNG::Report
 		if (std::abs(master - 1.0f) > 0.0001f) {
 			Row(out, "Overall magnitude", std::format("{}x", Num(master)));
 		}
+		for (const auto& [scaleId, scale] : ledger.ActorScales(formID)) {
+			Row(out, "  this actor x " + scaleId.substr(0, 16), std::format("{}x", Num(scale)));
+		}
 
 		std::set<std::string> sliders;
 		std::set<std::string> nodeTargets;
 		for (const auto& target : targets) {
 			if (IsMorphTarget(target)) {
 				sliders.insert(SliderOf(target));
-			} else if (Vocabulary::Find(target)) {
+			} else if (Vocabulary::Find(target) || IsRegionTarget(target)) {
 				const auto* blends = BodyProfile::BlendFor(a_actor, target);
 				if (blends && !blends->empty()) {
 					for (const auto& blend : *blends) {
 						sliders.insert(Lower(blend.slider));
 					}
-				} else {
+				} else if (!IsRegionTarget(target)) {
 					nodeTargets.insert(target);
 				}
 			}
@@ -173,7 +184,7 @@ namespace SLIFNG::Report
 		for (const auto& sliderLower : sliders) {
 			const std::string name = ledger.SliderName(sliderLower);
 			const float folded = ledger.AggregateSlider(formID, sliderLower);
-			const float scaled = folded * ledger.EffectiveScale(sliderLower);
+			const float scaled = folded * ledger.EffectiveScaleFor(formID, sliderLower);
 			Row(out, name, Num(scaled));
 			if (Skee::IsReady()) {
 				// The readback proves OUR WRITE LANDED; it is NOT an availability
@@ -182,11 +193,17 @@ namespace SLIFNG::Report
 				if (std::abs(back - scaled) > 0.001f) {
 					Row(out, "  skee disagrees", Num(back));
 				}
+				// Keys OTHER mods hold on this same slider. skee SUMS keys, so
+				// these stack on top of ours invisibly - the usual culprit when
+				// a belly is bigger than every number above explains.
+				for (const auto& [foreignKey, foreignValue] : Skee::ForeignMorphKeys(a_actor, name)) {
+					Row(out, "  also " + foreignKey.substr(0, 22), Num(foreignValue));
+				}
 			}
 		}
 		for (const auto& target : nodeTargets) {
 			const float folded = ledger.Aggregate(formID, target);
-			const float scaled = 1.0f + (folded - 1.0f) * ledger.EffectiveScale(target);
+			const float scaled = 1.0f + (folded - 1.0f) * ledger.EffectiveScaleFor(formID, target);
 			Row(out, Vocabulary::Describe(target) + " [node]", Num(scaled));
 		}
 

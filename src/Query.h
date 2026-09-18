@@ -27,7 +27,7 @@ namespace SLIFNG::Query
 			return {};
 		}
 		const std::string lower = Lower(a_raw);
-		if (IsMorphTarget(lower)) {
+		if (IsMorphTarget(lower) || IsRegionTarget(lower)) {
 			return lower;
 		}
 		const auto* resolved = Vocabulary::Resolve(lower);

@@ -40,6 +40,12 @@ namespace SLIFNG
 
 	inline constexpr std::string_view kMorphPrefix = "morph:";
 
+	// SLIF NG extension for consumers like SGO4: a SEMANTIC region the actor's
+	// body profile maps onto sliders ("region:weight" -> the profile's
+	// [Weight] section). Node-scale semantics (1.0 = neutral, folds across
+	// mods), but there is no skeleton bone behind it - profile sliders only.
+	inline constexpr std::string_view kRegionPrefix = "region:";
+
 	// The sentinel the reference API uses for "every mod" (the pinned default
 	// of SLIF_Main.unregisterActor / unregisterNode) - never a real mod key.
 	inline constexpr std::string_view kAllMods = "all mods";
@@ -47,6 +53,11 @@ namespace SLIFNG
 	inline bool IsMorphTarget(const std::string& a_target)
 	{
 		return a_target.starts_with(kMorphPrefix);
+	}
+
+	inline bool IsRegionTarget(const std::string& a_target)
+	{
+		return a_target.starts_with(kRegionPrefix);
 	}
 
 	inline std::string SliderOf(const std::string& a_morphTarget)
@@ -119,6 +130,10 @@ namespace SLIFNG
 		// used. Neutral is 0.0.
 		[[nodiscard]] float AggregateSlider(RE::FormID a_actor, const std::string& a_sliderLower) const;
 
+		// The slider fold WITHOUT the ramp's display override - the goal a
+		// direct-morph ramp steps toward.
+		[[nodiscard]] float FoldSlider(RE::FormID a_actor, const std::string& a_sliderLower) const;
+
 		// The consumer's original spelling for a lowercase slider (what skee is
 		// given); falls back to the lowercase form if never seen.
 		[[nodiscard]] std::string SliderName(const std::string& a_sliderLower) const;
@@ -144,6 +159,14 @@ namespace SLIFNG
 		// master * per-target, i.e. what apply actually multiplies by.
 		[[nodiscard]] float EffectiveScale(const std::string& a_scaleId) const;
 		[[nodiscard]] std::vector<std::string> ScaledTargets() const;
+
+		// Per-ACTOR magnitude on top of the global pair (SGO4's BellyScaleMult
+		// as a framework feature): what apply multiplies by is
+		// master * target * actor. Persisted (cosave v8); 1.0 rows are dropped.
+		void SetActorTargetScale(RE::FormID a_actor, const std::string& a_scaleId, float a_scale);
+		[[nodiscard]] float GetActorTargetScale(RE::FormID a_actor, const std::string& a_scaleId) const;
+		[[nodiscard]] float EffectiveScaleFor(RE::FormID a_actor, const std::string& a_scaleId) const;
+		[[nodiscard]] std::vector<std::pair<std::string, float>> ActorScales(RE::FormID a_actor) const;
 
 		[[nodiscard]] float GetContribution(RE::FormID a_actor, const std::string& a_mod,
 			const std::string& a_target) const;
@@ -229,6 +252,7 @@ namespace SLIFNG
 		// Unlocked internals, for callers already holding _lock.
 		void RememberSliderLocked(const std::string& a_sliderName);
 		[[nodiscard]] float AggregateSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
+		[[nodiscard]] float FoldSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
 		[[nodiscard]] float FoldNodeLocked(RE::FormID a_actor, const std::string& a_target) const;
 		[[nodiscard]] float DirectMorphLocked(RE::FormID a_actor, const std::string& a_sliderLower) const;
 		[[nodiscard]] std::vector<std::string> TargetsOfLocked(RE::FormID a_actor) const;
@@ -247,6 +271,8 @@ namespace SLIFNG
 		std::unordered_map<std::string, std::string> _sliderNames;
 		// scale id -> user multiplier (absent = 1.0, never stored when == 1.0)
 		std::unordered_map<std::string, float> _targetScales;
+		// actor -> scale id -> per-actor multiplier (same drop-at-1.0 rule)
+		std::unordered_map<RE::FormID, std::unordered_map<std::string, float>> _actorScales;
 		float _masterScale{ 1.0f };
 		bool _migrated{ false };
 		// ON by default - a deliberate SLIF NG choice (the reference shipped

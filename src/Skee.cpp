@@ -87,7 +87,7 @@ namespace SLIFNG::Skee
 			// contribution: consumers keep sending what they mean, the user only
 			// decides how big that reads (PLAN P5).
 			const float folded = ledger.AggregateSlider(a_actor->GetFormID(), a_sliderLower);
-			const float scaled = folded * ledger.EffectiveScale(a_sliderLower);
+			const float scaled = folded * ledger.EffectiveScaleFor(a_actor->GetFormID(), a_sliderLower);
 			SetMorphValue(a_actor, a_sliderName.c_str(), scaled);
 			return scaled;
 		}
@@ -120,17 +120,18 @@ namespace SLIFNG::Skee
 				return true;
 			}
 
-			const auto* target = Vocabulary::Find(a_lowerTarget);
-			if (!target) {
-				logger::warn("[Apply] '{}': not in vocabulary — skipped", a_lowerTarget);
+			// --- profile-driven sliders first. Which sliders (if any) a target
+			// drives is the actor's body profile's call, not a global table: a
+			// UBE actor and a 3BA actor in one save write different sliders for
+			// the same slif_breast. A custom "region:" target is profile-ONLY -
+			// there is no bone behind it.
+			const auto* blends = BodyProfile::BlendFor(a_actor, a_lowerTarget);
+			if (IsRegionTarget(a_lowerTarget) && (!blends || blends->empty())) {
+				logger::info("[Apply] {:08X} region '{}': profile '{}' has no such section — "
+							 "nothing to drive",
+					a_actor->GetFormID(), a_lowerTarget, BodyProfile::ResolvedName(a_actor));
 				return false;
 			}
-
-			// --- node key the ACTOR'S body morphs: drive each profile slider ---
-			// Which sliders (if any) a key drives is the actor's body profile's
-			// call, not a global table: a UBE actor and a 3BA actor in the same
-			// save write different sliders for the same slif_breast.
-			const auto* blends = BodyProfile::BlendFor(a_actor, a_lowerTarget);
 			if (blends && !blends->empty()) {
 				if (!IsReady()) {
 					logger::warn("[Apply] {:08X} key '{}': BodyMorph unavailable — NOT applied",
@@ -155,6 +156,12 @@ namespace SLIFNG::Skee
 				return true;
 			}
 
+			const auto* target = Vocabulary::Find(a_lowerTarget);
+			if (!target) {
+				logger::warn("[Apply] '{}': not in vocabulary — skipped", a_lowerTarget);
+				return false;
+			}
+
 			// --- node path (the profile lists no sliders for this key) ---
 			if (!IsNodeReady()) {
 				logger::warn("[Apply] {:08X} key '{}': NiTransform unavailable — NOT applied",
@@ -165,7 +172,8 @@ namespace SLIFNG::Skee
 			// the DEVIATION from neutral - not the raw value, which would move the
 			// neutral point and resize an un-inflated actor.
 			const float folded = ledger.Aggregate(a_actor->GetFormID(), a_lowerTarget);
-			const float aggregated = 1.0f + (folded - 1.0f) * ledger.EffectiveScale(a_lowerTarget);
+			const float aggregated =
+				1.0f + (folded - 1.0f) * ledger.EffectiveScaleFor(a_actor->GetFormID(), a_lowerTarget);
 			for (const auto* node : target->nodes) {
 				if (node) {
 					SetNodeScale(a_actor, node, aggregated);
@@ -269,6 +277,28 @@ namespace SLIFNG::Skee
 			return 0.0f;
 		}
 		return g_bodyMorph->GetMorph(a_actor, a_sliderName.c_str(), kAppliedKey);
+	}
+
+	std::vector<std::pair<std::string, float>> ForeignMorphKeys(RE::Actor* a_actor,
+		const std::string& a_sliderName)
+	{
+		std::vector<std::pair<std::string, float>> out;
+		if (!a_actor || !g_bodyMorph) {
+			return out;
+		}
+		struct Collector : SKEE::IBodyMorphInterface::MorphKeyVisitor
+		{
+			std::vector<std::pair<std::string, float>>* out{ nullptr };
+			void Visit(const char* a_key, float a_value) override
+			{
+				if (a_key && *a_key && _stricmp(a_key, kAppliedKey) != 0) {
+					out->emplace_back(a_key, a_value);
+				}
+			}
+		} visitor;
+		visitor.out = &out;
+		g_bodyMorph->VisitKeys(a_actor, a_sliderName.c_str(), visitor);
+		return out;
 	}
 
 	void LogKnownMorphs(RE::Actor* a_actor)

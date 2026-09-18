@@ -16,6 +16,10 @@ Int Function GetVersion() Global Native
 ; - what FHU sends); both resolve to the same canonical target.
 ; increment: the per-row step for incremental inflation (SLIF's own knob;
 ; -1.0 = keep the default 0.1). Only consumed while incremental mode is on.
+; slifKey also accepts a SLIF NG "region:<name>" semantic key: the actor's
+; body profile maps it to sliders via its [<name>] section ("region:weight" ->
+; [Weight]). Node-scale semantics (1.0 = neutral), profile sliders only - no
+; skeleton bone behind it; a profile without the section is a logged no-op.
 Bool Function Inflate(Actor kActor, String modName, String slifKey, Float value, Float minimum, Float maximum, Float multiplier, Float increment, String oldModName) Global Native
 Bool Function Morph(Actor kActor, String modName, String morphName, Float value, Float minimum, Float maximum, Float multiplier, Float increment, String oldModName) Global Native
 
@@ -60,6 +64,13 @@ Float Function GetApplied(Actor kActor, String target) Global Native
 ; contributions for one slider. SLIF_Morph mirrors it into StorageUtil under
 ; that exact name - Sexlab Survival reads it from StorageUtil directly.
 Float Function GetCombinedMorph(Actor kActor, String morphName) Global Native
+
+; ---- batch writes (SLIF NG extension, one coalesced apply) -------------------
+; Arrays pair by index (keys[i] with values[i]); bounds arrays may be shorter -
+; missing entries mean "keep defaults". Returns how many entries changed.
+; Ramping entries ramp individually; the rest land in ONE apply per actor.
+Int Function InflateMany(Actor kActor, String modName, String[] slifKeys, Float[] values, Float[] minimums, Float[] maximums, Float[] multipliers, Float[] increments, String oldModName) Global Native
+Int Function MorphMany(Actor kActor, String modName, String[] morphNames, Float[] values, Float[] minimums, Float[] maximums, Float[] multipliers, Float[] increments, String oldModName) Global Native
 
 ; ---- incremental inflation (the reference's "Inflation Type") ---------------
 ; ON by default (a deliberate SLIF NG choice; the reference shipped instant).
@@ -106,6 +117,10 @@ Function SetVerboseLogging(Bool enabled) Global Native
 Function SetMasterScale(Float scale) Global Native
 Float Function GetMasterScale() Global Native
 Function SetTargetScale(String scaleId, Float scale) Global Native
+; Per-ACTOR magnitude on top of the master and per-target pair (what apply
+; multiplies by is master * target * actor). Persisted with the save.
+Function SetActorTargetScale(Actor kActor, String scaleId, Float scale) Global Native
+Float Function GetActorTargetScale(Actor kActor, String scaleId) Global Native
 Float Function GetTargetScale(String scaleId) Global Native
 
 ; One-shot legacy-import marker, persisted with the save (cosave v4). The

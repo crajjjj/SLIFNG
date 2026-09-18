@@ -12,6 +12,8 @@ and verified from SLIFNG.log without any consumer mod or gameplay.
   cgf "SLIFNG_Debug.Gradual" true  ; incremental inflation on/off
   cgf "SLIFNG_Debug.Scale" 0.5
   cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
+  cgf "SLIFNG_Debug.ScaleA" "pregnancybelly" 0.5   ; player-only magnitude
+  cgf "SLIFNG_Debug.RPlayer" "TestMod" "weight" 1.4 ; region:<name> inflate
   cgf "SLIFNG_Debug.Dump"
   cgf "SLIFNG_Debug.Probe"       ; can skee tell us the body's sliders?
   cgf "SLIFNG_Debug.Report"      ; player diagnostics
@@ -62,6 +64,17 @@ EndFunction
 
 Function ScaleT(String scaleId, Float value) Global
 	SLIFNG.SetTargetScale(scaleId, value)
+EndFunction
+
+; Per-actor magnitude, applied to the player here.
+Function ScaleA(String scaleId, Float value) Global
+	SLIFNG.SetActorTargetScale(Game.GetPlayer(), scaleId, value)
+EndFunction
+
+; Semantic region on the player: drives whatever sliders the body profile's
+; [<region>] section lists (nothing, logged, if the profile lacks it).
+Function RPlayer(String modName, String region, Float value) Global
+	SLIFNG.Inflate(Game.GetPlayer(), modName, "region:" + region, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 
 Function Dump() Global

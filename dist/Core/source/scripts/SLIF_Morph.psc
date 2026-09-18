@@ -57,3 +57,16 @@ EndFunction
 Float Function GetMaxValue(Actor kActor, string modName, string morphName, float default = 100.0) Global
 	return SLIFNG.GetMaxValue(kActor, modName, "morph:" + morphName, default)
 EndFunction
+
+; Pinned from 1.2.2 bytecode (no observed caller yet; SGO4 sets several
+; sliders per update and is the intended adopter). One native call, one
+; coalesced apply; the StorageUtil mirrors are refreshed per name.
+Function morphMultiple(Actor kActor, string modName, string[] morphNames, float[] values, string oldModName, float[] minimum, float[] maximum, float[] multiplier, float[] increment) Global
+	if SLIFNG.MorphMany(kActor, modName, morphNames, values, minimum, maximum, multiplier, increment, oldModName) > 0
+		Int i = 0
+		While i < morphNames.length
+			MirrorCombined(kActor, morphNames[i])
+			i += 1
+		EndWhile
+	endif
+EndFunction

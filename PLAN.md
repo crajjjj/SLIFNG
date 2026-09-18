@@ -440,6 +440,37 @@ never diverge:
   "SLIFNG" - the skee handshake pattern. Read-only by design; mutations go
   through the pinned SLIF surface.
 
+### P10 — SGO4 adoption surface ← BUILT 2026-09-18 (0.3.0)
+Soulgem Oven 4 runs its own 2000-line body engine: five NiOverride key
+domains, per-body slider lists in its OWN FOMOD, and a Papyrus smooth-scaling
+drain loop (one full UpdateModelWeight per 0.01 step, on the VM, behind a
+StorageUtil re-entry blocker). Everything it would need to route through
+SLIF NG instead now exists; crajjjj is taking the pitch to the SGO4 author.
+
+- [x] **Direct-morph ramps.** Incremental inflation now covers the morph path
+      too: the display override lives in slider space, Tick steps it toward
+      the slider fold, one coalesced apply per actor per tick. SGO4's
+      SmoothBellyScaling becomes a toggle it no longer has to implement.
+- [x] **Batch writes**: the reference-pinned `inflateMultiple` /
+      `morphMultiple` shims over native `InflateMany`/`MorphMany` - one call,
+      one apply, ramping entries ramp individually. Returns the changed count.
+- [x] **Custom profile regions**: any non-canonical section in a body profile
+      ([Weight]) becomes a semantic key ("region:weight") with node-scale
+      semantics and profile sliders only - a consumer sends INTENT and the
+      actor's body decides sliders, so per-consumer body FOMODs die. Commented
+      template ships in the CBBE 3BA profile.
+- [x] **Per-actor magnitude**: SetActorTargetScale/GetActorTargetScale
+      (master * target * actor at apply time; cosave v8) - SGO4's per-actor
+      BellyScaleMult as a framework knob, shown on the actor page.
+- [x] **Foreign-key diagnostics**: the actor page lists every OTHER NiOverride
+      key driving a slider we drive ("also SGO4Gems 0.30" via VisitKeys) -
+      skee sums keys, so this is the answer to most "why is she huge" reports,
+      SGO4 adoption or not.
+
+Out of SLIF NG's scope, stays SGO4's: overlays (veins), normal-map swaps,
+CBPC settings. Adoption itself is an SGO4-side patch of
+SGO4_QuestBody_Main.psc (route ActorSlidersApply/Clear through the shims).
+
 ## Risks
 
 | Risk | Mitigation |

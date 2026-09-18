@@ -18,7 +18,7 @@ any save with a female player.
 Just load the save and quit. Expect in the log, in order:
 
 ```
-SLIFNG v0.2.1 is loading...
+SLIFNG v0.3.0 is loading...
 Cosave serialization initialized.
 Papyrus functions bound.
 [Skee] BodyMorph interface vN
@@ -180,6 +180,34 @@ the display value climbing. `GetValue(player, "All Mods", "slif_belly")`
 mid-ramp returns the in-flight value, as the reference's queue did. Opening a
 menu pauses the swell. `cgf "SLIFNG_Debug.Gradual" false` mid-ramp must snap
 straight to the fold. Hide/unregister during a ramp stays instant.
+
+## T6 — SGO4 adoption surface (0.3.0)
+
+```
+cgf "SLIFNG_Debug.RPlayer" "TestMod" "weight" 1.5
+```
+With the [Weight] template commented IN in the body profile: the region's
+sliders move ((1.5 - 1) / FullScale x Max each) and the actor page shows a
+"Region weight" section. With it left commented out: one log line
+`region 'region:weight': profile ... has no such section` and nothing else.
+
+```
+cgf "SLIFNG_Debug.MPlayer" "TestMod" "PregnancyBelly" 0.8   ; incremental ON
+```
+The DIRECT morph now swells in steps too (0.1 per quarter second), not only
+node targets; `[Apply]` lines tick with the climbing value.
+
+```
+cgf "SLIFNG_Debug.ScaleA" "pregnancybelly" 0.5
+```
+Halves the player's PregnancyBelly output without touching anyone else; the
+actor page gains "  this actor x pregnancybelly  0.5x". Survives save/load
+(cosave v8).
+
+Foreign keys: with any other mod (SGO4, FHU fallback) holding a morph on a
+slider SLIF NG drives, the actor page's Applied section lists
+"  also <key>  <value>" rows. skee SUMS keys - if the body looks bigger than
+our numbers explain, that row is why.
 
 ## Other console tools
 

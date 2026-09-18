@@ -16,7 +16,8 @@ namespace SLIFNG
 		// v6: the mode field switched to SLIF's calculation_type numbering
 		//     (0 Top X .. 5 Additive) and gained the top_x count beside it.
 		// v7: per-contribution increment; the incremental-inflation flag.
-		constexpr std::uint32_t kLedgerVersion = 7;
+		// v8: per-actor target scales.
+		constexpr std::uint32_t kLedgerVersion = 8;
 		constexpr float kScaleEpsilon = 0.0001f;
 	}
 
@@ -261,7 +262,28 @@ namespace SLIFNG
 		return AggregateSliderLocked(a_actor, a_sliderLower);
 	}
 
+	float Ledger::FoldSlider(RE::FormID a_actor, const std::string& a_sliderLower) const
+	{
+		std::scoped_lock lock(_lock);
+		return FoldSliderLocked(a_actor, a_sliderLower);
+	}
+
 	float Ledger::AggregateSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const
+	{
+		// A direct-morph ramp parks its in-flight value as a display override
+		// on the "morph:<slider>" target; while it is there, that IS the
+		// slider's shown value (the node-side ramps flow in through
+		// RampFactorLocked instead).
+		if (const auto actorIt = _display.find(a_actor); actorIt != _display.end()) {
+			const auto it = actorIt->second.find(std::string{ kMorphPrefix } + a_sliderLower);
+			if (it != actorIt->second.end()) {
+				return it->second;
+			}
+		}
+		return FoldSliderLocked(a_actor, a_sliderLower);
+	}
+
+	float Ledger::FoldSliderLocked(RE::FormID a_actor, const std::string& a_sliderLower) const
 	{
 		const auto actorIt = _actors.find(a_actor);
 		if (actorIt == _actors.end()) {
@@ -411,6 +433,51 @@ namespace SLIFNG
 		std::scoped_lock lock(_lock);
 		const auto it = _targetScales.find(Lower(a_scaleId));
 		return _masterScale * (it != _targetScales.end() ? it->second : 1.0f);
+	}
+
+	void Ledger::SetActorTargetScale(RE::FormID a_actor, const std::string& a_scaleId, float a_scale)
+	{
+		std::scoped_lock lock(_lock);
+		const std::string id = Lower(a_scaleId);
+		const float clamped = (std::max)(0.0f, a_scale);
+		if (std::abs(clamped - 1.0f) < kScaleEpsilon) {
+			const auto it = _actorScales.find(a_actor);
+			if (it != _actorScales.end()) {
+				it->second.erase(id);
+				if (it->second.empty()) {
+					_actorScales.erase(it);
+				}
+			}
+		} else {
+			_actorScales[a_actor][id] = clamped;
+		}
+	}
+
+	float Ledger::GetActorTargetScale(RE::FormID a_actor, const std::string& a_scaleId) const
+	{
+		std::scoped_lock lock(_lock);
+		const auto it = _actorScales.find(a_actor);
+		if (it == _actorScales.end()) {
+			return 1.0f;
+		}
+		const auto sit = it->second.find(Lower(a_scaleId));
+		return sit != it->second.end() ? sit->second : 1.0f;
+	}
+
+	float Ledger::EffectiveScaleFor(RE::FormID a_actor, const std::string& a_scaleId) const
+	{
+		return EffectiveScale(a_scaleId) * GetActorTargetScale(a_actor, a_scaleId);
+	}
+
+	std::vector<std::pair<std::string, float>> Ledger::ActorScales(RE::FormID a_actor) const
+	{
+		std::scoped_lock lock(_lock);
+		std::vector<std::pair<std::string, float>> out;
+		const auto it = _actorScales.find(a_actor);
+		if (it != _actorScales.end()) {
+			out.assign(it->second.begin(), it->second.end());
+		}
+		return out;
 	}
 
 	std::vector<std::string> Ledger::ScaledTargets() const
@@ -745,6 +812,16 @@ namespace SLIFNG
 				Write(a_intfc, pin);
 			}
 		}
+		// v8: per-actor target scales, additive on the wire like the hidden map.
+		Write(a_intfc, static_cast<std::uint32_t>(inst._actorScales.size()));
+		for (const auto& [formID, scales] : inst._actorScales) {
+			Write(a_intfc, formID);
+			Write(a_intfc, static_cast<std::uint32_t>(scales.size()));
+			for (const auto& [id, scale] : scales) {
+				WriteString(a_intfc, id);
+				Write(a_intfc, scale);
+			}
+		}
 
 		logger::info("[Ledger] saved {} actor(s), calc={}", inst._actors.size(),
 			Calc::TypeName(inst._mode));
@@ -760,6 +837,7 @@ namespace SLIFNG
 		inst._display.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
+		inst._actorScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
 		inst._gradual = true;  // the default for saves that predate the flag
@@ -871,12 +949,30 @@ namespace SLIFNG
 						inst._hidden[resolved] = std::move(targets);
 					}
 				}
+				if (version >= 8) {
+					const auto scaleActors = Read<std::uint32_t>(a_intfc, length);
+					for (std::uint32_t i = 0; i < scaleActors; ++i) {
+						const auto rawFormID = Read<RE::FormID>(a_intfc, length);
+						std::unordered_map<std::string, float> scales;
+						const auto count = Read<std::uint32_t>(a_intfc, length);
+						for (std::uint32_t t = 0; t < count; ++t) {
+							std::string id = ReadString(a_intfc, length);
+							scales[std::move(id)] = Read<float>(a_intfc, length);
+						}
+						RE::FormID resolved = 0;
+						if (!a_intfc->ResolveFormID(rawFormID, resolved)) {
+							continue;
+						}
+						inst._actorScales[resolved] = std::move(scales);
+					}
+				}
 			} catch (const std::exception& e) {
 				logger::error("[Ledger] corrupt cosave record: {}", e.what());
 				inst._actors.clear();
 				inst._hidden.clear();
 				inst._sliderNames.clear();
 				inst._targetScales.clear();
+		inst._actorScales.clear();
 				inst._masterScale = 1.0f;
 				inst._migrated = false;
 				inst._gradual = true;
@@ -898,6 +994,7 @@ namespace SLIFNG
 		inst._display.clear();
 		inst._sliderNames.clear();
 		inst._targetScales.clear();
+		inst._actorScales.clear();
 		inst._masterScale = 1.0f;
 		inst._migrated = false;
 		inst._gradual = true;

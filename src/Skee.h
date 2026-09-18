@@ -35,6 +35,13 @@ namespace SLIFNG::Skee
 	// diagnostics page compares against what we meant to write.
 	float ReadMorph(RE::Actor* a_actor, const std::string& a_sliderName);
 
+	// Every OTHER NiOverride key currently driving one slider on this actor -
+	// mods writing outside SLIF NG (SGO4's gem/milk keys, FHU's fallback key,
+	// ...). skee sums keys, so these stack on top of ours invisibly; the actor
+	// page lists them, which is the answer to most "why is she huge" reports.
+	std::vector<std::pair<std::string, float>> ForeignMorphKeys(RE::Actor* a_actor,
+		const std::string& a_sliderName);
+
 	// PROBE (PLAN P2): dump skee's own string table and one actor's morph list
 	// to the log. If VisitStrings enumerates the slider names skee learned from
 	// the loaded morphs.tri, body detection is genuinely possible and profiles

@@ -57,15 +57,22 @@ namespace SLIFNG::Ramp
 				std::vector<std::string> touched;
 				for (const auto& [target, step] : targets) {
 					// Re-read the goal every tick: a consumer changing its mind
-					// mid-ramp retargets the ramp instead of fighting it. A hide
-					// wins instantly, so its ramp just ends.
-					if (ledger.IsHidden(formID, target)) {
-						ledger.ClearDisplay(formID, target);
-						std::scoped_lock lock(g_lock);
-						g_active[formID].erase(target);
-						continue;
+					// mid-ramp retargets the ramp instead of fighting it.
+					float goal;
+					if (IsMorphTarget(target)) {
+						// Direct-morph ramps (SGO4's smooth scaling, natively):
+						// the goal is the slider fold; hides only pin nodes.
+						goal = ledger.FoldSlider(formID, SliderOf(target));
+					} else {
+						// A hide wins instantly, so its ramp just ends.
+						if (ledger.IsHidden(formID, target)) {
+							ledger.ClearDisplay(formID, target);
+							std::scoped_lock lock(g_lock);
+							g_active[formID].erase(target);
+							continue;
+						}
+						goal = ledger.FoldNode(formID, target);
 					}
-					const float goal = ledger.FoldNode(formID, target);
 					const float current = ledger.DisplayOf(formID, target).value_or(goal);
 					const float remaining = goal - current;
 					if (std::abs(remaining) <= (std::max)(step, kArrived)) {

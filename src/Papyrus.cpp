@@ -68,19 +68,25 @@ namespace SLIFNG::Papyrus
 				logger::info("[API]   -> dead key '{}' (bug-compatible no-op, sender '{}')", raw, a_mod.c_str());
 				return false;
 			}
-			// Accepts a slif_* key OR a raw skeleton node name (FHU sends
+			// Accepts a slif_* key, a raw skeleton node name (FHU sends
 			// "NPC Belly" verbatim; the reference tolerates it because
-			// ConvertToNode passes unknown strings through). Both spellings land
-			// on the SAME canonical target, so two consumers driving one physical
-			// node aggregate instead of clobbering.
-			const auto* resolved = Vocabulary::Resolve(raw);
-			if (!resolved) {
-				logger::warn("[API]   -> unknown node key '{}' from '{}' — ignored", raw, a_mod.c_str());
-				return false;
-			}
-			const std::string key = resolved->key;
-			if (key != raw) {
-				logger::info("[API]   -> raw node '{}' routed to canonical target '{}'", raw, key);
+			// ConvertToNode passes unknown strings through), or a SLIF NG
+			// "region:<name>" semantic key that the actor's body profile maps to
+			// sliders. Every spelling of one physical thing lands on the SAME
+			// ledger target, so consumers aggregate instead of clobbering.
+			std::string key;
+			if (IsRegionTarget(raw)) {
+				key = raw;
+			} else {
+				const auto* resolved = Vocabulary::Resolve(raw);
+				if (!resolved) {
+					logger::warn("[API]   -> unknown node key '{}' from '{}' — ignored", raw, a_mod.c_str());
+					return false;
+				}
+				key = resolved->key;
+				if (key != raw) {
+					logger::info("[API]   -> raw node '{}' routed to canonical target '{}'", raw, key);
+				}
 			}
 
 			ResolveDefaults(a_min, a_max, a_mult, a_increment);
@@ -129,11 +135,22 @@ namespace SLIFNG::Papyrus
 			const std::string slider = a_morph.c_str();
 			const std::string target = std::string{ kMorphPrefix } + Lower(slider);
 			ResolveDefaults(a_min, a_max, a_mult, a_increment);
-			const bool changed = Ledger::GetSingleton().Set(a_actor->GetFormID(), a_mod.c_str(),
+			auto& ledger = Ledger::GetSingleton();
+			// The slider's shown value BEFORE the write - the ramp's seed.
+			const float before = ledger.Aggregate(a_actor->GetFormID(), target);
+			const bool changed = ledger.Set(a_actor->GetFormID(), a_mod.c_str(),
 				target, a_value, a_min, a_max, a_mult, a_increment, slider);
 			if (!changed) {
 				logger::info("[API]   -> unchanged (early-out)");
 				return false;
+			}
+			// Direct morphs ramp too - SGO4's Papyrus smooth-scaling loop (one
+			// full UpdateModelWeight per 0.01 step, on the VM) done natively:
+			// the display override lives in slider space and Tick steps it
+			// toward the slider fold.
+			if (ledger.GetGradual() && a_actor->Is3DLoaded()) {
+				Ramp::Begin(a_actor, target, before, a_increment);
+				return true;
 			}
 			Skee::ApplyDeferred(a_actor, target);
 			return true;
@@ -180,6 +197,7 @@ namespace SLIFNG::Papyrus
 			}
 			const std::string target = std::string{ kMorphPrefix } + Lower(a_morph.c_str());
 			if (Ledger::GetSingleton().RemoveTarget(a_actor->GetFormID(), a_mod.c_str(), target)) {
+				Ramp::Cancel(a_actor->GetFormID(), target);
 				Skee::ApplyDeferred(a_actor, target);
 			}
 		}
@@ -365,6 +383,146 @@ namespace SLIFNG::Papyrus
 		float GetTargetScale(RE::StaticFunctionTag*, RE::BSFixedString a_scaleId)
 		{
 			return Ledger::GetSingleton().TargetScale(a_scaleId.c_str());
+		}
+
+		// ---- batch writes (one coalesced apply; SGO4 sets many sliders per
+		// update). Ramping entries ramp individually; everything else lands in
+		// ONE deferred apply for the actor.
+		std::int32_t InflateMany(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			std::vector<RE::BSFixedString> a_keys, std::vector<float> a_values,
+			std::vector<float> a_mins, std::vector<float> a_maxs, std::vector<float> a_mults,
+			std::vector<float> a_increments, RE::BSFixedString a_oldMod)
+		{
+			logger::info("[API] InflateMany({:08X} '{}', mod='{}', {} key(s))",
+				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
+				a_mod.c_str(), a_keys.size());
+			if (!a_actor || a_mod.empty()) {
+				return 0;
+			}
+			if (!a_oldMod.empty()) {
+				Skee::CleanLegacyKeyDeferred(a_actor, a_oldMod.c_str());
+			}
+			const auto at = [](const std::vector<float>& a_arr, std::size_t a_index) {
+				return a_index < a_arr.size() ? a_arr[a_index] : -1.0f;
+			};
+			auto& ledger = Ledger::GetSingleton();
+			const auto formID = a_actor->GetFormID();
+			const bool gradual = ledger.GetGradual() && a_actor->Is3DLoaded();
+			std::vector<std::string> batch;
+			std::int32_t changed = 0;
+			for (std::size_t i = 0; i < a_keys.size() && i < a_values.size(); ++i) {
+				const std::string raw = Lower(a_keys[i].c_str());
+				if (raw.empty() || Vocabulary::IsDeadKey(raw)) {
+					continue;
+				}
+				std::string key;
+				if (IsRegionTarget(raw)) {
+					key = raw;
+				} else if (const auto* resolved = Vocabulary::Resolve(raw)) {
+					key = resolved->key;
+				} else {
+					logger::warn("[API]   -> unknown key '{}' in batch from '{}' — skipped", raw,
+						a_mod.c_str());
+					continue;
+				}
+				float min = at(a_mins, i);
+				float max = at(a_maxs, i);
+				float mult = at(a_mults, i);
+				float increment = at(a_increments, i);
+				ResolveDefaults(min, max, mult, increment);
+				const float before = ledger.Aggregate(formID, key);
+				if (!ledger.Set(formID, a_mod.c_str(), key, a_values[i], min, max, mult, increment)) {
+					continue;
+				}
+				++changed;
+				if (gradual && !ledger.IsHidden(formID, key)) {
+					Ramp::Begin(a_actor, key, before, increment);
+				} else if (std::find(batch.begin(), batch.end(), key) == batch.end()) {
+					batch.push_back(key);
+				}
+			}
+			if (!batch.empty()) {
+				Skee::ApplyTargetsDeferred(a_actor, std::move(batch));
+			}
+			return changed;
+		}
+
+		std::int32_t MorphMany(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			std::vector<RE::BSFixedString> a_morphs, std::vector<float> a_values,
+			std::vector<float> a_mins, std::vector<float> a_maxs, std::vector<float> a_mults,
+			std::vector<float> a_increments, RE::BSFixedString a_oldMod)
+		{
+			logger::info("[API] MorphMany({:08X} '{}', mod='{}', {} slider(s))",
+				a_actor ? a_actor->GetFormID() : 0, a_actor ? a_actor->GetName() : "<none>",
+				a_mod.c_str(), a_morphs.size());
+			if (!a_actor || a_mod.empty()) {
+				return 0;
+			}
+			if (!a_oldMod.empty()) {
+				Skee::CleanLegacyKeyDeferred(a_actor, a_oldMod.c_str());
+			}
+			const auto at = [](const std::vector<float>& a_arr, std::size_t a_index) {
+				return a_index < a_arr.size() ? a_arr[a_index] : -1.0f;
+			};
+			auto& ledger = Ledger::GetSingleton();
+			const auto formID = a_actor->GetFormID();
+			const bool gradual = ledger.GetGradual() && a_actor->Is3DLoaded();
+			std::vector<std::string> batch;
+			std::int32_t changed = 0;
+			for (std::size_t i = 0; i < a_morphs.size() && i < a_values.size(); ++i) {
+				if (a_morphs[i].empty()) {
+					continue;
+				}
+				const std::string slider = a_morphs[i].c_str();
+				const std::string target = std::string{ kMorphPrefix } + Lower(slider);
+				float min = at(a_mins, i);
+				float max = at(a_maxs, i);
+				float mult = at(a_mults, i);
+				float increment = at(a_increments, i);
+				ResolveDefaults(min, max, mult, increment);
+				const float before = ledger.Aggregate(formID, target);
+				if (!ledger.Set(formID, a_mod.c_str(), target, a_values[i], min, max, mult,
+						increment, slider)) {
+					continue;
+				}
+				++changed;
+				if (gradual) {
+					Ramp::Begin(a_actor, target, before, increment);
+				} else if (std::find(batch.begin(), batch.end(), target) == batch.end()) {
+					batch.push_back(target);
+				}
+			}
+			if (!batch.empty()) {
+				Skee::ApplyTargetsDeferred(a_actor, std::move(batch));
+			}
+			return changed;
+		}
+
+		// ---- per-actor magnitude (SGO4's BellyScaleMult, as a framework knob) --
+		void SetActorTargetScale(RE::StaticFunctionTag*, RE::Actor* a_actor,
+			RE::BSFixedString a_scaleId, float a_scale)
+		{
+			if (!a_actor || a_scaleId.empty()) {
+				return;
+			}
+			logger::info("[API] SetActorTargetScale({:08X}, '{}', {})", a_actor->GetFormID(),
+				a_scaleId.c_str(), a_scale);
+			auto& ledger = Ledger::GetSingleton();
+			if (std::abs(ledger.GetActorTargetScale(a_actor->GetFormID(), a_scaleId.c_str()) -
+						 a_scale) < 0.0001f) {
+				return;
+			}
+			ledger.SetActorTargetScale(a_actor->GetFormID(), a_scaleId.c_str(), a_scale);
+			Skee::ApplyTargetsDeferred(a_actor, ledger.TargetsOf(a_actor->GetFormID()));
+		}
+
+		float GetActorTargetScale(RE::StaticFunctionTag*, RE::Actor* a_actor,
+			RE::BSFixedString a_scaleId)
+		{
+			if (!a_actor || a_scaleId.empty()) {
+				return 1.0f;
+			}
+			return Ledger::GetSingleton().GetActorTargetScale(a_actor->GetFormID(), a_scaleId.c_str());
 		}
 
 		// The reference's "slif_<morphName>": the cross-mod direct-morph total.
@@ -574,6 +732,10 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetMasterScale", script, GetMasterScale);
 		a_vm->RegisterFunction("SetTargetScale", script, SetTargetScale);
 		a_vm->RegisterFunction("GetTargetScale", script, GetTargetScale);
+		a_vm->RegisterFunction("SetActorTargetScale", script, SetActorTargetScale);
+		a_vm->RegisterFunction("GetActorTargetScale", script, GetActorTargetScale);
+		a_vm->RegisterFunction("InflateMany", script, InflateMany);
+		a_vm->RegisterFunction("MorphMany", script, MorphMany);
 		a_vm->RegisterFunction("GetCombinedMorph", script, GetCombinedMorph);
 		a_vm->RegisterFunction("SetIncrementalInflation", script, SetIncrementalInflation);
 		a_vm->RegisterFunction("IsIncrementalInflation", script, IsIncrementalInflation);

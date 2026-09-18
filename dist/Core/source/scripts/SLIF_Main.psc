@@ -97,6 +97,13 @@ EndFunction
 ; fresh min/max whenever its max-scale sliders move. The reference's other
 ; job (re-pushing applied values that drifted from its store) has no
 ; equivalent here: nothing can drift. -1.0 leaves a bound as stored.
+; Pinned from 1.2.2 bytecode (no observed caller yet; SGO4 is the intended
+; adopter). One native call, one coalesced apply for the whole set - the
+; reference looped inflate() per node instead.
+Function inflateMultiple(Actor kActor, string modName, string[] nodes, float[] values, int gender, int perspective, string oldModName, float[] minimum, float[] maximum, float[] multiplier, float[] increment) Global
+	SLIFNG.InflateMany(kActor, modName, nodes, values, minimum, maximum, multiplier, increment, oldModName)
+EndFunction
+
 Function updateActorList(String modName = "All Mods", string node = "", int gender = -1, int newGender = -1, int perspective = -1, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
 	if node != ""
 		SLIFNG.UpdateModBounds(modName, node, minimum, maximum, multiplier, increment)

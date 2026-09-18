@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
-    <moduleName>SLIF NG 0.2.1</moduleName>
+    <moduleName>SLIF NG 0.3.0</moduleName>
     <requiredInstallFiles>
         <folder source="Core" destination="" />
     </requiredInstallFiles>
