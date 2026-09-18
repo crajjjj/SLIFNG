@@ -39,7 +39,7 @@
                             </typeDescriptor>
                         </plugin>
                         <plugin name="BHUNP">
-                            <description>For a body built from the BHUNP (UUNP-derived) slider set. NOTE: these slider names are UNVERIFIED - no BHUNP body was available to check them against, unlike the CBBE 3BA and UBE profiles. If inflation does nothing after installing this, open your BHUNP body's .osp in a text editor and copy the exact Slider name values into Data\SLIFNG\Bodies\default.ini.</description>
+                            <description>For a body built from the BHUNP (UUNP-derived) slider set. NOTE: these slider names are UNVERIFIED - no BHUNP body was available to check them against, unlike the CBBE 3BA and UBE profiles. If inflation does nothing after installing this, open your BHUNP body's .osp in a text editor and copy the exact Slider name values into an overlay at Data\SLIFNG\Bodies\Regions\zz-bhunp-fix.ini - see the README.txt in that folder. An overlay survives updates; editing default.ini directly does not.</description>
                             <files>
                                 <folder source="Bodies\BHUNP" destination="" priority="0" />
                             </files>

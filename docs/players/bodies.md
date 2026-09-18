@@ -36,3 +36,22 @@ Mods send SLIF NG either a **node key** (`slif_belly`, or the raw bone name `NPC
 When a node key lands on a body whose profile maps it to sliders, the node value is *transformed* into those sliders - and from that point it competes with direct morph contributions on the same slider under the selected [calculation type](mcm.md#calculation-type). The full arithmetic lives in [Aggregation Math](../authors/math.md).
 
 Profiles can also define **custom regions** (for example `[Weight]`) that integrating mods may drive as a single intent; see [Body Profile Format](../authors/body-profiles.md) if you want to enable the shipped template.
+
+## Changing a profile without losing it on update
+
+Shipped profiles are replaced when you update SLIF NG, so edits made directly in `default.ini` do not survive. Put your changes in an **overlay** instead: any `.ini` in `Data/SLIFNG/Bodies/Regions/` has its sections merged into the profile it names, and nothing overwrites it.
+
+```ini
+; Data/SLIFNG/Bodies/Regions/zz-my-fixes.ini
+[Overlay]
+Profile=CBBE 3BA        ; the Name= at the top of the profile you are fixing
+
+[slif_breast]
+FullScale=10.0
+Morph1=TheSliderMyBodyActuallyHas
+Morph1Max=0.5
+```
+
+A whole section replaces the profile's, so this is how you correct a slider name that does not exist on your body (the BHUNP profile's names are unverified, so this is the fix if breasts never move). Files apply alphabetically and the last wins, so name yours `zz-*.ini` to beat everything else. `SLIFNG.log` lists every overlay it loaded and which profile it merged into.
+
+Mod authors use the same mechanism to add regions; the folder ships a `README.txt`, and the full rules are in [Body Profile Format](../authors/body-profiles.md#region-overlays).

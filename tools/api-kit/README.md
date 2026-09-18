@@ -58,7 +58,7 @@ endif
 A write returns `false` for several unrelated reasons, so it can't tell you *why* nothing
 happened; `HasTarget` can. Canonical keys and morphs are always true (worst case the skeleton
 node drives them); a `region:` key is true only when the actor's body profile defines it.
-Needs `SLIFNG.GetVersion() >= 3`, and `msg.query2->HasTarget(...)` is the C++ equivalent.
+Needs `SLIFNG.GetVersion() >= 3`, and the C++ equivalent is a `Version() >= 2` cast to `IQueryInterface2` (below).
 
 ## Detection and version gating
 
@@ -91,8 +91,9 @@ SKSE::GetMessagingInterface()->Dispatch(
 if (msg.query) {                       // null = SLIF NG not installed
     const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 }
-if (msg.query2) {                      // null on a SLIF NG older than this header
-    const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+if (msg.query && msg.query->Version() >= 2) {   // a newer interface: ask, then cast
+    auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+    const bool hasWeight = q2->HasTarget(actor, "region:weight");
 }
 ```
 
@@ -102,10 +103,13 @@ process lifetime and every call is thread-safe. An absent row returns **your** d
 invented neutral, so you can always tell "nothing tracked" from "tracked at neutral".
 
 Interfaces are versioned by **addition** - an existing `IQueryInterfaceN` is never edited - so a
-plugin built against an older header keeps working untouched. The exchange struct grows with
-each one, and SLIF NG treats its size as a lower bound: it fills `query` for every consumer and
-writes `query2` only when your dispatch was large enough to hold it. Null-check the pointer you
-are about to use; `Version()` reports the newest interface this build serves.
+plugin built against an older header keeps working untouched. The **exchange struct never
+grows**: it stays one pointer and the handshake is an exact size match, so a dispatch from any
+header version is accepted by any SLIF NG. Reach a newer interface by asking the one you were
+handed for its version and casting, as above - the implementation derives the whole chain by
+single inheritance, so the pointer is identical and `Version()` is what makes the cast sound.
+
+Gate on `Version() >= N`, never on equality: it is a monotonic "newest interface served".
 
 ## Target spellings
 

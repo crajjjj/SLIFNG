@@ -133,7 +133,16 @@ namespace SLIFNG::BodyProfile
 					continue;
 				}
 				const std::string key = Lower(Trim(trimmed.substr(0, eq)));
-				const std::string value = Trim(trimmed.substr(eq + 1));
+				// Strip an INLINE comment before trimming: every documented
+				// example annotates its values ("Profile=CBBE 3BA  ; the body"),
+				// and a string value that keeps the comment matches nothing.
+				// Numeric values only appeared to work because stof stops at the
+				// first non-digit.
+				std::string rawValue = trimmed.substr(eq + 1);
+				if (const auto comment = rawValue.find_first_of(";#"); comment != std::string::npos) {
+					rawValue = rawValue.substr(0, comment);
+				}
+				const std::string value = Trim(rawValue);
 				if (key == "fullscale") {
 					try {
 						fullScale = std::stof(value);

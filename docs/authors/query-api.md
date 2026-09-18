@@ -35,7 +35,7 @@ Float Function GetTargetScale(...) / GetActorTargetScale(...) Global Native
 
 A `scaleId` is the lowercase slider name for a morph target or the canonical key for a node target (`"pregnancybelly"`, `"slif_butt"`). Apply multiplies `master * target * actor`.
 
-### `HasTarget` — ask before you write
+### `HasTarget`: ask before you write
 
 A write returns `false` for several unrelated reasons (unchanged value, dead key, unknown key, no engine), so it cannot tell you *why* nothing happened. `HasTarget` answers the one question you need first: **would writing to this target do anything on this actor?**
 
@@ -47,7 +47,7 @@ else
 endif
 ```
 
-- A **canonical key** (`slif_belly`) or a **morph** (`morph:X`) is always `true` — worst case the skeleton node drives it.
+- A **canonical key** (`slif_belly`) or a **morph** (`morph:X`) is always `true`, since worst case the skeleton node drives it.
 - A **region** (`region:weight`) is `true` only when this actor's profile (or an [overlay](body-profiles.md#region-overlays)) defines that section, because a region is sliders or nothing.
 - Dead keys (`slif_breast01`) and unknown spellings are `false`.
 
@@ -70,14 +70,17 @@ if (msg.query) {  // null when SLIF NG is not installed - no link-time coupling
     const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
     const bool  busy  = msg.query->IsTracked(actor);
 }
-if (msg.query2) {  // query version 2+; null on an older SLIF NG
-    const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+if (msg.query && msg.query->Version() >= 2) {   // a newer interface: ask, then cast
+    auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+    const bool hasWeight = q2->HasTarget(actor, "region:weight");
 }
 ```
 
 `IQueryInterface1` carries: `Version`, `IsTracked`, `TrackedActorCount`, `GetValue`, `GetMinValue`, `GetMaxValue`, `GetApplied`, `GetCombinedMorph`, `GetCalculationType`, `IsIncrementalInflation`. `IQueryInterface2` adds `HasTarget`. Both are **read-only by design** - mutations go through the pinned Papyrus surface, which is the compatibility contract. The pointer stays valid for the process lifetime and every call is thread-safe (the store is mutex-guarded).
 
-Interfaces are versioned by **addition**: an existing `IQueryInterfaceN` is never edited, so a plugin built against an older header keeps working untouched. The exchange struct grows with each one, and SLIF NG treats its size as a lower bound - it fills `query` for everyone and only writes `query2` when your dispatch was large enough to hold it. Always null-check the pointer you are about to use.
+Interfaces are versioned by **addition**: an existing `IQueryInterfaceN` is never edited, so a plugin built against an older header keeps working untouched. The **exchange struct never grows** - it stays one pointer, and the handshake stays an exact size match, so a dispatch from any header version is accepted by any SLIF NG. You reach a newer interface by asking the one you were handed for its version and casting: the implementation derives the whole chain by single inheritance, so the pointer is identical and `Version()` is what makes the cast sound.
+
+Gate on `Version() >= N`, never on equality. (SLIF NG 0.3.0's header described this number as a breaking-change counter; it is a monotonic "newest interface served", so `== 1` would lock a consumer out of every later build.)
 
 ## Legacy StorageUtil mirror
 

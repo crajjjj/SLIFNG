@@ -22,7 +22,7 @@
 If the save previously ran old SLIF, the **migration runs by itself** on that first load: every mod's per-actor values are copied out of the old framework's storage into SLIF NG, and a notification reports how many values were carried over. The MCM shows `Old-SLIF import: done (automatic)` afterwards. A save that never ran SLIF silently skips this forever.
 
 !!! tip "Wrong body picked?"
-    You do not need to reinstall. Every profile ships in `Data/SLIFNG/Bodies/`; copy the one you want over `default.ini` (or edit it), then reload a save. [Body Profile Format](../authors/body-profiles.md) documents the file.
+    You do not need to reinstall. Every profile ships in `Data/SLIFNG/Bodies/`; copy the one you want over `default.ini`, then reload a save. To *tune* a profile rather than swap it, put your changes in an [overlay](bodies.md#changing-a-profile-without-losing-it-on-update) so an update cannot overwrite them. [Body Profile Format](../authors/body-profiles.md) documents both.
 
 ## What you should see
 

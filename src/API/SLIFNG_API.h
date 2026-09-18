@@ -20,8 +20,10 @@
 //   if (msg.query) {
 //       const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 //   }
-//   if (msg.query2) {   // newer surface; null on an older SLIF NG
-//       const bool hasWeight = msg.query2->HasTarget(actor, "region:weight");
+//   // a newer interface: ask, then cast (see InterfaceExchangeMessage below)
+//   if (msg.query && msg.query->Version() >= 2) {
+//       auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+//       const bool hasWeight = q2->HasTarget(actor, "region:weight");
 //   }
 //
 // msg.query stays null when SLIF NG is not installed - no link-time coupling.
@@ -44,8 +46,11 @@ namespace RE
 
 namespace SLIFNG_API
 {
-	// Bump when a new IQueryInterfaceN is added; never edit an existing one's
-	// layout. Version() reports the newest interface this SLIF NG serves.
+	// The NEWEST IQueryInterfaceN this build serves, and what Version() returns.
+	// Monotonic: bump when an interface is added, never edit an existing one's
+	// layout. Gate a newer call on `Version() >= N`, never on equality - 0.3.0
+	// shipped a header calling this a breaking-change counter, and a consumer
+	// that wrote `Version() == 1` will lock itself out of every later build.
 	inline constexpr std::uint32_t kQueryVersion = 2;
 
 	class IQueryInterface1
@@ -100,6 +105,17 @@ namespace SLIFNG_API
 		virtual bool HasTarget(RE::Actor* a_actor, const char* a_target) const = 0;
 	};
 
+	// The exchange struct NEVER grows: SLIF NG 0.3.0 shipped a server that
+	// size-checks the dispatch exactly, so adding a field here would make that
+	// build reject the message and hand a consumer nothing at all. Reach a newer
+	// interface by asking the one you were given for its version, then casting -
+	// the implementation derives the whole chain by single inheritance, so the
+	// pointer value is identical and Version() is what makes the cast sound.
+	//
+	//   if (msg.query && msg.query->Version() >= 2) {
+	//       auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+	//       const bool hasWeight = q2->HasTarget(actor, "region:weight");
+	//   }
 	struct InterfaceExchangeMessage
 	{
 		enum : std::uint32_t
@@ -108,9 +124,5 @@ namespace SLIFNG_API
 		};
 
 		IQueryInterface1* query{ nullptr };
-		// Query version 2+. Stays null both when SLIF NG is absent and when it
-		// is older than this header - the struct grew, and SLIF NG only writes
-		// this field if your dispatch was large enough to hold it.
-		IQueryInterface2* query2{ nullptr };
 	};
 }

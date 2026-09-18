@@ -38,7 +38,7 @@ Nine problems out of ten are answered by MCM > SLIF NG > Actor for the affected 
 
 - **Body bigger than expected?** Look for `also <key>` rows under Applied - another mod is writing the same slider under its own RaceMenu key, and RaceMenu *sums* keys. That stacking is outside SLIF NG's control (until that mod routes through it).
 - **Nothing visible at all?** Check `Body / Skeleton nodes` (a missing `NPC Belly` means no XPMSSE or a broken skeleton) and `RaceMenu / skee` on the Settings page.
-- **Morphs not moving?** The profile's sliders must exist in your body's `morphs.tri` - the body must be built in BodySlide with *Build Morphs* checked. `> drives bone scale` rows mean the profile maps that target to the bone, not to sliders.
+- **Morphs not moving?** The profile's sliders must exist in your body's `morphs.tri` - the body must be built in BodySlide with *Build Morphs* checked. `> drives bone scale` rows mean the profile maps that target to the bone, not to sliders. If the sliders are simply named differently on your body (the BHUNP profile's names are unverified), correct them in an [overlay](bodies.md#changing-a-profile-without-losing-it-on-update) rather than in the profile itself, which the next update overwrites.
 - **Stuck shape?** *Reset this actor* wipes SLIF NG's state for that character (mods may or may not re-send - some only push on events).
 
 ## Console test drivers

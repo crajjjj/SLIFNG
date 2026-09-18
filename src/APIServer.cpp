@@ -80,27 +80,22 @@ namespace SLIFNG::APIServer
 			}
 		};
 
-		// The exchange struct GROWS as interfaces are added, so its size is a
-		// lower bound, never an equality test: a consumer built against the v1
-		// header dispatches a smaller struct and must still be served, and we
-		// must never write a field past what it allocated.
-		constexpr std::size_t kExchangeSizeV1 = sizeof(SLIFNG_API::IQueryInterface1*);
-
+		// The exchange struct is FROZEN at one pointer, so this stays an exact
+		// size check and every consumer header past or future matches it. New
+		// interfaces are reached by Version()-gated cast off `query`, not by
+		// growing this message - 0.3.0 shipped this same strict check, and a
+		// bigger struct would make that build reject the dispatch outright and
+		// report SLIF NG as absent.
 		void OnPluginMessage(SKSE::MessagingInterface::Message* a_msg)
 		{
 			if (!a_msg || a_msg->type != SLIFNG_API::InterfaceExchangeMessage::kMessageType ||
-				!a_msg->data || a_msg->dataLen < kExchangeSizeV1) {
+				!a_msg->data || a_msg->dataLen != sizeof(SLIFNG_API::InterfaceExchangeMessage)) {
 				return;
 			}
 			auto* exchange = static_cast<SLIFNG_API::InterfaceExchangeMessage*>(a_msg->data);
 			exchange->query = QueryImpl::GetSingleton();
-			const bool wantsV2 = a_msg->dataLen >= sizeof(SLIFNG_API::InterfaceExchangeMessage);
-			if (wantsV2) {
-				exchange->query2 = QueryImpl::GetSingleton();
-			}
-			logger::info("[API] query interface v{} handed to '{}' (consumer header: v{})",
-				SLIFNG_API::kQueryVersion, a_msg->sender ? a_msg->sender : "<unnamed plugin>",
-				wantsV2 ? 2 : 1);
+			logger::info("[API] query interface v{} handed to '{}'", SLIFNG_API::kQueryVersion,
+				a_msg->sender ? a_msg->sender : "<unnamed plugin>");
 		}
 	}
 
