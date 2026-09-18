@@ -12,7 +12,7 @@ that need migrating. 0.2.0 (200) is the first legal version; there was never
 a released 0.1.x for this reason.}
 
 Int Function GetVersion() Global
-	Return 401
+	Return 402
 	; 0.2.0  ->    200
 	; 0.3.0  ->    300
 	; 1.0.0  ->  10000
@@ -20,5 +20,5 @@ Int Function GetVersion() Global
 EndFunction
 
 String Function GetVersionString() Global
-	Return "0.4.1"
+	Return "0.4.2"
 EndFunction

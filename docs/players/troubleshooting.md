@@ -65,5 +65,6 @@ cgf "SLIFNG_Debug.Probe"                            what sliders skee knows abou
 ## Known constraints
 
 - The plugin **must** stay named `SexLab Inflation Framework.esp` - that name is how every consumer detects the framework.
+- The plugin is **ESL-flagged** (light), so it takes no load-order slot. Updating from before 0.4.2 re-creates its quest under a new FormID: your inflation values, calculation type and magnitudes all survive (they live in the SKSE co-save, keyed by actor), but **the MCM re-registers** - open it once after updating.
 - Leftover loose scripts from a half-removed old SLIF (`SLIF_Calc.pex`, `SLIF_Util.pex`, ...) can shadow nothing here - SLIF NG replaces the whole script set - but a mod manager showing file conflicts between SLIF and SLIF NG means both are enabled; disable old SLIF.
 - An uninstall path (clearing all applied output before removing the mod) is not built yet; going back to old SLIF is safe (same RaceMenu key), removing inflation frameworks entirely mid-save is not.

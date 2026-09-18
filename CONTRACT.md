@@ -41,6 +41,15 @@
   resolves them. Keep the quest at `0x800` with the `SLIF_ScannerAlias` player
   alias (it hosts the mod-event registrations and `OnPlayerLoadGame`).
   Tier-2: keep `0x801` too.
+- The plugin is **ESL-flagged** (light) as of 0.4.2, so it costs no load-order
+  slot. This is contract-safe: the LOCAL FormIDs are still `0x800`/`0x801`, and
+  every surveyed consumer detects SLIF by plugin NAME
+  (`IsPluginInstalled` / `GetModByName`), never by resolving a form from it.
+  What it does change is the global FormID prefix (`FE:xxx:800`), so a save
+  made before 0.4.2 drops its reference to the old quest and starts the new
+  one fresh: the MCM re-registers, and `OnConfigInit` runs instead of
+  `OnVersionUpdate`. Harmless here because the ledger lives in the DLL co-save
+  keyed by ACTOR FormIDs, and `OnConfigInit` already runs the legacy import.
 
 ## 2. Mod events (dynamic dispatch — arity-flexible)
 

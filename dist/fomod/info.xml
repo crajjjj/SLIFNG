@@ -1,7 +1,7 @@
 <fomod>
 	<Name>SLIF NG</Name>
 	<Author>crajjjj</Author>
-	<Version>0.4.1</Version>
+	<Version>0.4.2</Version>
 	<Website>https://github.com/crajjjj/SLIFNG</Website>
 	<Description>Drop-in replacement for SexLab Inflation Framework SE. Install INSTEAD of SLIF - it ships the same plugin name so existing consumer mods keep working unmodified.</Description>
 </fomod>
