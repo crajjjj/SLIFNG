@@ -5,8 +5,13 @@ Profiles live in `Data/SLIFNG/Bodies/*.ini`. They answer the one question skee c
 ## Resolution, per actor
 
 1. Every `.ini` in the folder loads at game start (alphabetical). `default.ini` is the fallback - the installer writes your body choice there.
-2. A profile may carry matchers: `Race=` (substring of the race EditorID - hard per-actor evidence; this is how UBE characters get UBE sliders inside a 3BA game) and `Plugin=` (a plugin's presence).
-3. First matching profile wins; otherwise `default.ini`; with no files at all, the built-in fallback is **node scaling only** - old SLIF's own out-of-the-box behaviour.
+2. A profile may carry matchers, and the two are **different kinds of evidence**:
+    - `Race=` — a substring of the race EditorID. **Per-actor**: it says *this actor uses this body*. This is how UBE characters get UBE sliders inside a 3BA game.
+    - `Plugin=` — a plugin's presence. **Install-wide**: it says *this body is installed somewhere*, which says nothing about any individual actor.
+3. Race wins. A profile that declares `Race=` and does **not** match this actor is out of the running — its `Plugin=` cannot rescue it, and in fact is never consulted at all. Plugin presence only ever selects a profile that offers no `Race=`. Across profiles the same order holds: every race match is considered before any plugin match, then `default.ini`; with no files at all, the built-in fallback is **node scaling only** — old SLIF's own out-of-the-box behaviour.
+
+    !!! warning "Do not declare both"
+        A profile with `Race=` and `Plugin=` logs a warning at load: the plugin line is dead. Before 0.4.8 it was worse than dead — it made the profile claim *every* actor once its plugin was present, which is [issue #1](https://github.com/crajjjj/SLIFNG/issues/1): shipped `UBE.ini` carried both, so a load order with UBE resolved every Nord and Imperial to `UBE 2.0`.
 
 Reloading: edit the INI, then `cgf "SLIFNG_Debug.Body"`-style reload is not needed - just reload a save (profiles are read at data load; the MCM actor page shows what each actor resolved to).
 
@@ -15,8 +20,8 @@ Reloading: edit the INI, then `cgf "SLIFNG_Debug.Body"`-style reload is not need
 ```ini
 [Profile]
 Name=CBBE 3BA
-;Race=UBE_            ; optional matchers - see above
-;Plugin=UBE_AllRace.esp
+;Race=UBE_            ; per-actor matcher, decisive - see above
+;Plugin=SomeBody.esp  ; install-wide fallback; use INSTEAD of Race=, never with it
 
 [slif_belly]
 FullScale=7.5         ; the node-scale DEVIATION at which sliders reach their Max

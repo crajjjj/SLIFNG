@@ -156,27 +156,51 @@ namespace SLIFNG::BodyProfile
 			return true;
 		}
 
-		bool Matches(const Profile& a_profile, RE::Actor* a_actor)
+		// The two matchers are NOT the same kind of evidence, and must not be
+		// OR'd at equal strength:
+		//
+		//   Race=   is PER-ACTOR. It says "this actor uses this body".
+		//   Plugin= is INSTALL-WIDE. It says "this body is installed somewhere",
+		//           which is not the same claim and says nothing about one actor.
+		//
+		// Issue #1: UBE.ini declared both, so once UBE_AllRace.esp was present
+		// every Nord and Imperial fell past the race check, hit the plugin check,
+		// and was resolved to 'UBE 2.0'. The whole point of per-actor profiles is
+		// that UBE and 3BA coexist in one load order, so this broke exactly the
+		// case the design exists for.
+		//
+		// Hence: a race matcher that MISSES disqualifies the profile for this
+		// actor. Plugin presence is consulted only for a profile that offers no
+		// per-actor evidence at all.
+		enum class MatchKind
+		{
+			kNone,
+			kPlugin,  // install-wide guess
+			kRace,    // per-actor evidence
+		};
+
+		MatchKind Match(const Profile& a_profile, RE::Actor* a_actor)
 		{
 			if (a_profile.isDefault) {
-				return false;  // the fallback is chosen only when nothing matched
+				return MatchKind::kNone;  // the fallback is chosen only when nothing matched
 			}
 			if (!a_profile.race.empty()) {
 				const auto* race = a_actor->GetRace();
 				const char* id = race ? race->GetFormEditorID() : nullptr;
 				if (id && Lower(id).find(a_profile.race) != std::string::npos) {
-					return true;
+					return MatchKind::kRace;
 				}
+				return MatchKind::kNone;  // decisive: do NOT fall through to plugins
 			}
 			if (!a_profile.plugins.empty()) {
 				auto* dh = RE::TESDataHandler::GetSingleton();
 				for (const auto& plugin : a_profile.plugins) {
 					if (dh && dh->LookupModByName(plugin.c_str())) {
-						return true;
+						return MatchKind::kPlugin;
 					}
 				}
 			}
-			return false;
+			return MatchKind::kNone;
 		}
 
 		std::string Join(const std::vector<std::string>& a_items)
@@ -279,6 +303,14 @@ namespace SLIFNG::BodyProfile
 				if (LoadFile(file, p)) {
 					logger::info("[BodyProfile] loaded '{}' from {} ({} target(s), race '{}', {} plugin matcher(s))",
 						p.name, p.file, p.targets.size(), p.race, p.plugins.size());
+					if (!p.race.empty() && !p.plugins.empty()) {
+						// Not an error, but the Plugin= line is dead weight and was
+						// actively harmful before issue #1: say so, so a profile
+						// author does not think it is doing something.
+						logger::warn("[BodyProfile]   '{}' declares BOTH Race= and Plugin=; Race wins per",
+							p.name);
+						logger::warn("[BodyProfile]   actor and the Plugin matcher is never consulted. Drop it.");
+					}
 					g_profiles.push_back(std::move(p));
 				}
 			}
@@ -323,12 +355,27 @@ namespace SLIFNG::BodyProfile
 		if (const auto it = g_cache.find(formID); it != g_cache.end()) {
 			return it->second;
 		}
-		const Profile* chosen = g_default;
+		// Race evidence beats plugin presence across profiles too, not just within
+		// one, so this is two passes rather than first-match-wins over an
+		// arbitrarily ordered list (PLAN P2: "race EditorID substring first, then
+		// plugin presence, else default.ini").
+		const Profile* chosen = nullptr;
 		for (const auto& p : g_profiles) {
-			if (Matches(p, a_actor)) {
+			if (Match(p, a_actor) == MatchKind::kRace) {
 				chosen = &p;
 				break;
 			}
+		}
+		if (!chosen) {
+			for (const auto& p : g_profiles) {
+				if (Match(p, a_actor) == MatchKind::kPlugin) {
+					chosen = &p;
+					break;
+				}
+			}
+		}
+		if (!chosen) {
+			chosen = g_default;
 		}
 		g_cache.emplace(formID, chosen);
 		logger::info("[BodyProfile] {:08X} '{}' -> '{}'", formID,
