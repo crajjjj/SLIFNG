@@ -606,10 +606,9 @@ namespace SLIFNG::Papyrus
 			}
 			// A region has no bone behind it, so "not in the profile" is nothing
 			// at all; a canonical key falls back to scaling its skeleton node -
-			// but only where the node engine exists. On pre-AE RaceMenu (skee
-			// NiTransform v2, refused for its differing vtable) nothing drives
-			// this key, and "none" is the honest answer: a consumer told "node"
-			// would compensate for a bone scale that never happens.
+			// but only where a node engine exists at all. Never promise "node"
+			// without one: a consumer told "node" compensates for a bone scale,
+			// and would be compensating for something that never happened.
 			if (IsRegionTarget(target) || !Skee::IsNodeReady()) {
 				return RE::BSFixedString{ "none" };
 			}

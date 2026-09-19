@@ -16,6 +16,12 @@ namespace SLIFNG::Skee
 	{
 		SKEE::IBodyMorphInterface* g_bodyMorph = nullptr;
 		SKEE::INiTransformInterface* g_niTransform = nullptr;
+		// Pre-AE RaceMenu (skee NiTransform v2). SKEE.h ships a purpose-built
+		// shim for it - see SKEE::Legacy - whose *Reserved padding lands
+		// AddNodeTransform, RemoveNodeTransformComponent and UpdateNodeTransforms
+		// on the same vtable slots (5, 6, 16) as skee 0.4.16's own class. Only
+		// one of these two is ever non-null.
+		SKEE::Legacy::INiTransformInterface* g_niTransformLegacy = nullptr;
 		std::atomic_bool g_verbose{ true };  // dev default; release ships false
 
 		// (actor formID, lowercase legacy key) pairs already cleaned this session.
@@ -44,25 +50,66 @@ namespace SLIFNG::Skee
 			return a_actor->IsPlayerRef();
 		}
 
+		// ---- the two node ABIs, isolated -----------------------------------
+		// Every node write in this file goes through these three. v2 speaks
+		// OverrideVariant and FixedString-by-value; v3 has typed setters. Nothing
+		// outside here needs to know which RaceMenu is installed.
+
+		void DropNodeScale(RE::Actor* a_actor, bool a_firstPerson, bool a_female,
+			const char* a_node, const char* a_key)
+		{
+			if (g_niTransform) {
+				g_niTransform->RemoveNodeTransformScale(a_actor, a_firstPerson, a_female, a_node, a_key);
+			} else if (g_niTransformLegacy) {
+				// index 0 is what OverrideVariant::SetFloat writes for a scale.
+				g_niTransformLegacy->RemoveNodeTransformComponent(a_actor, a_firstPerson, a_female,
+					SKEE::Legacy::FixedString(a_node), SKEE::Legacy::FixedString(a_key),
+					SKEE::Legacy::OverrideVariant::Scale, 0);
+			}
+		}
+
+		void PushNodeScale(RE::Actor* a_actor, bool a_firstPerson, bool a_female,
+			const char* a_node, const char* a_key, float a_scale)
+		{
+			if (g_niTransform) {
+				g_niTransform->AddNodeTransformScale(a_actor, a_firstPerson, a_female, a_node, a_key, a_scale);
+			} else if (g_niTransformLegacy) {
+				SKEE::Legacy::OverrideVariant value;
+				value.SetFloat(SKEE::Legacy::OverrideVariant::Scale, a_scale);
+				g_niTransformLegacy->AddNodeTransform(a_actor, a_firstPerson, a_female,
+					SKEE::Legacy::FixedString(a_node), SKEE::Legacy::FixedString(a_key), value);
+			}
+		}
+
+		void RefreshNode(RE::Actor* a_actor, bool a_firstPerson, bool a_female, const char* a_node)
+		{
+			if (g_niTransform) {
+				g_niTransform->UpdateNodeTransforms(a_actor, a_firstPerson, a_female, a_node);
+			} else if (g_niTransformLegacy) {
+				g_niTransformLegacy->UpdateNodeTransforms(a_actor, a_firstPerson, a_female,
+					SKEE::Legacy::FixedString(a_node));
+			}
+		}
+
 		void SetNodeScale(RE::Actor* a_actor, const char* a_node, float a_scale)
 		{
 			const bool female = IsFemale(a_actor);
 			const bool player = IsPlayer(a_actor);
 			if (std::abs(a_scale - 1.0f) < kEpsilon) {
-				g_niTransform->RemoveNodeTransformScale(a_actor, false, female, a_node, kAppliedKey);
+				DropNodeScale(a_actor, false, female, a_node, kAppliedKey);
 				if (player) {
-					g_niTransform->RemoveNodeTransformScale(a_actor, true, female, a_node, kAppliedKey);
+					DropNodeScale(a_actor, true, female, a_node, kAppliedKey);
 				}
 			} else {
-				g_niTransform->AddNodeTransformScale(a_actor, false, female, a_node, kAppliedKey, a_scale);
+				PushNodeScale(a_actor, false, female, a_node, kAppliedKey, a_scale);
 				if (player) {
-					g_niTransform->AddNodeTransformScale(a_actor, true, female, a_node, kAppliedKey, a_scale);
+					PushNodeScale(a_actor, true, female, a_node, kAppliedKey, a_scale);
 				}
 			}
 			if (a_actor->Is3DLoaded()) {
-				g_niTransform->UpdateNodeTransforms(a_actor, false, female, a_node);
+				RefreshNode(a_actor, false, female, a_node);
 				if (player) {
-					g_niTransform->UpdateNodeTransforms(a_actor, true, female, a_node);
+					RefreshNode(a_actor, true, female, a_node);
 				}
 			}
 		}
@@ -165,11 +212,10 @@ namespace SLIFNG::Skee
 
 			// --- node path (the profile lists no sliders for this key) ---
 			if (!IsNodeReady()) {
-				// ONCE per session, not per apply. The cause is global (no usable
-				// NiTransform interface at all), Initialize already named what is
-				// lost, and a consumer re-sending a butt value every cycle tick
-				// would otherwise flush the log synchronously each time - warn
-				// flushes, info does not.
+				// ONCE per session, not per apply. The cause is global (skee gave us
+				// no NiTransform at all, neither ABI), and a consumer re-sending a
+				// butt value every cycle tick would otherwise flush the log
+				// synchronously each time - warn flushes, info does not.
 				static std::once_flag once;
 				std::call_once(once, [&] {
 					logger::warn("[Apply] key '{}' needs NiTransform, which is unavailable — node",
@@ -249,27 +295,38 @@ namespace SLIFNG::Skee
 		};
 	}
 
-	// WHY THE VERSION GATE, and why it is exact rather than cautious.
+	// WHY THE VERSION SPLIT, and why the numbers are exact.
 	//
-	// skee's interfaces are versioned, and GetVersion() sits at vtable slot 1 on
-	// every build ever shipped, so it is the one method that is always safe to
-	// call before trusting anything else. Measured from the shipped DLLs:
+	// skee's interfaces are versioned and GetVersion() sits at vtable slot 1 in
+	// every published header, so it is the one method always safe to call before
+	// trusting anything else. Verified against skee's own sources
+	// (expired6978/SKSE64Plugins) as well as the two shipped skee64.dll builds:
 	//
-	//   interface        RaceMenu 0.4.16 (SE 1.5.97)   RaceMenu 0.4.19+ (AE)   SKEE.h
-	//   IInterfaceMap    3 slots                       3 slots                 3
-	//   BodyMorph        25 slots, reports v4          26 slots, reports v4    25
-	//   NiTransform      18 slots, reports v2          27 slots, reports v3    25
+	//   IBodyMorphInterface - 22 methods, SAME ORDER in the 0.4.16-era header
+	//     (skee/IPluginInterface.h @ 87a5cadd5, Oct 2020) and the current one,
+	//     and SKEE.h matches both exactly. Morphs therefore need no shim at all.
 	//
-	// BodyMorph is therefore usable on BOTH: our header matches 0.4.16 exactly,
-	// and the AE build only APPENDED one method we never call. Appending is
-	// ABI-safe; that is the whole reason morphs work on old RaceMenu unchanged.
+	//   INiTransformInterface - 22 methods matching SKEE.h exactly in the current
+	//     header, and ABSENT from the 0.4.16 header: it was not public API then.
 	//
-	// NiTransform is NOT. The v2 vtable has 18 slots against our 25, and the four
-	// *ScaleMode methods that v3 interleaves are absent from it, so the slots
-	// after the first few name DIFFERENT functions. Calling our AddNodeTransformScale
-	// there would land on AddNodeTransformRotation with mismatched arguments, and
-	// UpdateNodeTransforms would run off the end of the vtable entirely. So v2 is
-	// refused rather than used - the node fallback goes dark, and morphs carry on.
+	// So v2's "NiTransform" is not an older subset of v3, it is a different
+	// interface. 0.4.16's concrete class reads
+	//   GetVersion, Save, Load, Revert, AddNodeTransform,
+	//   RemoveNodeTransformComponent, RemoveNodeTransform, ...
+	// - 17 virtuals plus the destructor, exactly the 18 slots measured in the DLL.
+	// It diverges at SLOT 2 (Save where v3 has Revert), has no typed per-component
+	// setters (one AddNodeTransform taking an OverrideVariant), and passes strings
+	// as SKEEFixedString BY VALUE rather than const char*.
+	//
+	// None of which means it is unreachable: SKEE.h ships SKEE::Legacy, a shim
+	// built for exactly this vtable, whose *Reserved padding puts AddNodeTransform,
+	// RemoveNodeTransformComponent and UpdateNodeTransforms on slots 5, 6 and 16 -
+	// the same slots 0.4.16's own class uses, checked name by name against that
+	// source. The Revert/Save/Load permutation at slots 2-4 is harmless because
+	// none of those three is ever called through this pointer.
+	//
+	// So v2 is REBOUND through the legacy shim rather than refused, and both
+	// RaceMenu generations get morphs AND bone scaling.
 	constexpr std::uint32_t kMinBodyMorphVersion = 4;
 	constexpr std::uint32_t kMinNiTransformVersion = 3;
 
@@ -309,19 +366,14 @@ namespace SLIFNG::Skee
 		if (g_niTransform) {
 			const auto version = g_niTransform->GetVersion();
 			if (version < kMinNiTransformVersion) {
-				// Pre-AE RaceMenu (0.4.16 on Skyrim SE 1.5.97) lands here. Not an
-				// error: morphs above still work, so belly and breasts behave
-				// normally. Only targets with no slider on this body lose out.
-				logger::warn("[Skee] NiTransform interface v{} (RaceMenu 0.4.16 or similar):",
-					version);
-				logger::warn("[Skee]   its vtable differs from v{}, so node scaling is DISABLED",
-					kMinNiTransformVersion);
-				logger::warn("[Skee]   rather than risk calling the wrong slots.");
-				logger::warn("[Skee]   Morphs are unaffected - belly and breasts work as usual.");
-				logger::warn("[Skee]   Targets that fall back to bones (butt, scrotum, and any key");
-				logger::warn("[Skee]   this body's profile does not map) will not move.");
-				logger::warn("[Skee]   RaceMenu 0.4.19+ enables them.");
+				// Pre-AE RaceMenu (0.4.16 on Skyrim SE 1.5.97). The modern typed
+				// setters are unreachable here, but SKEE.h's Legacy shim IS the
+				// right shape for this vtable, so re-bind through that and keep
+				// node scaling working instead of going dark.
+				g_niTransformLegacy = reinterpret_cast<SKEE::Legacy::INiTransformInterface*>(g_niTransform);
 				g_niTransform = nullptr;
+				logger::info("[Skee] NiTransform interface v{} — using the legacy (pre-AE) ABI",
+					version);
 			} else {
 				logger::info("[Skee] NiTransform interface v{}", version);
 			}
@@ -331,7 +383,7 @@ namespace SLIFNG::Skee
 	}
 
 	bool IsReady() { return g_bodyMorph != nullptr; }
-	bool IsNodeReady() { return g_niTransform != nullptr; }
+	bool IsNodeReady() { return g_niTransform != nullptr || g_niTransformLegacy != nullptr; }
 
 	void SetVerbose(bool a_on)
 	{
@@ -520,10 +572,10 @@ namespace SLIFNG::Skee
 			for (const auto& target : Vocabulary::kTargets) {
 				for (const auto* node : target.nodes) {
 					if (node) {
-						g_niTransform->RemoveNodeTransformScale(a_actor, false, female, node, a_key.c_str());
-						g_niTransform->RemoveNodeTransformScale(a_actor, true, female, node, a_key.c_str());
+						DropNodeScale(a_actor, false, female, node, a_key.c_str());
+						DropNodeScale(a_actor, true, female, node, a_key.c_str());
 						if (a_actor->Is3DLoaded()) {
-							g_niTransform->UpdateNodeTransforms(a_actor, false, female, node);
+							RefreshNode(a_actor, false, female, node);
 						}
 					}
 				}
@@ -544,10 +596,10 @@ namespace SLIFNG::Skee
 			for (const auto& target : Vocabulary::kTargets) {
 				for (const auto* node : target.nodes) {
 					if (node) {
-						g_niTransform->RemoveNodeTransformScale(a_actor, false, female, node, kAppliedKey);
-						g_niTransform->RemoveNodeTransformScale(a_actor, true, female, node, kAppliedKey);
+						DropNodeScale(a_actor, false, female, node, kAppliedKey);
+						DropNodeScale(a_actor, true, female, node, kAppliedKey);
 						if (a_actor->Is3DLoaded()) {
-							g_niTransform->UpdateNodeTransforms(a_actor, false, female, node);
+							RefreshNode(a_actor, false, female, node);
 						}
 					}
 				}

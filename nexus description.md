@@ -105,7 +105,7 @@ Any SLIF consumer not on that list either works (same calls) or fails [b]loudly[
 [list]
 [*][b]SKSE64[/b] (or SKSE VR)[/*]
 [*][b]SkyUI[/b] - the MCM[/*]
-[*][b]RaceMenu[/b] - its skee plugin performs the actual body changes. AE build (0.4.19+): everything works. RaceMenu 0.4.16 on Skyrim SE 1.5.97: morphs work, bone scaling is disabled (its NiTransform interface has a different layout), so belly and breasts are fine but butt and scrotum will not move[/*]
+[*][b]RaceMenu[/b] - its skee plugin performs the actual body changes. Both generations work: the AE build (0.4.19+) and pre-AE RaceMenu 0.4.16 on Skyrim SE 1.5.97, whose older bone-scaling interface SLIF NG binds separately[/*]
 [*][b]XPMSSE[/b] - the standard skeleton nodes[/*]
 [*][b]PapyrusUtil[/b] - used once, to read an old SLIF save during migration[/*]
 [/list]

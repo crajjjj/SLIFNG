@@ -26,7 +26,7 @@ Red flags and what they mean:
 | Line | Meaning |
 |---|---|
 | `[Skee] RaceMenu's skee did not answer the interface exchange` | RaceMenu is missing, or is built for the **other** runtime. An AE RaceMenu on 1.5.97 (or the reverse) does not load at all, so its `skee64.dll` never registers and nothing answers. Install the RaceMenu built for your Skyrim version |
-| `[Skee] NiTransform interface v2 ... node scaling is DISABLED` | RaceMenu 0.4.16 (Skyrim SE 1.5.97). Its NiTransform vtable differs from v3, so SLIF NG refuses that interface rather than call the wrong slots. **Morphs still work** - belly and breasts behave normally; butt, scrotum and any key your profile does not map will not move. RaceMenu 0.4.19+ enables them |
+| `[Skee] NiTransform interface v2 — using the legacy (pre-AE) ABI` | Normal on RaceMenu 0.4.16 / Skyrim SE 1.5.97. That skee exposes an older bone-scaling interface of a different shape; SLIF NG binds it separately. Nothing is lost |
 | `[Skee] ... interface missing` | skee answered but one interface was absent - that half (morphs, or the node fallback) is disabled |
 | `[Ledger] cosave version X != Y` | A save from an older dev build; state drops and rebuilds as mods re-send |
 | `corrupt cosave record` | The record failed integrity checks and was discarded rather than crashing the load |
