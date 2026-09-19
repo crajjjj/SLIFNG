@@ -44,6 +44,19 @@ Function unregisterMorph(Actor kActor, string morphName, string modName = "All M
 	MirrorCombined(kActor, morphName)
 EndFunction
 
+; Pinned from 1.2.2 bytecode; documented in the write API but previously absent
+; here, so a caller would have hit "Static function unregisterActor not found on
+; object slif_morph". No surveyed consumer sends it - Milk Mod Economy uses
+; SLIF_Main's - but a documented function has to exist.
+;
+; WIDER than the reference, which cleared only the morph side and left the same
+; mod's node inflation in place: one ledger row per mod holds both, and leaving
+; half the inflation stuck is the worse reading of "stop inflating this actor".
+; The SLIF_unregisterMorphActor event resolves the same way.
+Function unregisterActor(Actor kActor, string modName = "All Mods") Global
+	SLIFNG.UnregisterMod(kActor, modName)
+EndFunction
+
 ; ---- read surface (pinned caller: Sexlab Survival) ----
 ; "All Mods" is the aggregate pseudo-mod. An absent key returns `default`.
 Float Function GetValue(Actor kActor, string modName, string morphName, float default = 0.0) Global
