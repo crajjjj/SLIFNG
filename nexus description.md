@@ -105,7 +105,7 @@ Any SLIF consumer not on that list either works (same calls) or fails [b]loudly[
 [list]
 [*][b]SKSE64[/b] (or SKSE VR)[/*]
 [*][b]SkyUI[/b] - the MCM[/*]
-[*][b]RaceMenu[/b] - its skee plugin performs the actual body changes[/*]
+[*][b]RaceMenu 0.4.19 or newer[/b] - its skee plugin performs the actual body changes. Pre-AE RaceMenu (0.4.16 and older, for Skyrim SE 1.5.97) is [b]not supported[/b][/*]
 [*][b]XPMSSE[/b] - the standard skeleton nodes[/*]
 [*][b]PapyrusUtil[/b] - used once, to read an old SLIF save during migration[/*]
 [/list]

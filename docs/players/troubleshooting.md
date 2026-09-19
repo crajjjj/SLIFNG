@@ -25,7 +25,8 @@ Red flags and what they mean:
 
 | Line | Meaning |
 |---|---|
-| `[Skee] ... interface missing` | RaceMenu missing or too old - nothing can be applied |
+| `[Skee] RaceMenu's skee did not answer the interface exchange` | RaceMenu missing, or too old, or a version that does not match your runtime. **RaceMenu 0.4.19 or newer is required.** Pre-AE RaceMenu (0.4.16 and older, for Skyrim SE 1.5.97) never answers this handshake: it ships the old SKSE plugin ABI, and its skee has no `INiTransformInterface`, so SLIF NG stops rather than calling a differently-shaped vtable. A RaceMenu built for the wrong runtime also fails this way, because its `skee64.dll` does not load at all |
+| `[Skee] ... interface missing` | skee answered but one interface was absent - that half (morphs, or the node fallback) is disabled |
 | `[Ledger] cosave version X != Y` | A save from an older dev build; state drops and rebuilds as mods re-send |
 | `corrupt cosave record` | The record failed integrity checks and was discarded rather than crashing the load |
 | `is not a function or does not exist` (Papyrus.0.log) | Some mod calls an API entry SLIF NG does not implement - report it, this line is the detection channel |

@@ -244,7 +244,22 @@ namespace SLIFNG::Skee
 	{
 		auto* map = SKEE::GetInterfaceMap();
 		if (!map) {
-			logger::error("[Skee] interface map unavailable — is RaceMenu installed?");
+			// Two causes, and the fix differs, so name both. The handshake is an
+			// SKSE message to the plugin registered as "skee", which answers only
+			// if RaceMenu's skee64.dll actually loaded for THIS runtime.
+			//
+			// Pre-AE RaceMenu (0.4.16, for Skyrim SE 1.5.97) is NOT supported: it
+			// ships the old SKSE plugin ABI (exports SKSEPlugin_Query rather than
+			// SKSEPlugin_Version) and does not answer this exchange. Its skee also
+			// has no INiTransformInterface at all - NiTransformInterface there
+			// derives straight from IPluginInterface - so even a map that did
+			// arrive would hand us a differently-shaped vtable.
+			logger::error("[Skee] RaceMenu's skee did not answer the interface exchange.");
+			logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
+			logger::error("[Skee]   Needs RaceMenu 0.4.19 or newer (Anniversary Edition build).");
+			logger::error("[Skee]   RaceMenu 0.4.16 and older (Skyrim SE 1.5.97) are NOT supported.");
+			logger::error("[Skee]   If RaceMenu IS installed, check its version matches your runtime -");
+			logger::error("[Skee]   a mismatched skee64.dll does not load, and then nothing answers here.");
 			return;
 		}
 		g_bodyMorph = SKEE::GetBodyMorphInterface(map);
