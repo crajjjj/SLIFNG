@@ -73,8 +73,36 @@ OnSLIF_unregisterNode  -> SLIF_Main.unregisterNode(Sender as Actor, node, modNam
 > **WARNING — argument-order swap:** the event carries `(modName, node)`; the
 > global `unregisterNode` takes `(node, modName)`. Do not "fix" this.
 
-The other 23 `SLIF_*` mod events of the reference implementation have **zero
-observed senders** and are NOT part of this contract.
+### All 21 events are registered anyway (2026-09-19)
+
+The other events still have **zero observed senders**: a scan of 14,005 compiled
+scripts across the survey load order finds only three `SLIF_*` event-name
+literals, `SLIF_inflate` (8 files), `SLIF_unregisterNode` (4) and
+`SLIF_unregisterActor` (3). Every other `SLIF_*` string in a consumer `.pex` is a
+local variable or that mod's own wrapper function, not an event name (Fill Her
+Up's `SLIF_event` local, its `SLIF_morph` wrapper that calls the direct global,
+its empty `SLIF_unregisterMorph` stub).
+
+They are registered regardless, because the scope rule does not transfer from
+direct calls to events. **A missing direct call announces itself; a missing event
+does not.** An unimplemented global logs
+`Static function X not found on object slif_main` on every attempt, which is how
+the section 3 gap was found. A mod event is dispatched by name at runtime: an
+unregistered one produces no error anywhere, it simply never arrives, and the
+sending mod looks broken for no discoverable reason.
+
+So events are not a place to be economical. The whole surface is one
+registration plus one forwarding line each, and it removes a class of silent
+incompatibility that no log line would reveal.
+
+Routing for the rest, where SLIF NG differs from the reference:
+
+| Event | Routed to | Note |
+|---|---|---|
+| `SLIF_morph`, `SLIF_unregisterMorph`, `SLIF_hideNode`, `SLIF_showNode`, `SLIF_resetActor` | the matching global | Identical behaviour |
+| `SLIF_registerActor`, `SLIF_updateActor`, the `set*` family | `SLIFNG.UpdateModBounds` | The reference used these to create a row and seed bounds before any value arrived; SLIF NG creates the row on first write, so only the bounds half has work to do |
+| `SLIF_unregisterMorphActor` | `unregisterActor` | **Wider than the reference**, which cleared only the morph side. One row per mod holds both, and leaving half the inflation stuck is the worse reading of "stop inflating this actor" |
+| `SLIF_registerMorphActor`, `SLIF_updateMorphActor`, `SLIF_setMorphDefaultValues` | no-op | Morph bounds arrive with the value on `SLIF_Morph.morph`, so pre-registration has nothing left to do. Registered so the sender is not left guessing |
 
 ## 3. Direct global calls (arity baked into caller `.pex` — must match EXACTLY)
 
