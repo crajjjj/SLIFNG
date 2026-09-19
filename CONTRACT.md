@@ -100,7 +100,7 @@ Routing for the rest, where SLIF NG differs from the reference:
 | Event | Routed to | Note |
 |---|---|---|
 | `SLIF_morph`, `SLIF_unregisterMorph`, `SLIF_hideNode`, `SLIF_showNode`, `SLIF_resetActor` | the matching global | Identical behaviour |
-| `SLIF_registerActor`, `SLIF_updateActor`, the `set*` family | `SLIFNG.UpdateModBounds` | The reference used these to create a row and seed bounds before any value arrived; SLIF NG creates the row on first write, so only the bounds half has work to do |
+| `SLIF_registerActor`, `SLIF_updateActor`, the `set*` family | `SLIFNG.UpdateActorBounds` | The reference used these to create a row and seed bounds before any value arrived; SLIF NG creates the row on first write, so only the bounds half has work to do. Per-ACTOR, since every one of these events carries a `Sender` - `UpdateModBounds` is the load-order-wide form behind `updateActorList` and would move everyone's bounds |
 | `SLIF_unregisterMorphActor` | `unregisterActor` | **Wider than the reference**, which cleared only the morph side. One row per mod holds both, and leaving half the inflation stuck is the worse reading of "stop inflating this actor" |
 | `SLIF_registerMorphActor`, `SLIF_updateMorphActor`, `SLIF_setMorphDefaultValues` | no-op | Morph bounds arrive with the value on `SLIF_Morph.morph`, so pre-registration has nothing left to do. Registered so the sender is not left guessing |
 

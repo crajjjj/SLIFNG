@@ -156,6 +156,11 @@ String[] Function GetModsDriving(Actor kActor, String target) Global Native
 ; values never move.
 Function UpdateModBounds(String modName, String slifKey, Float minimum, Float maximum, Float multiplier, Float increment) Global Native
 
+; Per-ACTOR bounds, for the reference's per-actor bounds events (SLIF_setMinimum
+; and friends carry a Sender). NOT the same as UpdateModBounds above, which is
+; load-order-wide: using that for a per-actor event would move everyone's bounds.
+Function UpdateActorBounds(Actor kActor, String modName, String slifKey, Float minimum, Float maximum, Float multiplier, Float increment) Global Native
+
 ; Diagnostics: write the full ledger (or one actor's entries) to SLIFNG.log -
 ; contributions, fold results, active mode. See SLIFNG_Debug.psc for
 ; console-callable wrappers (cgf).

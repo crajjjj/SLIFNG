@@ -675,6 +675,31 @@ namespace SLIFNG::Papyrus
 		// when its max-scale sliders move. The reference re-registered every
 		// actor; here it is one bounds pass over the ledger plus a re-apply of
 		// whoever actually changed. The value itself never moves.
+		// Per-ACTOR bounds, for the reference's per-actor bounds events
+		// (SLIF_setMinimum and friends carry a Sender). UpdateModBounds below is
+		// the load-order-wide form and must NOT be used for these: it walks every
+		// tracked actor, so a mod tightening one actor's ceiling would move
+		// everyone's.
+		void UpdateActorBounds(RE::StaticFunctionTag*, RE::Actor* a_actor, RE::BSFixedString a_mod,
+			RE::BSFixedString a_key, float a_min, float a_max, float a_mult, float a_increment)
+		{
+			logger::info("[API] UpdateActorBounds({:08X}, mod='{}', key='{}', min={}, max={}, mult={}, incr={})",
+				a_actor ? a_actor->GetFormID() : 0, a_mod.c_str(), a_key.c_str(), a_min, a_max,
+				a_mult, a_increment);
+			if (!a_actor || a_mod.empty() || a_key.empty()) {
+				return;
+			}
+			const std::string target = Query::ResolveTarget(a_key.c_str());
+			if (target.empty()) {
+				logger::info("[API]   -> unknown key, ignored");
+				return;
+			}
+			if (Ledger::GetSingleton().UpdateBounds(a_actor->GetFormID(), a_mod.c_str(), target,
+					a_min, a_max, a_mult, a_increment)) {
+				Skee::ApplyDeferred(a_actor, target);
+			}
+		}
+
 		void UpdateModBounds(RE::StaticFunctionTag*, RE::BSFixedString a_mod,
 			RE::BSFixedString a_key, float a_min, float a_max, float a_mult, float a_increment)
 		{
@@ -799,6 +824,7 @@ namespace SLIFNG::Papyrus
 		a_vm->RegisterFunction("GetMorphTargets", script, GetMorphTargets);
 		a_vm->RegisterFunction("GetModsDriving", script, GetModsDriving);
 		a_vm->RegisterFunction("UpdateModBounds", script, UpdateModBounds);
+		a_vm->RegisterFunction("UpdateActorBounds", script, UpdateActorBounds);
 		a_vm->RegisterFunction("HasMigrated", script, HasMigrated);
 		a_vm->RegisterFunction("SetMigrated", script, SetMigrated);
 		a_vm->RegisterFunction("IsMorphEngineReady", script, IsMorphEngineReady);

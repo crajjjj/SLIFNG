@@ -83,40 +83,41 @@ EndEvent
 
 ; registerActor / updateActor: the reference used these to create an actor row
 ; and seed its bounds BEFORE any value arrived. SLIF NG creates the row on first
-; write, so only the bounds half carries over - which is what UpdateModBounds
-; does, and what Estrus Chaurus uses these for.
+; write, so only the bounds half carries over. Note UpdateActorBounds, not
+; UpdateModBounds: these events carry a Sender, so they must move THAT actor's
+; bounds. UpdateModBounds is the load-order-wide form behind updateActorList.
 Event OnSLIF_registerActor(Form Sender, String modName, String node = "", String oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0)
-	SLIFNG.UpdateModBounds(modName, node, minimum, maximum, multiplier, increment)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, minimum, maximum, multiplier, increment)
 EndEvent
 
 Event OnSLIF_updateActor(Form Sender, String modName, String node = "", String oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0)
-	SLIFNG.UpdateModBounds(modName, node, minimum, maximum, multiplier, increment)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, minimum, maximum, multiplier, increment)
 EndEvent
 
 ; The set* family, all bounds-only. -1.0 is our "leave as stored" sentinel, so
 ; each event moves exactly the field it names and nothing else.
 Event OnSLIF_setDefaultValues(Form Sender, String modName, String node, float minimum = 0.0, float maximum = 100.0, float multiplier = 1.0, float increment = 0.1)
-	SLIFNG.UpdateModBounds(modName, node, minimum, maximum, multiplier, increment)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, minimum, maximum, multiplier, increment)
 EndEvent
 
 Event OnSLIF_setMinMax(Form Sender, String modName, String node, float minimum = 0.0, float maximum = 100.0)
-	SLIFNG.UpdateModBounds(modName, node, minimum, maximum, -1.0, -1.0)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, minimum, maximum, -1.0, -1.0)
 EndEvent
 
 Event OnSLIF_setMinimum(Form Sender, String modName, String node, float minimum = 0.0)
-	SLIFNG.UpdateModBounds(modName, node, minimum, -1.0, -1.0, -1.0)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, minimum, -1.0, -1.0, -1.0)
 EndEvent
 
 Event OnSLIF_setMaximum(Form Sender, String modName, String node, float maximum = 100.0)
-	SLIFNG.UpdateModBounds(modName, node, -1.0, maximum, -1.0, -1.0)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, -1.0, maximum, -1.0, -1.0)
 EndEvent
 
 Event OnSLIF_setMultiplier(Form Sender, String modName, String node, float multiplier = 1.0)
-	SLIFNG.UpdateModBounds(modName, node, -1.0, -1.0, multiplier, -1.0)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, -1.0, -1.0, multiplier, -1.0)
 EndEvent
 
 Event OnSLIF_setIncrement(Form Sender, String modName, String node, float increment = 0.1)
-	SLIFNG.UpdateModBounds(modName, node, -1.0, -1.0, -1.0, increment)
+	SLIFNG.UpdateActorBounds(Sender as Actor, modName, node, -1.0, -1.0, -1.0, increment)
 EndEvent
 
 ; -- morph side ---------------------------------------------------------------
