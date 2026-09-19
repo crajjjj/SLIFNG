@@ -80,6 +80,10 @@ namespace
 			SLIFNG::Skee::Initialize();
 			break;
 		case MessagingInterface::kDataLoaded:
+			// skee may not have been listening at kPostPostLoad - a pre-AE
+			// RaceMenu registers its handler from inside a message handler, so
+			// which of us goes first is load-order dependent.
+			SLIFNG::Skee::RetryInitialize("kDataLoaded");
 			// Profiles match on race + plugin presence, so the data handler must
 			// be up before they load.
 			SLIFNG::BodyProfile::Load();
@@ -87,6 +91,8 @@ namespace
 			SLIFNG::Skee::RegisterLoadHook();
 			break;
 		case MessagingInterface::kPostLoadGame:
+			// Last chance, before anything would be applied.
+			SLIFNG::Skee::RetryInitialize("kPostLoadGame");
 			// Ledger is source of truth: recompute + re-apply heals any desync.
 			SLIFNG::Skee::ReapplyAll();
 			break;

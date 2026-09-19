@@ -21,7 +21,11 @@ namespace SLIFNG::Skee
 	inline constexpr const char* kAppliedKey = "SexLab Inflation Framework.esp";
 
 	// Query skee's interfaces; call at SKSE kPostPostLoad.
+	// Query skee's interfaces. Initialize() is the first attempt (kPostPostLoad);
+	// RetryInitialize() is every later one, because skee can register its message
+	// listener after we first ask - see the comment in Skee.cpp.
 	void Initialize();
+	void RetryInitialize(const char* a_stage);
 	bool IsReady();      // morph application available (morph-first path)
 	bool IsNodeReady();  // node-transform application available (fallback path)
 

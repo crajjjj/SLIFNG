@@ -330,56 +330,105 @@ namespace SLIFNG::Skee
 	constexpr std::uint32_t kMinBodyMorphVersion = 4;
 	constexpr std::uint32_t kMinNiTransformVersion = 3;
 
+	namespace
+	{
+		// One attempt at the handshake. Quiet: the caller decides whether a
+		// failure is worth reporting yet, because the FIRST failure usually is not.
+		bool Acquire()
+		{
+			auto* map = SKEE::GetInterfaceMap();
+			if (!map) {
+				return false;
+			}
+
+			g_bodyMorph = SKEE::GetBodyMorphInterface(map);
+			g_niTransform = SKEE::GetNiTransformInterface(map);
+
+			if (g_bodyMorph) {
+				const auto version = g_bodyMorph->GetVersion();
+				if (version < kMinBodyMorphVersion) {
+					logger::error("[Skee] BodyMorph interface v{} is older than v{} — refusing it,",
+						version, kMinBodyMorphVersion);
+					logger::error("[Skee]   because its layout predates what this build calls. Update RaceMenu.");
+					g_bodyMorph = nullptr;
+				} else {
+					logger::info("[Skee] BodyMorph interface v{}", version);
+				}
+			} else {
+				logger::error("[Skee] BodyMorph interface missing — morph application disabled");
+			}
+
+			if (g_niTransform) {
+				const auto version = g_niTransform->GetVersion();
+				if (version < kMinNiTransformVersion) {
+					// Pre-AE RaceMenu (0.4.16 on Skyrim SE 1.5.97). The modern typed
+					// setters are unreachable here, but SKEE.h's Legacy shim IS the
+					// right shape for this vtable, so re-bind through that and keep
+					// node scaling working instead of going dark.
+					g_niTransformLegacy = reinterpret_cast<SKEE::Legacy::INiTransformInterface*>(g_niTransform);
+					g_niTransform = nullptr;
+					logger::info("[Skee] NiTransform interface v{} — using the legacy (pre-AE) ABI",
+						version);
+				} else {
+					logger::info("[Skee] NiTransform interface v{}", version);
+				}
+			} else {
+				logger::error("[Skee] NiTransform interface missing — node fallback disabled");
+			}
+			return IsReady();
+		}
+
+		bool g_gaveUp = false;
+	}
+
+	// WHY THIS RETRIES, and why the first failure is not an error.
+	//
+	// The handshake is an SKSE message dispatched to the plugin registered as
+	// "skee". SKSE resolves that name against plugins that have REGISTERED A
+	// MESSAGE LISTENER, so the dispatch fails - "Failed to dispatch message to
+	// skee" - not only when RaceMenu is absent but also when it simply has not
+	// registered its listener yet.
+	//
+	// That happens for real. Pre-AE RaceMenu (0.4.16) uses the old SKSE plugin
+	// ABI and registers its InterfaceExchangeMessage handler from inside a
+	// message handler of its own, so whether it is listening when we ask at
+	// kPostPostLoad depends on which of us SKSE calls first - i.e. on load order.
+	// The AE build registers earlier and is never late, which is why this went
+	// unnoticed: a 1.5.97 user reported exactly this while RaceMenu was installed
+	// and working.
+	//
+	// So: ask at kPostPostLoad, ask again at kDataLoaded, and once more before the
+	// first re-apply. Only the last failure is worth shouting about.
 	void Initialize()
 	{
-		auto* map = SKEE::GetInterfaceMap();
-		if (!map) {
-			// The handshake is an SKSE message to the plugin registered as "skee",
-			// which answers only if RaceMenu's skee64.dll actually loaded for THIS
-			// runtime. A RaceMenu built for the other runtime does not load at all,
-			// and then nothing is there to answer - by far the most common cause.
-			logger::error("[Skee] RaceMenu's skee did not answer the interface exchange.");
-			logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
-			logger::error("[Skee]   Check that RaceMenu is installed AND built for this runtime:");
-			logger::error("[Skee]   the Anniversary Edition build on 1.5.97 (or the reverse) does");
-			logger::error("[Skee]   not load, so its skee64.dll never registers.");
+		if (Acquire()) {
 			return;
 		}
+		logger::info("[Skee] skee has not answered yet — retrying at kDataLoaded");
+	}
 
-		g_bodyMorph = SKEE::GetBodyMorphInterface(map);
-		g_niTransform = SKEE::GetNiTransformInterface(map);
-
-		if (g_bodyMorph) {
-			const auto version = g_bodyMorph->GetVersion();
-			if (version < kMinBodyMorphVersion) {
-				logger::error("[Skee] BodyMorph interface v{} is older than v{} — refusing it,",
-					version, kMinBodyMorphVersion);
-				logger::error("[Skee]   because its layout predates what this build calls. Update RaceMenu.");
-				g_bodyMorph = nullptr;
-			} else {
-				logger::info("[Skee] BodyMorph interface v{}", version);
-			}
-		} else {
-			logger::error("[Skee] BodyMorph interface missing — morph application disabled");
+	void RetryInitialize(const char* a_stage)
+	{
+		if (IsReady() || g_gaveUp) {
+			return;
 		}
-
-		if (g_niTransform) {
-			const auto version = g_niTransform->GetVersion();
-			if (version < kMinNiTransformVersion) {
-				// Pre-AE RaceMenu (0.4.16 on Skyrim SE 1.5.97). The modern typed
-				// setters are unreachable here, but SKEE.h's Legacy shim IS the
-				// right shape for this vtable, so re-bind through that and keep
-				// node scaling working instead of going dark.
-				g_niTransformLegacy = reinterpret_cast<SKEE::Legacy::INiTransformInterface*>(g_niTransform);
-				g_niTransform = nullptr;
-				logger::info("[Skee] NiTransform interface v{} — using the legacy (pre-AE) ABI",
-					version);
-			} else {
-				logger::info("[Skee] NiTransform interface v{}", version);
-			}
-		} else {
-			logger::error("[Skee] NiTransform interface missing — node fallback disabled");
+		if (Acquire()) {
+			logger::info("[Skee] interfaces acquired at {} (skee registered late)", a_stage);
+			return;
 		}
+		if (std::string_view{ a_stage } == "kDataLoaded") {
+			return;  // one more chance before the first apply
+		}
+		g_gaveUp = true;
+		logger::error("[Skee] RaceMenu's skee never answered the interface exchange.");
+		logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
+		logger::error("[Skee]   Asked at kPostPostLoad, kDataLoaded and {}.", a_stage);
+		logger::error("[Skee]   Check that RaceMenu is installed AND built for this runtime:");
+		logger::error("[Skee]   the Anniversary Edition build on 1.5.97 (or the reverse) does");
+		logger::error("[Skee]   not load at all, so its skee64.dll never registers.");
+		logger::error("[Skee]   If RaceMenu works in game, send skse64.log - a 'Failed to dispatch");
+		logger::error("[Skee]   message to skee' line there means skee loaded but was still not");
+		logger::error("[Skee]   listening, which is a load-order problem rather than a missing mod.");
 	}
 
 	bool IsReady() { return g_bodyMorph != nullptr; }
