@@ -65,7 +65,7 @@ String how = SLIFNG.DrivenBy(kActor, "slif_breast")
 |---|---|
 | `sliders` | BodySlide morphs move vertices and **no bone moves** - anything rigged to that bone (a particle emitter, an attached object) does *not* follow and needs its own compensation |
 | `node` | The skeleton bone is scaled, so its children come along automatically |
-| `none` | A region this profile does not define, or an unknown/dead key |
+| `none` | A region this profile does not define, an unknown/dead key, or a bone target on a RaceMenu whose skee cannot scale bones (pre-AE, NiTransform v2). `none` always means *nothing drives this*, so it is safe to act on |
 
 Which one you get depends on the actor's [body profile](body-profiles.md), so ask per actor, not once per game. Requires `SLIFNG.GetVersion() >= 5`.
 

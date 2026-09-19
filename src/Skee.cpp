@@ -165,8 +165,17 @@ namespace SLIFNG::Skee
 
 			// --- node path (the profile lists no sliders for this key) ---
 			if (!IsNodeReady()) {
-				logger::warn("[Apply] {:08X} key '{}': NiTransform unavailable — NOT applied",
-					a_actor->GetFormID(), a_lowerTarget);
+				// ONCE per session, not per apply. The cause is global (no usable
+				// NiTransform interface at all), Initialize already named what is
+				// lost, and a consumer re-sending a butt value every cycle tick
+				// would otherwise flush the log synchronously each time - warn
+				// flushes, info does not.
+				static std::once_flag once;
+				std::call_once(once, [&] {
+					logger::warn("[Apply] key '{}' needs NiTransform, which is unavailable — node",
+						a_lowerTarget);
+					logger::warn("[Apply]   targets are NOT applied this session (see [Skee] above).");
+				});
 				return false;
 			}
 			// Node scales are multipliers around 1.0, so the user magnitude scales
