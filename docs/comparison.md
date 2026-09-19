@@ -50,13 +50,40 @@ Everything below is pinned against decompiled SLIF SE 1.2.2 bytecode and its liv
 | Body configuration | Hand-edited JSON through nine MCM pages; morphs ship disabled | Per-actor INI profiles picked in the installer; UBE matched by race; verified slider names |
 | Diagnostics | Silent | An MCM actor page: who inflates what, what it becomes on this body, what RaceMenu actually shows, which foreign mods stack on top |
 
-## Performance, and why it is the wrong axis
+## Performance
 
-Speed was never the pitch. Rewrite old SLIF's hot path in C++, measure nothing,
-and that is the correct answer to the question asked.
+SLIF NG is faster, and not because C++ is faster than Papyrus. The work itself is
+gone, not recompiled. Every row below is a thing old SLIF did on each apply that
+SLIF NG does not do at all.
 
-It is the wrong question, because **old SLIF ships inert.** Every slider in all
-three of its body-morph tables has a percentage of 0:
+| Per apply | Old SLIF | SLIF NG | Why it is cheaper |
+|---|---|---|---|
+| Body rebuild | One per increment step | One per actor per tick, whatever it touched | A twelve-step ramp is twelve rebuilds against one |
+| Config reads | Two `JsonUtil` path lookups, every apply | None | Body tables are parsed once at load, not per call |
+| Stored state | StorageUtil round-trips for value, bounds, queue and aggregate | An in-memory map, flushed to the co-save on save | No Papyrus-to-plugin call per field |
+| Vocabulary lookup | `StringListFind` / `GetListEntry` walks over JSON-backed lists | Hash lookup | Linear scan against constant time |
+| Re-sent unchanged value | Full pass anyway | Returns before touching anything | Beeing Female re-sends its values every cycle tick |
+| Ramp | A `while` loop with no `Utility.Wait`, on the **calling mod's stack** | A native ticker, caller returns immediately | Off the shared script budget, and nobody blocks |
+| Trace strings | Concatenated whether or not tracing is on | Built only when verbose logging is on | ~58 trace sites, several on the hot path |
+
+The ramp is the big one. This is the original, and it runs to completion inside
+whatever called it:
+
+```papyrus
+while(StorageUtil.StringListCount(kActor, node + "slif_queue_mods") > 0)
+    SetNodeValueIncrement(kActor, aToString, node)
+endWhile
+```
+
+Twelve passes for a belly going 1.0 to 2.2 at the default increment of 0.1, each
+paying the full cost above, with a Beeing Female cycle tick or a SexLab orgasm
+hook blocked for all twelve, at whatever cadence the VM happened to schedule.
+
+### Why a stock comparison shows nothing
+
+If you benchmark old SLIF against a rewrite and measure no difference, this is
+why: **old SLIF ships inert.** Every slider in all three of its body-morph tables
+has a percentage of 0.
 
 | Shipped table | Sliders | Non-zero % |
 |---|---|---|
@@ -65,49 +92,26 @@ three of its body-morph tables has a percentage of 0:
 | `002_CBBE_SE_Bodymorphs.json` | 101 | **0** |
 
 `CalculateBodyMorphValue` multiplies by `percent / 100.0`, so every `SetBodyMorph`
-receives `0.0` and clears itself. A stock install scales skeleton bones and drives
-no BodySlide morph at all. That is one NiOverride write per call on a reactive
-path: benchmarking a rewrite of it compares two implementations of "write one bone
-scale" and correctly finds them equal.
+receives `0.0` and clears itself, and Incremental inflation is off by default too.
+A stock install is one bone write per call on a reactive path: it reaches neither
+expensive path above, so the comparison measures two implementations of "write one
+bone scale" and correctly finds them equal. Configure it to do what you installed
+it for and the table applies.
 
-The expensive paths are the ones you switch on by hand. Enable the morph
-percentages, which is the point of installing it, and every apply does two
-`JsonUtil` path reads plus a transform write and `UpdateNodeTransforms` per node.
-Enable Incremental and that is paid **per step**, in a `while` loop with no
-`Utility.Wait`, on the calling mod's own stack:
+### Beyond speed
 
-```papyrus
-while(StorageUtil.StringListCount(kActor, node + "slif_queue_mods") > 0)
-    SetNodeValueIncrement(kActor, aToString, node)
-endWhile
-```
-
-Twelve passes for a belly going 1.0 to 2.2 at the default increment of 0.1, with
-the caller blocked for all twelve, at whatever cadence the VM happened to
-schedule. Both paths are off in a stock install, which is why a stock comparison
-reaches neither.
-
-### What a rewrite is for
-
-None of this is a throughput claim, and none is reachable by porting the same
-design to C++:
+The rest of the case does not depend on the timings at all:
 
 | | Old SLIF | SLIF NG |
 |---|---|---|
 | Morphs out of the box | Bones only until you edit JSON through nine MCM pages | Verified slider sets per body, chosen in the installer, working on first launch |
 | Two mods, one slider | Always stack, even under "highest wins" | One value per mod, then your calculation type folds, as nodes already did |
-| Ramp cadence | Undefined, whatever the VM scheduled | Fixed 100 ms native ticker, one coalesced apply per actor per tick, plus a speed multiplier that retimes growth in flight |
-| Worst case | The caller blocks for the whole ramp | Bounded: one native call, geometry on the main thread |
 | State | Hundreds of StorageUtil keys in the Papyrus save | One co-save record, recomputed and re-applied every load |
 | When it breaks | Silent | An actor page naming every contributor and what RaceMenu actually holds |
 
-No benchmark has been run: the figures here and in
-[Engine and architecture](#engine-and-architecture) are operation counts along
-each call path, not a profiler trace, and the reference counts come from its
-1.2.1a sources while the shipped bytecode is 1.2.2. The claim is precise:
-**bounded work per call instead of work proportional to how far a body travels,
-no script loop on the consumer's thread, and a default install that drives the
-body you built.**
+The counts above are operation counts along each call path rather than a profiler
+trace, and the reference figures come from its 1.2.1a sources while the shipped
+bytecode is 1.2.2.
 
 ## Dropped (nothing calls them) and new (old SLIF had nothing)
 
