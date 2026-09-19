@@ -240,37 +240,82 @@ namespace SLIFNG::Skee
 		};
 	}
 
+	// WHY THE VERSION GATE, and why it is exact rather than cautious.
+	//
+	// skee's interfaces are versioned, and GetVersion() sits at vtable slot 1 on
+	// every build ever shipped, so it is the one method that is always safe to
+	// call before trusting anything else. Measured from the shipped DLLs:
+	//
+	//   interface        RaceMenu 0.4.16 (SE 1.5.97)   RaceMenu 0.4.19+ (AE)   SKEE.h
+	//   IInterfaceMap    3 slots                       3 slots                 3
+	//   BodyMorph        25 slots, reports v4          26 slots, reports v4    25
+	//   NiTransform      18 slots, reports v2          27 slots, reports v3    25
+	//
+	// BodyMorph is therefore usable on BOTH: our header matches 0.4.16 exactly,
+	// and the AE build only APPENDED one method we never call. Appending is
+	// ABI-safe; that is the whole reason morphs work on old RaceMenu unchanged.
+	//
+	// NiTransform is NOT. The v2 vtable has 18 slots against our 25, and the four
+	// *ScaleMode methods that v3 interleaves are absent from it, so the slots
+	// after the first few name DIFFERENT functions. Calling our AddNodeTransformScale
+	// there would land on AddNodeTransformRotation with mismatched arguments, and
+	// UpdateNodeTransforms would run off the end of the vtable entirely. So v2 is
+	// refused rather than used - the node fallback goes dark, and morphs carry on.
+	constexpr std::uint32_t kMinBodyMorphVersion = 4;
+	constexpr std::uint32_t kMinNiTransformVersion = 3;
+
 	void Initialize()
 	{
 		auto* map = SKEE::GetInterfaceMap();
 		if (!map) {
-			// Two causes, and the fix differs, so name both. The handshake is an
-			// SKSE message to the plugin registered as "skee", which answers only
-			// if RaceMenu's skee64.dll actually loaded for THIS runtime.
-			//
-			// Pre-AE RaceMenu (0.4.16, for Skyrim SE 1.5.97) is NOT supported: it
-			// ships the old SKSE plugin ABI (exports SKSEPlugin_Query rather than
-			// SKSEPlugin_Version) and does not answer this exchange. Its skee also
-			// has no INiTransformInterface at all - NiTransformInterface there
-			// derives straight from IPluginInterface - so even a map that did
-			// arrive would hand us a differently-shaped vtable.
+			// The handshake is an SKSE message to the plugin registered as "skee",
+			// which answers only if RaceMenu's skee64.dll actually loaded for THIS
+			// runtime. A RaceMenu built for the other runtime does not load at all,
+			// and then nothing is there to answer - by far the most common cause.
 			logger::error("[Skee] RaceMenu's skee did not answer the interface exchange.");
 			logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
-			logger::error("[Skee]   Needs RaceMenu 0.4.19 or newer (Anniversary Edition build).");
-			logger::error("[Skee]   RaceMenu 0.4.16 and older (Skyrim SE 1.5.97) are NOT supported.");
-			logger::error("[Skee]   If RaceMenu IS installed, check its version matches your runtime -");
-			logger::error("[Skee]   a mismatched skee64.dll does not load, and then nothing answers here.");
+			logger::error("[Skee]   Check that RaceMenu is installed AND built for this runtime:");
+			logger::error("[Skee]   the Anniversary Edition build on 1.5.97 (or the reverse) does");
+			logger::error("[Skee]   not load, so its skee64.dll never registers.");
 			return;
 		}
+
 		g_bodyMorph = SKEE::GetBodyMorphInterface(map);
 		g_niTransform = SKEE::GetNiTransformInterface(map);
+
 		if (g_bodyMorph) {
-			logger::info("[Skee] BodyMorph interface v{}", g_bodyMorph->GetVersion());
+			const auto version = g_bodyMorph->GetVersion();
+			if (version < kMinBodyMorphVersion) {
+				logger::error("[Skee] BodyMorph interface v{} is older than v{} — refusing it,",
+					version, kMinBodyMorphVersion);
+				logger::error("[Skee]   because its layout predates what this build calls. Update RaceMenu.");
+				g_bodyMorph = nullptr;
+			} else {
+				logger::info("[Skee] BodyMorph interface v{}", version);
+			}
 		} else {
 			logger::error("[Skee] BodyMorph interface missing — morph application disabled");
 		}
+
 		if (g_niTransform) {
-			logger::info("[Skee] NiTransform interface v{}", g_niTransform->GetVersion());
+			const auto version = g_niTransform->GetVersion();
+			if (version < kMinNiTransformVersion) {
+				// Pre-AE RaceMenu (0.4.16 on Skyrim SE 1.5.97) lands here. Not an
+				// error: morphs above still work, so belly and breasts behave
+				// normally. Only targets with no slider on this body lose out.
+				logger::warn("[Skee] NiTransform interface v{} (RaceMenu 0.4.16 or similar):",
+					version);
+				logger::warn("[Skee]   its vtable differs from v{}, so node scaling is DISABLED",
+					kMinNiTransformVersion);
+				logger::warn("[Skee]   rather than risk calling the wrong slots.");
+				logger::warn("[Skee]   Morphs are unaffected - belly and breasts work as usual.");
+				logger::warn("[Skee]   Targets that fall back to bones (butt, scrotum, and any key");
+				logger::warn("[Skee]   this body's profile does not map) will not move.");
+				logger::warn("[Skee]   RaceMenu 0.4.19+ enables them.");
+				g_niTransform = nullptr;
+			} else {
+				logger::info("[Skee] NiTransform interface v{}", version);
+			}
 		} else {
 			logger::error("[Skee] NiTransform interface missing — node fallback disabled");
 		}

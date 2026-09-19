@@ -53,11 +53,13 @@ event argument-order swap) - are all written down in
 
 ## Requirements
 
-- SKSE64, SkyUI, **RaceMenu 0.4.19 or newer** (its skee plugin does the actual body changes)
-  - Pre-AE RaceMenu (0.4.16 and older, for Skyrim SE 1.5.97) is **not supported**: that build
-    ships the old SKSE plugin ABI and never answers the skee interface exchange, and its skee
-    has no `INiTransformInterface` at all. SLIF NG logs what is wrong and stops rather than
-    calling into a differently-shaped vtable.
+- SKSE64, SkyUI, RaceMenu (its skee plugin does the actual body changes)
+  - **RaceMenu 0.4.19+ (AE build): everything works.**
+  - **RaceMenu 0.4.16 (Skyrim SE 1.5.97): morphs work, bone scaling does not.** Its skee reports
+    NiTransform v2, whose vtable differs from v3, so SLIF NG refuses that one interface rather
+    than call the wrong slots. Belly and breasts are morph-driven and behave normally; targets
+    that fall back to bones (butt, scrotum, and any key your body profile does not map) will not
+    move. The log says so explicitly.
 - XPMSSE (the standard skeleton nodes)
 - PapyrusUtil (present in every SexLab load order; used to read an old SLIF
   save during migration)
