@@ -7,6 +7,8 @@ Native SKSE rewrite (CommonLibSSE-NG) of SexLab Inflation Framework. Install it 
 
 [b]SLIF NG[/b] is a modern, zero-configuration replacement for [b]SexLab Inflation Framework SE[/b] by [i]qotsafan[/i].
 
+[b]What a body inflation framework is for:[/b] plenty of mods want to change the shape of a body - a pregnancy belly, cum inflation, milk-filled breasts, weight from overeating - and on their own they all reach for the same belly bone or the same BodySlide slider and overwrite each other, so whichever ran last wins and the rest quietly vanish. SLIF is the middleman they hand their requests to instead: it keeps every mod's contribution separately, combines them by a rule you choose, and applies one final shape to the actor. Installing it does nothing by itself - it is the plumbing the mods below use.
+
 You install it [b]instead of[/b] SLIF. Every mod that talks to SLIF today keeps working without any patch, and a save that ran the old framework migrates by itself on first load. No JSON to edit, no nine pages of sliders to understand.
 
 Under the hood the Papyrus framework is gone. A native SKSE plugin ([b]SLIFNG.dll[/b], one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed: same function names, same arguments, [b]same math[/b].
@@ -17,7 +19,7 @@ Under the hood the Papyrus framework is gone. A native SKSE plugin ([b]SLIFNG.dl
 
 [size=4][b]❓ TL;DR - Why replace SLIF?[/b][/size]
 
-The old framework is ~11,700 lines of Papyrus and ~90 public functions, but installed mods only ever call a small fraction of it. What players meet is the other side: heavy script load, a nine-page MCM of body-specific JSON editing, and silent failure when any of it is misconfigured.
+The old framework is ~11,700 lines of Papyrus and ~90 public functions, but installed mods only ever call a small fraction of it. What players meet is the other side: a framework that ships inert - all 270 sliders across its three body tables sit at 0%, so a stock install scales skeleton bones and drives no BodySlide morph at all - plus a nine-page MCM of body-specific JSON editing, and silent failure when any of it is misconfigured.
 
 [list]
 [*][b]Native engine[/b] - the aggregation and the ramp run in C++, not on the script engine[/*]

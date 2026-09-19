@@ -50,27 +50,51 @@ Everything below is pinned against decompiled SLIF SE 1.2.2 bytecode and its liv
 | Body configuration | Hand-edited JSON through nine MCM pages; morphs ship disabled | Per-actor INI profiles picked in the installer; UBE matched by race; verified slider names |
 | Diagnostics | Silent | An MCM actor page: who inflates what, what it becomes on this body, what RaceMenu actually shows, which foreign mods stack on top |
 
-## Performance
+## Performance, and why it is the wrong axis
 
-SLIF NG is not faster in frames per second, and a user who says old SLIF ran fine
-is very likely right about their own setup. Three reasons it could be:
+Speed was never the pitch. A port that changed only the implementation language
+would deserve the shrug it gets, and if you rewrote old SLIF's hot path in C++
+and measured nothing, that is the correct result for the question you asked.
 
-* **The expensive path was off by default.** `SLIF_Util.inflateNode` tests
-  `InflateInstant` first, and the reference's own default inflation type is
-  instant (`SLIF_Util.GetDefaultInflationType` returns 1). Unless a mod was
-  switched to Incremental, the drain loop below never ran at all.
-* **Papyrus cost is latency, not frame rate.** The script engine has its own
-  budget; overrunning it delays scripts. The symptom is a belly that updates a
-  few seconds late, or a stack dump in the log, not a stutter.
-* **It scales with actors x consumers x churn.** One player and one inflation mod
-  is nothing at all. The complaints came from many-NPC load orders with several
-  mods writing at once.
+It is the wrong question, for a specific and checkable reason.
 
-### Where the cost actually was
+### A stock old SLIF install barely runs, because it barely does anything
 
-Not in the sheer number of small reads. In one structure: `SLIF_Calc.DoSingleQueue`
-is a `while` loop with no `Utility.Wait`, running on the **calling mod's** stack
-until the queue drains.
+Old SLIF ships three body-morph tables. Every slider in all three is disabled:
+
+| Shipped table | Sliders | With a non-zero percentage |
+|---|---|---|
+| `000_Default_Bodymorphs.json` | 101 | **0** |
+| `001_UUNP_Bodymorphs.json` | 68 | **0** |
+| `002_CBBE_SE_Bodymorphs.json` | 101 | **0** |
+
+`CalculateBodyMorphValue` multiplies the node value by `percent / 100.0`, so at a
+stock percentage of 0 every `SetBodyMorph` call is handed `0.0` and clears itself.
+A default install therefore drives **skeleton bones and not one BodySlide morph**,
+however carefully you built your body. Its runtime `Config.json` tells the same
+story from the other side: a live install that had been running four consumer mods
+for weeks contained exactly one key, `morph_auto_register_slif_player`, meaning
+every scanner toggle was still absent and the polling scanner never ran at all.
+
+So in its default configuration old SLIF is one NiOverride bone write per call,
+on a purely reactive code path, called a handful of times a minute. There is
+close to nothing there to speed up. Benchmarking a rewrite of it measures two
+implementations of "write one bone scale" and finds them equal, which is true,
+and which tells you nothing about either.
+
+The framework being cheap at idle is not a design virtue here. It is a symptom:
+the expensive parts are the parts you have to switch on by hand before the mod
+does what you installed it for.
+
+### Where the original does get expensive: once you configure it
+
+Turn the morph percentages on, which is the whole point of installing it, and
+every apply starts reading JSON. `SLIF_Scale.SetMorphValue` performs two
+`JsonUtil` path lookups per call, then a node-transform write plus an
+`UpdateNodeTransforms` for each node on the path, then `SetBodyMorphsByArray`.
+
+Turn on Incremental inflation and that cost is paid **per step**, inside a
+`while` loop with no `Utility.Wait`, running on the calling mod's own stack:
 
 ```papyrus
 while(StorageUtil.StringListCount(kActor, node + "slif_queue_mods") > 0)
@@ -78,53 +102,53 @@ while(StorageUtil.StringListCount(kActor, node + "slif_queue_mods") > 0)
 endWhile
 ```
 
-Every iteration reaches `SLIF_Scale.SetNodeScale` and then `SetMorphValue`, which
-per step performs two `JsonUtil` path reads, a node-transform write plus an
-`UpdateNodeTransforms` for each node on the path, a `SetBodyMorph`, and a
-`Debug.Trace` whose message string is concatenated whether or not tracing is on.
+At the default increment of 0.1 a belly travelling from 1.0 to 2.2 is twelve
+full passes back to back, and whatever asked for it (a Beeing Female cycle tick,
+a SexLab orgasm hook) blocks for all twelve. The sync-pair variant for breasts
+and butt re-checks three queue counts per iteration and applies two nodes per
+step. There is no defined cadence at all: VM scheduling is the cadence, which is
+why the same inflation ramps at different speeds on different machines.
 
-At the default increment of 0.1, a belly travelling from 1.0 to 2.2 is twelve of
-those back to back, and whatever asked for it (a Beeing Female cycle tick, a
-SexLab orgasm hook) blocks for all twelve. The sync-pair variant, `DoMultiQueue`
-for breasts and butt, re-checks three queue counts per iteration and applies two
-nodes per step.
+Both of those are off in a stock install. That is exactly why a stock-versus-stock
+comparison finds nothing, and why the comparison does not describe what a
+configured setup does.
 
-There was no defined cadence: the VM's scheduling was the cadence, which is also
-why the same inflation ramped at different speeds on different machines.
+### What a rewrite is actually for
 
-### What replaces it
+None of the following is a throughput claim, and none of it is reachable by
+porting the same design to C++:
 
-| Per `inflate` call | Old SLIF | SLIF NG |
+| | Old SLIF | SLIF NG |
 |---|---|---|
-| Papyrus operations | dozens, growing with the distance travelled | one native call |
-| `StorageUtil` reads and writes | several per step | none on the node path; one mirror write on the morph path, for [Sexlab Survival's direct read](#what-consumers-see-identical) |
-| `JsonUtil` reads | two per step | none |
-| Body rebuilds | one per step | one per batch, coalesced |
-| A re-sent unchanged value | full pass anyway | early-out before anything is touched |
-| Ramp cadence | whatever the VM scheduled | a 100 ms native ticker, one coalesced apply per actor per tick |
-| Blocks the caller | yes, for the whole ramp | no; geometry work is handed to the main thread |
+| Morphs out of the box | Every slider at 0%; bones only until you edit JSON through nine MCM pages | Verified slider sets per body, chosen in the installer, driving morphs on first launch |
+| Two mods, one slider | Morph contributions always stack, even under "highest wins" | One value per mod, then your calculation type folds across mods, the same rule nodes already used |
+| Ramp cadence | Undefined; whatever the VM scheduled | A fixed 100 ms native ticker with one coalesced apply per actor per tick, and an MCM speed multiplier that retimes growth already in flight |
+| Worst-case latency | A consumer's call blocks for the whole ramp | Bounded: one native call, geometry handed to the main thread |
+| Re-sent unchanged value | A full pass anyway | Early-out before anything is touched |
+| State | Hundreds of StorageUtil keys in the Papyrus save | One compact co-save record, recomputed and re-applied every load |
+| When it goes wrong | Silent | An actor page naming every contributor, what it becomes on this body, and what RaceMenu actually holds |
 
-Whole-mod figures are in [Engine and architecture](#engine-and-architecture)
-above: 27 Papyrus scripts become 10 thin ones, 1,012 `StorageUtil` call sites
-become 29 (all but one inside the one-shot legacy importer), and 187 `JsonUtil`
-call sites become none.
+The per-call arithmetic does improve, and the whole-mod figures in
+[Engine and architecture](#engine-and-architecture) are real: 27 Papyrus scripts
+to 10 thin ones, 1,012 `StorageUtil` call sites to 29 (all but one inside the
+one-shot legacy importer), 187 `JsonUtil` call sites to none. Those numbers
+matter most in the configured, many-actor, several-consumer case that the stock
+comparison never reaches.
 
 ### What is not claimed
 
-**None of this has been benchmarked.** The figures above are static analysis of
-both codebases: operation counts per call path, not a profiler run. No frame
-rate, script-lag or save-size measurement has been taken, and the reference
-numbers come from its bundled 1.2.1a sources while the shipped bytecode is 1.2.2
-(the queue structure is very unlikely to differ, but the line counts are
-approximate).
+No benchmark has been run. The figures above are static analysis of both
+codebases, operation counts along each call path, not a profiler trace, and no
+frame-rate, script-lag or save-size measurement has been taken. The reference
+counts come from its bundled 1.2.1a sources while the shipped bytecode is 1.2.2;
+the queue structure is very unlikely to differ, but treat the line counts as
+approximate.
 
-So the fair summary is narrow: **bounded work per call instead of work
-proportional to how far a body is travelling, and no script loop on the
-consumer's thread.** If old SLIF performed acceptably for you, SLIF NG's real
-arguments are elsewhere: the setup surface (nine MCM pages and hand-edited JSON
-become a profile chosen in the installer plus one magnitude knob), the much
-smaller persisted state, and diagnostics that tell you what is actually
-happening.
+The claim, stated precisely: **bounded work per call instead of work proportional
+to how far a body is travelling, no script loop on the consumer's thread, and a
+default install that drives the body you actually built.** If you are looking for
+a frame-rate number, there is not one, and a mod that only offered that would not
+be worth installing.
 
 ## Dropped (nothing calls them) and new (old SLIF had nothing)
 

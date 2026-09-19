@@ -20,8 +20,10 @@ math.
 The old framework is ~90 public functions and ~11,700 lines of Papyrus, but a
 survey of its actual consumers (decompiled bytecode, not guesswork - see
 [CONTRACT.md](CONTRACT.md)) found that installed mods use only a small
-fraction of it. What players actually meet is the other side of it: heavy
-script load, a nine-page MCM of body-specific JSON editing, and silent failure
+fraction of it. What players actually meet is the other side of it: a framework
+that ships inert (all 270 sliders in its three body tables sit at 0%, so a stock
+install scales bones and drives no BodySlide morph at all), a nine-page MCM of
+body-specific JSON editing, and silent failure
 when any of it is misconfigured. SLIF NG implements exactly the surface real
 mods call, natively, and diagnoses instead of failing silently.
 
