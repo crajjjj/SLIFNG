@@ -404,7 +404,7 @@ namespace SLIFNG::Skee
 		if (Acquire()) {
 			return;
 		}
-		logger::info("[Skee] skee has not answered yet — retrying at kDataLoaded");
+		logger::info("[Skee] skee did not answer yet — retrying at kDataLoaded and kPostLoadGame");
 	}
 
 	void RetryInitialize(const char* a_stage)
@@ -420,15 +420,25 @@ namespace SLIFNG::Skee
 			return;  // one more chance before the first apply
 		}
 		g_gaveUp = true;
-		logger::error("[Skee] RaceMenu's skee never answered the interface exchange.");
+		// Be specific, because the generic "is RaceMenu installed?" sends people
+		// to check a thing they have already checked. skee registers its exchange
+		// listener unconditionally at kPostLoad (verified in its source: skee/
+		// main.cpp, kMessage_PostLoad -> RegisterListener), which is BEFORE our
+		// first attempt. So three failures across kPostPostLoad, kDataLoaded and
+		// kPostLoadGame do not mean "late" or "load order" - they mean skee64.dll
+		// is not loaded at all, and skee says why in its own log.
+		logger::error("[Skee] skee64.dll is not loaded - RaceMenu cannot be reached.");
 		logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
-		logger::error("[Skee]   Asked at kPostPostLoad, kDataLoaded and {}.", a_stage);
-		logger::error("[Skee]   Check that RaceMenu is installed AND built for this runtime:");
-		logger::error("[Skee]   the Anniversary Edition build on 1.5.97 (or the reverse) does");
-		logger::error("[Skee]   not load at all, so its skee64.dll never registers.");
-		logger::error("[Skee]   If RaceMenu works in game, send skse64.log - a 'Failed to dispatch");
-		logger::error("[Skee]   message to skee' line there means skee loaded but was still not");
-		logger::error("[Skee]   listening, which is a load-order problem rather than a missing mod.");
+		logger::error("[Skee]   Asked at kPostPostLoad, kDataLoaded and {}; none answered.", a_stage);
+		logger::error("[Skee]   RaceMenu registers its listener early, so had it loaded at all we");
+		logger::error("[Skee]   would have reached it. This is not a load-order or timing problem.");
+		logger::error("[Skee]   READ THIS FILE - skee logs its own reason for refusing to load:");
+		logger::error("[Skee]     Documents\My Games\Skyrim Special Edition\SKSE\skee64.log");
+		logger::error("[Skee]   It names the cause outright: 'unsupported runtime version', a missing");
+		logger::error("[Skee]   SKSE interface, or an interface too old (i.e. SKSE needs updating).");
+		logger::error("[Skee]   If that file does NOT exist, SKSE never loaded skee64.dll: check it");
+		logger::error("[Skee]   really is at Data/SKSE/Plugins/skee64.dll in the virtual file system,");
+		logger::error("[Skee]   not just present in the mod folder.");
 	}
 
 	bool IsReady() { return g_bodyMorph != nullptr; }

@@ -25,7 +25,7 @@ Red flags and what they mean:
 
 | Line | Meaning |
 |---|---|
-| `[Skee] RaceMenu's skee did not answer the interface exchange` | RaceMenu is missing, or is built for the **other** runtime. An AE RaceMenu on 1.5.97 (or the reverse) does not load at all, so its `skee64.dll` never registers and nothing answers. Install the RaceMenu built for your Skyrim version |
+| `[Skee] skee64.dll is not loaded` | RaceMenu's plugin did not load. **Read `Documents\My Games\Skyrim Special Edition\SKSE\skee64.log`** — skee writes its own reason there: `unsupported runtime version` (wrong RaceMenu for your Skyrim), a missing SKSE interface, or one too old (update SKSE). If that file does not exist at all, SKSE never loaded the DLL: confirm it really is at `Data/SKSE/Plugins/skee64.dll` in the virtual file system, not merely present in the mod folder. This is **not** a timing or load-order problem — skee registers its listener early, so if it had loaded we would have reached it |
 | `[Skee] NiTransform interface v2 — using the legacy (pre-AE) ABI` | Normal on RaceMenu 0.4.16 / Skyrim SE 1.5.97. That skee exposes an older bone-scaling interface of a different shape; SLIF NG binds it separately. Nothing is lost |
 | `[Skee] ... interface missing` | skee answered but one interface was absent - that half (morphs, or the node fallback) is disabled |
 | `[Ledger] cosave version X != Y` | A save from an older dev build; state drops and rebuilds as mods re-send |
