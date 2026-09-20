@@ -427,8 +427,26 @@ namespace SLIFNG::Skee
 		// first attempt. So three failures across kPostPostLoad, kDataLoaded and
 		// kPostLoadGame do not mean "late" or "load order" - they mean skee64.dll
 		// is not loaded at all, and skee says why in its own log.
-		logger::error("[Skee] skee64.dll is not loaded - RaceMenu cannot be reached.");
+		// Answer the obvious next question here rather than making someone dig
+		// through skse64.log: is skee64.dll even in the process? That separates
+		// "RaceMenu is not installed / did not load" from "it loaded but did not
+		// answer", which are completely different problems.
+		const bool moduleLoaded = GetModuleHandleA("skee64.dll") != nullptr;
+		logger::error("[Skee] skee64.dll {} - RaceMenu cannot be reached.",
+			moduleLoaded ? "IS loaded but never answered" : "is NOT loaded");
 		logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
+		if (moduleLoaded) {
+			logger::error("[Skee]   The DLL is in the process, so this is NOT a missing mod.");
+			logger::error("[Skee]   skee refuses to finish loading in SKSEPlugin_Query and says why in");
+			logger::error("[Skee]   its own log - that is the file to read (path below).");
+		} else {
+			logger::error("[Skee]   The DLL is not in the process at all: SKSE never loaded it.");
+			logger::error("[Skee]   Confirm skee64.dll really lands in the Data/SKSE/Plugins that THIS");
+			logger::error("[Skee]   game instance reads. With a Stock Game / root-builder setup that is");
+			logger::error("[Skee]   the Stock Game copy, not the Steam install - check skse64.log for a");
+			logger::error("[Skee]   'checking plugin ...skee64.dll' line; no line at all means SKSE");
+			logger::error("[Skee]   never saw the file.");
+		}
 		logger::error("[Skee]   Asked at kPostPostLoad, kDataLoaded and {}; none answered.", a_stage);
 		logger::error("[Skee]   RaceMenu registers its listener early, so had it loaded at all we");
 		logger::error("[Skee]   would have reached it. This is not a load-order or timing problem.");

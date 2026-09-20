@@ -72,6 +72,26 @@ namespace
 		log::info("Papyrus functions bound.");
 	}
 
+	// The ESP carries quest 0x800, and that quest is what registers the MCM, the
+	// mod events and every SLIF_* script. The DLL loads independently of it, so
+	// "SLIFNG loaded correctly" in skse64.log says NOTHING about whether the
+	// Papyrus half is there. A missing MCM entry is almost always this, and it is
+	// one lookup to answer, so answer it instead of leaving it to guesswork.
+	void CheckPlugin()
+	{
+		constexpr const char* kPlugin = "SexLab Inflation Framework.esp";
+		auto* dh = RE::TESDataHandler::GetSingleton();
+		if (dh && dh->LookupModByName(kPlugin)) {
+			log::info("[Plugin] '{}' is active", kPlugin);
+			return;
+		}
+		log::error("[Plugin] '{}' IS NOT ACTIVE.", kPlugin);
+		log::error("[Plugin]   The DLL loaded, but the plugin holding quest 0x800 did not, so there");
+		log::error("[Plugin]   is no MCM entry, no mod events and no SLIF_* scripts - nothing a");
+		log::error("[Plugin]   consumer mod can call. Enable it in your mod manager.");
+		log::error("[Plugin]   It is ESL-flagged, so it takes no load-order slot and is easy to miss.");
+	}
+
 	void OnMessage(MessagingInterface::Message* a_msg)
 	{
 		switch (a_msg->type) {
@@ -83,6 +103,7 @@ namespace
 			// skee may not have been listening at kPostPostLoad - a pre-AE
 			// RaceMenu registers its handler from inside a message handler, so
 			// which of us goes first is load-order dependent.
+			CheckPlugin();
 			SLIFNG::Skee::RetryInitialize("kDataLoaded");
 			// Profiles match on race + plugin presence, so the data handler must
 			// be up before they load.
