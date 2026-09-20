@@ -2,13 +2,13 @@
 
 ## The one-paragraph version
 
-Consumer mods call the same Papyrus surface old SLIF exposed (`SLIF_Main`, `SLIF_Morph`, three mod events). Those scripts are thin shims over native functions in `SLIFNG.dll`. The DLL keeps a **ledger** - per actor, per mod, per target: value, min, max, mult, increment - in the SKSE co-save, folds contributions with SLIF's own calculation types, transforms node values into BodySlide sliders through the actor's **body profile**, and pushes results to RaceMenu's skee interfaces with one coalesced apply per actor. Applied skee values are derived output: every game load recomputes them from the ledger, so the system self-heals by construction.
+Consumer mods call the same Papyrus surface old SLIF exposed (`SLIF_Main`, `SLIF_Morph`, three mod events). Those scripts are thin shims over native functions in `BodyInflationNG.dll`. The DLL keeps a **ledger** - per actor, per mod, per target: value, min, max, mult, increment - in the SKSE co-save, folds contributions with SLIF's own calculation types, transforms node values into BodySlide sliders through the actor's **body profile**, and pushes results to RaceMenu's skee interfaces with one coalesced apply per actor. Applied skee values are derived output: every game load recomputes them from the ledger, so the system self-heals by construction.
 
 ```
 consumer .pex ──(mod events)──> SLIF_ScannerAlias.psc ─┐
 consumer .pex ──(direct calls)─> SLIF_Main / SLIF_Morph ┴─> SLIFNG.psc (natives)
                                                               │
-                                                        SLIFNG.dll
+                                                  BodyInflationNG.dll
                                     ┌─────────────────────────┼──────────────────────┐
                                  Ledger                    BodyProfile             Skee
                         contributions, folds,          per-actor INI          NiTransform +

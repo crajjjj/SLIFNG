@@ -431,16 +431,31 @@ namespace SLIFNG::Skee
 		// through skse64.log: is skee64.dll even in the process? That separates
 		// "RaceMenu is not installed / did not load" from "it loaded but did not
 		// answer", which are completely different problems.
-		const bool moduleLoaded = GetModuleHandleA("skee64.dll") != nullptr;
-		logger::error("[Skee] skee64.dll {} - RaceMenu cannot be reached.",
-			moduleLoaded ? "IS loaded but never answered" : "is NOT loaded");
+		// Try every name skee has shipped under rather than assuming the SE one:
+		// a false "not loaded" would send a VR user hunting a file that is there.
+		constexpr const char* kSkeeModules[] = { "skee64.dll", "skee.dll", "skeevr.dll" };
+		const char* module = nullptr;
+		for (const auto* candidate : kSkeeModules) {
+			if (GetModuleHandleA(candidate)) {
+				module = candidate;
+				break;
+			}
+		}
+		if (module) {
+			logger::error("[Skee] {} IS loaded but never answered - RaceMenu cannot be reached.",
+				module);
+		} else {
+			logger::error("[Skee] no skee module is loaded - RaceMenu cannot be reached.");
+		}
+		const bool moduleLoaded = module != nullptr;
 		logger::error("[Skee]   Runtime: {}", REL::Module::get().version().string());
 		if (moduleLoaded) {
 			logger::error("[Skee]   The DLL is in the process, so this is NOT a missing mod.");
 			logger::error("[Skee]   skee refuses to finish loading in SKSEPlugin_Query and says why in");
 			logger::error("[Skee]   its own log - that is the file to read (path below).");
 		} else {
-			logger::error("[Skee]   The DLL is not in the process at all: SKSE never loaded it.");
+			logger::error("[Skee]   Nothing named skee64.dll, skee.dll or skeevr.dll is in the");
+			logger::error("[Skee]   process, so SKSE never loaded it.");
 			logger::error("[Skee]   Confirm skee64.dll really lands in the Data/SKSE/Plugins that THIS");
 			logger::error("[Skee]   game instance reads. With a Stock Game / root-builder setup that is");
 			logger::error("[Skee]   the Stock Game copy, not the Steam install - check skse64.log for a");

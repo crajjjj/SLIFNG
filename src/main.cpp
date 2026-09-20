@@ -131,6 +131,19 @@ SKSEPluginLoad(const LoadInterface* skse)
 	log::info("{} v{} is loading...", plugin->GetName(), plugin->GetVersion());
 	log::info("Runtime version: {}", REL::Module::get().version().string());
 
+	// UPGRADE GUARD. The DLL was renamed from SLIFNG.dll to BodyInflationNG.dll
+	// (see xmake.lua for why), and an update that merely adds files leaves the
+	// old one behind. Both would load, and both would claim cosave ID 'SLIF',
+	// register the same Papyrus natives and answer the same API handshake -
+	// silent, confusing corruption. Refuse instead, and say which file to delete.
+	if (GetModuleHandleA("SLIFNG.dll")) {
+		report_and_fail(
+			"Two copies of SLIF NG are loaded.\n\n"
+			"The plugin was renamed to BodyInflationNG.dll, and the old SLIFNG.dll "
+			"is still present. Both claim the same save data.\n\n"
+			"Delete SKSE/Plugins/SLIFNG.dll and start again.");
+	}
+
 	Init(skse);
 	InitializeSerialization();
 	InitializePapyrus();

@@ -10,7 +10,7 @@ No JSON to edit, no nine pages of sliders to understand: pick your body in the
 installer and play.
 
 Under the hood the Papyrus framework is gone. A native SKSE plugin
-(`SLIFNG.dll`, one DLL for SE / AE / VR) keeps every mod's inflation values in
+(`BodyInflationNG.dll`, one DLL for SE / AE / VR) keeps every mod's inflation values in
 the co-save and applies them through RaceMenu, while thin script shims keep
 the exact API old SLIF exposed - same function names, same arguments, same
 math.
@@ -131,7 +131,7 @@ aggregation math - lives at **https://crajjjj.github.io/SLIFNG/** (built from
 ```sh
 git clone --recurse-submodules https://github.com/crajjjj/SLIFNG
 cd SLIFNG
-xmake f -m release && xmake        # -> dist/Core/skse/plugins/SLIFNG.dll
+xmake f -m release && xmake        # -> dist/Core/skse/plugins/BodyInflationNG.dll
 ```
 
 Already cloned without submodules? `git submodule update --init --recursive`
@@ -145,7 +145,7 @@ Already cloned without submodules? `git submodule update --init --recursive`
 
 ## Status
 
-**Released, 0.4.10.** The engine, shims, ESP, FOMOD, MCM (translatable),
+**Released, 0.4.11.** The engine, shims, ESP, FOMOD, MCM (translatable),
 automatic migration, incremental inflation and the author API all ship and run
 in a live load order. Beeing Female NG, Fill Her Up and Sexlab Survival have been observed
 working together on one actor; a real old-SLIF save has been migrated; and

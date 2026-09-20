@@ -11,7 +11,7 @@ Native SKSE rewrite (CommonLibSSE-NG) of SexLab Inflation Framework. Install it 
 
 You install it [b]instead of[/b] SLIF. Every mod that talks to SLIF today keeps working without any patch, and a save that ran the old framework migrates by itself on first load. No JSON to edit, no nine pages of sliders to understand.
 
-Under the hood the Papyrus framework is gone. A native SKSE plugin ([b]SLIFNG.dll[/b], one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed: same function names, same arguments, [b]same math[/b].
+Under the hood the Papyrus framework is gone. A native SKSE plugin ([b]BodyInflationNG.dll[/b], one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed: same function names, same arguments, [b]same math[/b].
 
 [b]Supported versions:[/b] Skyrim SE • AE • VR
 

@@ -5,7 +5,7 @@ A modern, zero-configuration replacement for **SexLab Inflation Framework SE** (
 !!! warning "Adult modding ecosystem - reference documentation"
     SLIF NG is a body-inflation framework for the adult (18+) side of Skyrim modding: its consumers are mods like Beeing Female NG, Fill Her Up and Sexlab Survival. **These pages are reference documentation** - they describe installation, configuration and the developer API, and contain no adult media. Install and use the mod only where appropriate for your age and local laws.
 
-Under the hood the old Papyrus framework is gone. A native SKSE plugin (`SLIFNG.dll`, one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed - same function names, same arguments, **same math**: the six calculation types were the field-tested part of the reference and were kept formula for formula.
+Under the hood the old Papyrus framework is gone. A native SKSE plugin (`BodyInflationNG.dll`, one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed - same function names, same arguments, **same math**: the six calculation types were the field-tested part of the reference and were kept formula for formula.
 
 ## For Players
 

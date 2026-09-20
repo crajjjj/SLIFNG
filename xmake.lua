@@ -5,7 +5,7 @@ PROJECT_NAME = "SLIFNG"
 
 -- Project
 set_project(PROJECT_NAME)
-set_version("0.4.10")
+set_version("0.4.11")
 set_languages("cxx23")
 set_license("gplv3")
 set_warnings("allextra")
@@ -40,6 +40,20 @@ add_defines("_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING")
 -- Target
 target(PROJECT_NAME)
     set_kind("shared")
+
+    -- FILENAME ONLY. The declared plugin NAME stays "SLIFNG" (see the rule
+    -- below) because that is what C++ consumers dispatch to and what the
+    -- published API header documents; and the cosave is keyed by an explicit
+    -- SetUniqueID('SLIF'), not by either name. Only the file on disk changes.
+    --
+    -- WHY: SKSE assigns plugin handles in alphabetical filename order, and its
+    -- 2.0.x messaging can only deliver a targeted message to a plugin that
+    -- subscribed to messages FROM US - a subscription skee takes as a one-time
+    -- snapshot when IT loads. "skee64.dll" sorts before "SLIFNG.dll", so skee
+    -- always loaded first and its snapshot never included us, and every request
+    -- for its interface was dropped before skee ever saw it. A name that sorts
+    -- earlier puts us in the room before the headcount.
+    set_basename("BodyInflationNG")
 
     -- CommonLibSSE-NG
     add_deps("commonlibsse-ng")

@@ -14,7 +14,7 @@ Already cloned without submodules? `git submodule update --init --recursive` - t
 Requirements: **xmake 3.x**, **MSVC v143** (Visual Studio 2022 build tools). CommonLibSSE-NG (alandtse fork) is the submodule at `lib/commonlibsse-ng`; one build covers SE, AE and VR via Address Library.
 
 ```sh
-xmake f -m release && xmake        # -> dist/Core/skse/plugins/SLIFNG.dll
+xmake f -m release && xmake        # -> dist/Core/skse/plugins/BodyInflationNG.dll
 ```
 
 ## The Papyrus scripts
