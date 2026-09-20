@@ -319,7 +319,17 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       best-effort mapping); the `SLIF_Config` presets API itself stays
       unimplemented — no consumer calls it (CONTRACT §8).
 
-### P6 — Migration & cleanup  ← import BUILT + AUTOMATIC (MCM versioning), untested; uninstall path unbuilt
+### P6 - Migration & cleanup  (import BUILT as an MCM BUTTON; uninstall path unbuilt)
+
+> **2026-09-20 - the import went back to being a button, and why that matters.**
+> It was automatic for a few releases, called from `OnConfigInit` and the
+> `OnVersionUpdate` ladder. SkyUI registers every MCM in ONE loop, so a callback
+> that misbehaves stops the loop and every mod after it never registers: a 0.4.8
+> user starting a NEW GAME lost most of their MCM list, saw a black page on the
+> mods that did register, and only removing SLIF NG restored them. The walk
+> cannot even run on a new game (nothing to import), so the mere attempt inside
+> that callback was enough. CONTRACT sec.6's "no user action" wording is
+> deliberately not met; one press is cheaper than breaking other mods.
 CONTRACT sec.6 promises a save that ran real SLIF migrates with zero user
 action, and it now does - through SkyUI's own upgrade channel
 (MCM-Advanced-Features#Versioning): SLIF_Menu.OnVersionUpdate runs

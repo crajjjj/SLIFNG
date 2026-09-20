@@ -47,10 +47,10 @@ EndEvent
 
 Event OnPlayerLoadGame()
 	RegisterForModEvents()
-	; P6 legacy migration is NOT here: it rides the MCM versioning feature
-	; (SLIF_Menu.OnVersionUpdate / OnConfigInit -> TryLegacyImport), which is
-	; the SkyUI-sanctioned one-shot upgrade channel and fires exactly when a
-	; save carries an older registration - the reference's included.
+	; P6 legacy migration is NOT here, and is no longer automatic anywhere: it
+	; is a button on the MCM's Settings page. Doing it from a load hook or from
+	; SkyUI's registration callbacks is what broke other mods' menus in 0.4.8 -
+	; see the note above ImportLabel in SLIF_Menu.psc.
 EndEvent
 
 ; -- inflate side -------------------------------------------------------------

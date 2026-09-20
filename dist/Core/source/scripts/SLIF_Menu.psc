@@ -36,51 +36,9 @@ int _oReset
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
 
-; ------------------------------------------------------------- translation
-; Every string this menu shows is a $key, resolved from
-; Data/Interface/Translations/<data file>_<LANGUAGE>.txt - for us
-; "SexLab Inflation Framework_ENGLISH.txt", because the game looks that file up
-; by the DATA FILE name, not by ModName (SkyUI wiki, Localization: "modname is
-; replaced by the name of the mod data file"). SL Widgets is the house
-; reference for the rest of the idiom: one $PREFIX_ per mod, keys in the psc,
-; prose only in the txt.
-;
-; The lookup is WHOLE-STRING - "$KEY" is replaced, "$KEY " + count is NOT - so
-; a runtime value goes in through SkyUI's argument form instead: pass
-; "$KEY{" + value + "}" and the txt holds the key as "$KEY{}" with a "{}"
-; where the value lands (ImportLabel; Apropos2 and Mini Needs do the same).
-; That form is SkyUI's, not the game's: it works on menu strings, not on
-; Debug.Notification, which is why the two counted notifications stay English.
-;
-; A language with no file of its own shows raw $keys, not English - which is
-; why the English file ships copied under every language name.
 String Property PAGE_SETTINGS = "$SLIFNG_Page_Settings" AutoReadOnly Hidden
 String Property PAGE_ACTOR = "$SLIFNG_Page_Actor" AutoReadOnly Hidden
 
-; ---------------------------------------------------------------- versioning
-; The SkyUI MCM versioning feature, in the SL Widgets idiom - see
-; github.com/schlangster/skyui/wiki/MCM-Advanced-Features#Versioning.
-;
-; SkyUI fires OnConfigInit ONCE and `Pages` is a script PROPERTY, so it lives
-; in the save from then on: a page added in a later build stays invisible to
-; anyone already running the mod. OnVersionUpdate is the official channel for
-; fixing that AND for one-shot save upgrades. The contract:
-;   * The version number lives in ONE place, SLIFNG_Version.psc, packed from
-;     the mod version as major*10000 + minor*100 + patch (SL Widgets'
-;     slw_util convention: 0.2.0 -> 200, 1.2.3 -> 10203); this GetVersion()
-;     only delegates. Bump the mod version whenever Pages, ModName, the
-;     option layout, or the save-side data needs an upgrade step.
-;   * OnConfigInit puts a FRESH install directly into the final state.
-;   * OnVersionUpdate is a LADDER of cumulative blocks,
-;         If (a_version >= N && CurrentVersion < N)
-;     one per packed revision, each with a Debug.Trace - APPEND a new block
-;     for a new revision, never edit an old one, so a save can climb any
-;     number of versions in one load.
-;
-; THE FLOOR IS 122, NOT 1: a migrating save stores the reference SLIF_Menu's
-; config version 122 and SkyUI only fires updates on an increase, so the
-; packed version must stay above 122 forever - 0.2.0 (200) is the first
-; legal mod version. Details in SLIFNG_Version.psc.
 Int Function GetVersion()
 	Return SLIFNG_Version.GetVersion()
 EndFunction
@@ -89,88 +47,29 @@ String Function ModVersion()
 	return SLIFNG_Version.GetVersionString()
 EndFunction
 
-Int Function ExpectedPageCount()
-	return 2
-EndFunction
-
 Event OnConfigInit()
-	{Fires ONCE, when the quest starts fresh: a new game, or SLIF NG added to a
-	save that never had quest 0x800 running (e.g. the old SLIF was uninstalled
-	earlier - its StorageUtil ghost may still be there, so the import runs
-	here too).}
-	BuildPages()
-	TryLegacyImport()
+	ModName = "SLIF NG"
+	Debug.Notification("[SLIF NG] MCM menu initialized")
 EndEvent
 
 Event OnVersionUpdate(int a_version)
-	{Fires on game reload when GetVersion() outgrew the version stored in the
-	save - for a migrating save that stored value is the REFERENCE SLIF_Menu's
-	122, which is exactly the save CONTRACT sec.6 is about.
-
-	Lock-aware: this runs while SkyUI's config manager holds its registration
-	lock, so no calls into OTHER script INSTANCES here (that pattern froze
-	ArousedBodyMorphs' predecessor). Our own properties, Global functions and
-	natives only - none of those can contend the lock.}
-
-	; a_version is the new version, CurrentVersion is the old version
-	If (a_version >= 200 && CurrentVersion < 200)
-		Debug.Trace(self + ": Updating script to version 200")
-		; Arriving from reference SLIF (122) or a pre-200 SLIF NG dev build:
-		; the save's Pages property still holds the OLD menu layout, and the
-		; StorageUtil ledger may still be the reference's.
-		BuildPages()
-		TryLegacyImport()
-	EndIf
-
-	If (a_version >= 403 && CurrentVersion < 403)
-		Debug.Trace(self + ": Updating script to version 403")
-		; 0.4.3 moved every menu string to translation keys, the PAGE NAMES
-		; included - a save from before it still holds the literal "Settings"
-		; and "Actor", which would leave the tabs showing untranslated text and
-		; OnPageReset falling through to the Settings branch for both.
-		BuildPages()
-	EndIf
 EndEvent
 
-; P6, automatic, via MCM versioning: walk the reference's StorageUtil state
-; into the ledger (SLIFNG_Migrate) with zero user action. The cosave flag makes
-; it one-shot per save whichever event lands first; a save with nothing to
-; import is flagged too, so it is never re-scanned. All Global + native calls:
-; safe under SkyUI's registration lock.
-Function TryLegacyImport()
-	if SLIFNG.HasMigrated()
-		return
-	endif
-	if SLIFNG_Migrate.CountLegacyActors() == 0
-		SLIFNG.SetMigrated(true)
-		return
-	endif
-	Int moved = SLIFNG_Migrate.Run()
-	; English on purpose: SkyUI's "$KEY{arg}" substitution is a MENU feature, and
-	; the HUD notification path has nothing like it - a composed string there
-	; would only ever print verbatim.
-	Debug.Notification("SLIF NG: imported " + moved + " value(s) from the old SLIF save")
-EndFunction
-
 Event OnConfigOpen()
-	; Self-heal, borrowed from SLO Aroused NG's `Pages.length < 4` guard: if a
-	; save somehow carries a stale page array while reporting a current version,
-	; rebuild anyway rather than showing a menu with pages missing.
-	;
-	; The name check is what carries the translation switch: a save written
-	; before it stores the old hard-coded "Settings"/"Actor" and needs the
-	; array rebuilt even though the page COUNT never changed - and its stored
-	; config version can already be the current one, so no version-ladder block
-	; would fire for it.
-	if Pages.length != ExpectedPageCount() || Pages[0] != PAGE_SETTINGS
-		BuildPages()
-	endIf
+	{The ONE place Pages is built, following slw_menu.psc. SkyUI reads Pages when
+	a menu is OPENED, not when it is registered, so here is early enough - and no
+	save can then carry a stale page array, which is what the version-ladder
+	rebuilds used to be for.
+
+	Rebuilt UNCONDITIONALLY, with no length/name guard. A guard would have to
+	read Pages before it has ever been assigned, and reading .length off an
+	unassigned array is a Papyrus error that would abort this very callback -
+	leaving Pages unbuilt and the menu blank. Two property writes per open cost
+	nothing and cannot fail.}
+	BuildPages()
 EndEvent
 
 Function BuildPages()
-	; ModName is the mod's own name, not prose: it stays untranslated, the way
-	; SL Widgets keeps "SLWidgets".
-	ModName = "SLIF NG"
 	Pages = new String[2]
 	Pages[0] = PAGE_SETTINGS
 	Pages[1] = PAGE_ACTOR
@@ -427,7 +326,9 @@ Event OnOptionSelect(int a_option)
 		Debug.Notification("$SLIFNG_Notif_Dumped")
 	elseIf a_option == _oImport
 		Int moved = SLIFNG_Migrate.Run()
-		; composed with a count, English - see TryLegacyImport
+		; English on purpose: SkyUI's "$KEY{arg}" substitution is a MENU feature,
+		; and the HUD notification path has nothing like it - a composed string
+		; there would only ever print verbatim.
 		Debug.Notification("SLIF NG: imported " + moved + " contribution(s)")
 		ForcePageReset()   ; redraw so the option greys out
 	elseIf a_option == _oTarget

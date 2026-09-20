@@ -327,8 +327,12 @@ not).
 
 ## 6. Persistent-state compatibility (free save migration)
 
-SLIF NG reads/keeps these existing StorageUtil names so a save that ran real
-SLIF migrates with zero user action:
+SLIF NG reads these existing StorageUtil names so a save that ran real SLIF can
+be imported. The import is a BUTTON on the MCM's Settings page, not automatic:
+it ran automatically in 0.4.8, from SkyUI's registration callbacks, and that
+stopped SkyUI registering the mods after it (see the note above ImportLabel in
+SLIF_Menu.psc). This is a deliberate departure from section 6's "no user
+action" wording - one press is the price of not breaking other mods' menus:
 
 - global: `slif_actor_list` (FormList), `slif_actor_name_list`,
   `slif_morph_actor_list`

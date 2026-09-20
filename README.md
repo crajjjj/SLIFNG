@@ -145,7 +145,7 @@ Already cloned without submodules? `git submodule update --init --recursive`
 
 ## Status
 
-**Released, 0.4.11.** The engine, shims, ESP, FOMOD, MCM (translatable),
+**Released, 0.4.12.** The engine, shims, ESP, FOMOD, MCM (translatable),
 automatic migration, incremental inflation and the author API all ship and run
 in a live load order. Beeing Female NG, Fill Her Up and Sexlab Survival have been observed
 working together on one actor; a real old-SLIF save has been migrated; and

@@ -117,4 +117,4 @@ bytecode is 1.2.2.
 
 **Dropped:** roughly 70 of ~90 public functions and 21 of 24 mod events, the grow/shrink/absorb spells, the actor scanner, the scrotum timer, the presets JSON API, 17 translations. An unknown call surfaces as one loud, searchable log line - that is the detection channel for unsurveyed consumers.
 
-**New:** automatic old-save migration, the user magnitude knobs (master, per-target, per-actor), the actor diagnostics page, semantic profile regions (`region:weight`), batched writes, the read API for mod authors (Papyrus and C++), foreign-key detection, verbose logging.
+**New:** old-save migration, the user magnitude knobs (master, per-target, per-actor), the actor diagnostics page, semantic profile regions (`region:weight`), batched writes, the read API for mod authors (Papyrus and C++), foreign-key detection, verbose logging.

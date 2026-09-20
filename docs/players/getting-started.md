@@ -19,7 +19,9 @@
     - UBE 2.0 support always installs and matches by race, so UBE characters get their own sliders even alongside a 3BA game
 3. Load your game and play. There is no step 3.
 
-If the save previously ran old SLIF, the **migration runs by itself** on that first load: every mod's per-actor values are copied out of the old framework's storage into SLIF NG, and a notification reports how many values were carried over. The MCM shows `Old-SLIF import: done (automatic)` afterwards. A save that never ran SLIF silently skips this forever.
+If the save previously ran old SLIF, open the MCM and press **Import from old SLIF** on the Settings page once. Every mod's per-actor values are copied out of the old framework's storage into SLIF NG, and a notification reports how many were carried over; the button then greys itself out. On a save that never ran SLIF it reads `nothing found` and is disabled.
+
+    It is a button rather than an automatic step on purpose. Doing the walk automatically meant doing it inside SkyUI's menu-registration pass, and that could stop SkyUI registering the mods after SLIF NG - several users lost most of their MCM list to it in 0.4.8.
 
 !!! tip "Wrong body picked?"
     You do not need to reinstall. Every profile ships in `Data/SLIFNG/Bodies/`; copy the one you want over `default.ini`, then reload a save. To *tune* a profile rather than swap it, put your changes in an [overlay](bodies.md#changing-a-profile-without-losing-it-on-update) so an update cannot overwrite them. [Body Profile Format](../authors/body-profiles.md) documents both.

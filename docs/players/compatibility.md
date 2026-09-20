@@ -27,4 +27,4 @@ That line is the detection mechanism, by design. If you hit one, report the mod 
 
 ## Old-SLIF saves
 
-Migration is automatic on first load: the old framework's per-actor, per-mod values are read out of StorageUtil and rebuilt in the native ledger, and stale applied values are overwritten in place (SLIF NG deliberately uses old SLIF's own RaceMenu key). See [Getting Started](getting-started.md).
+Migration is one button press in the MCM: the old framework's per-actor, per-mod values are read out of StorageUtil and rebuilt in the native ledger, and stale applied values are overwritten in place (SLIF NG deliberately uses old SLIF's own RaceMenu key). See [Getting Started](getting-started.md).

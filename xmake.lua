@@ -5,7 +5,7 @@ PROJECT_NAME = "SLIFNG"
 
 -- Project
 set_project(PROJECT_NAME)
-set_version("0.4.11")
+set_version("0.4.12")
 set_languages("cxx23")
 set_license("gplv3")
 set_warnings("allextra")
