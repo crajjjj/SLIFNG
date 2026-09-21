@@ -156,3 +156,16 @@ Still open: the remaining compatibility-matrix rows (Estrus, Devious Devices,
 Milk Mod Economy, a Beeing Female birth reset), and qotsafan's permission
 before any Nexus release, since the mod ships the
 `SexLab Inflation Framework.esp` plugin name.
+
+## License
+
+Copyright (C) 2026 crajjjj. SLIF NG is free software under the
+[GNU General Public License v3.0](LICENSE) or (at your option) any later
+version, and comes with **no warranty**.
+
+The SKSE plugin is built on
+[CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG), which is
+GPL-3.0, so the mod is distributed under the same terms. The complete
+corresponding source is this repository; the Papyrus sources and a copy of the
+license also ship inside the download (`Data\source\scripts` and
+`Data\SLIFNG\LICENSE.txt`).

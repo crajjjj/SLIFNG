@@ -1,3 +1,13 @@
+// SLIF NG - a native replacement for SexLab Inflation Framework SE.
+// Copyright (C) 2026 crajjjj
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version. It is built on CommonLibSSE-NG, which is GPL-3.0, and is
+// distributed WITHOUT ANY WARRANTY. See the LICENSE file in the repository
+// root, or <https://www.gnu.org/licenses/>.
+
 #include <REL/Module.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
