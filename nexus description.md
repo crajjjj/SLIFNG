@@ -1,31 +1,32 @@
-Native SKSE rewrite (CommonLibSSE-NG) of SexLab Inflation Framework. Install it INSTEAD of SLIF: same plugin name, same API, same math, so Beeing Female NG, Fill Her Up, Sexlab Survival, Estrus Chaurus, Devious Devices and friends keep working unpatched. Old SLIF saves migrate themselves on first load. Zero configuration - pick your body in the installer and play. Runs on SE, AE & VR.
+Native SKSE rewrite (CommonLibSSE-NG) of SL Inflation Framework. Install it INSTEAD of SLIF: same plugin name, same API, same math, so legacy mods keep working unpatched. Old SLIF saves migrate themselves via mcm button. Zero configuration - pick your body in the installer and play. Runs on SE, AE & VR. (UBE support built-in, espfe)
 
 
 
-[center][size=5][b]🎈 SLIF NG 🎈[/b][/size]
-[size=3]SexLab Inflation Framework, rebuilt as an SKSE plugin[/size][/center]
 
-[b]SLIF NG[/b] is a modern, zero-configuration replacement for [b]SexLab Inflation Framework SE[/b] by [i]qotsafan[/i].
+[center][size=5][b]SLIF NG[/b][/size]
+[size=3] Inflation Framework, rebuilt as an SKSE plugin[/size][/center]
 
-[b]What a body inflation framework is for:[/b] plenty of mods want to change the shape of a body - a pregnancy belly, cum inflation, milk-filled breasts, weight from overeating - and on their own they all reach for the same belly bone or the same BodySlide slider and overwrite each other, so whichever ran last wins and the rest quietly vanish. SLIF is the middleman they hand their requests to instead: it keeps every mod's contribution separately, combines them by a rule you choose, and applies one final shape to the actor. Installing it does nothing by itself - it is the plumbing the mods below use.
+[b]SLIF NG[/b] is a modern, zero-configuration replacement for [b]SL Inflation Framework SE[/b] by [i]qotsafan[/i].
 
-You install it [b]instead of[/b] SLIF. Every mod that talks to SLIF today keeps working without any patch, and a save that ran the old framework migrates by itself on first load. No JSON to edit, no nine pages of sliders to understand.
+You install it [b]instead of[/b] SLIF. Every mod that talks to SLIF today keeps working without any patch, and a save that ran the old framework is carried over by one button in the MCM. No JSON to edit, no nine pages of sliders to understand.
 
 Under the hood the Papyrus framework is gone. A native SKSE plugin ([b]BodyInflationNG.dll[/b], one DLL for SE / AE / VR) keeps every mod's inflation values in the co-save and applies them through RaceMenu, while thin script shims keep the exact API old SLIF exposed: same function names, same arguments, [b]same math[/b].
+
+[b]What a body inflation framework is for:[/b] plenty of mods want to change the shape of a body - a pregnancy belly, inflation, milk-filled breasts, weight from overeating - and on their own they all reach for the same belly bone or the same BodySlide slider and overwrite each other, so whichever ran last wins and the rest quietly vanish. SLIF is the middleman they hand their requests to instead: it keeps every mod's contribution separately, combines them by a rule you choose, and applies one final shape to the actor. Installing it does nothing by itself - it is the plumbing those mods use.
 
 [b]Supported versions:[/b] Skyrim SE • AE • VR
 
 
 
-[size=4][b]❓ TL;DR - Why replace SLIF?[/b][/size]
+[size=4][b]TL;DR - Why replace SLIF?[/b][/size]
 
-The old framework is ~11,700 lines of Papyrus and ~90 public functions, but installed mods only ever call a small fraction of it. What players meet is the other side: a framework that ships inert - all 270 sliders across its three body tables sit at 0%, so a stock install scales skeleton bones and drives no BodySlide morph at all - plus a nine-page MCM of body-specific JSON editing, and silent failure when any of it is misconfigured.
+The old framework is ~11,700 lines of Papyrus and ~90 public functions, but installed mods only ever call a small fraction of it. What players meet is the other side: heavy script load, a nine-page MCM of body-specific JSON editing, and silent failure when any of it is misconfigured.
 
 [list]
 [*][b]Native engine[/b] - the aggregation and the ramp run in C++, not on the script engine[/*]
 [*][b]Zero configuration[/b] - one installer question instead of nine MCM pages[/*]
 [*][b]No patches needed[/b] - the API is pinned from SLIF 1.2.2 bytecode, signature for signature[/*]
-[*][b]Automatic migration[/b] - your characters keep their shape[/*]
+[*][b]One-button migration[/b] - your characters keep their shape[/*]
 [*][b]Diagnoses instead of failing silently[/b] - an actor page that shows who inflates what[/*]
 [*][url=https://crajjjj.github.io/SLIFNG/]User guide[/url] !!! [color=#cc0000]Check before asking questions[/color][/*]
 [/list]
@@ -33,7 +34,7 @@ The old framework is ~11,700 lines of Papyrus and ~90 public functions, but inst
 
 
 
-[size=4][b]✨ Core Features[/b][/size]
+[size=4][b]Core Features[/b][/size]
 
 [list]
 [*][b]The same math, kept on purpose[/b]
@@ -69,7 +70,7 @@ The old framework is ~11,700 lines of Papyrus and ~90 public functions, but inst
 [list]
 [*]One compact native co-save record instead of hundreds of StorageUtil keys[/*]
 [*]Recomputed and re-applied on every load, self-healing[/*]
-[*]Automatic old-SLIF import, reported in a notification[/*]
+[*]One-button old-SLIF import, reported in a notification[/*]
 [/list]
 [/*]
 [*][b]One page of settings[/b]
@@ -82,49 +83,36 @@ The old framework is ~11,700 lines of Papyrus and ~90 public functions, but inst
 
 
 
-[size=4][b]🔗 Supported Mods[/b][/size]
+[size=4][b]Compatibility[/b][/size]
 
 Compatibility was pinned by decompiling old SLIF 1.2.2 and every consumer in a large live load order - the implemented API is exactly what installed mods actually call, verified in bytecode. No patches, no compatibility versions.
 
-[list]
-[*][b]Beeing Female NG[/b] - pregnancy belly/breast growth and reset[/*]
-[*][b]Fill Her Up (Baka)[/b] - both of its spellings land on the same target, so it aggregates instead of clobbering[/*]
-[*][b]Sexlab Survival[/b] - including its read path (a whole scene branch gates on it)[/*]
-[*][b]Estrus Chaurus[/b] + [b]Spider Addon[/b] - bound reads, dead keys kept bug-compatible[/*]
-[*][b]Devious Devices NG[/b] - belly pinned flat under a chastity belt, restored on unequip[/*]
-[*][b]Devious Interests[/b] - drops only its own contribution[/*]
-[*][b]Milk Mod Economy[/b] - its stale-state cleanup still works[/*]
-[/list]
 
-Any SLIF consumer not on that list either works (same calls) or fails [b]loudly[/b]: one searchable line in the Papyrus log. That line is the detection mechanism, by design - report it and the entry point is cheap to add.
-
-
-
-[size=4][b]📋 Requirements[/b][/size]
+[size=4][b]Requirements[/b][/size]
 
 [list]
 [*][b]SKSE64[/b] (or SKSE VR)[/*]
 [*][b]SkyUI[/b] - the MCM[/*]
-[*][b]RaceMenu[/b] - its skee plugin performs the actual body changes. Both generations work: the AE build (0.4.19+) and pre-AE RaceMenu 0.4.16 on Skyrim SE 1.5.97, whose older bone-scaling interface SLIF NG binds separately[/*]
+[*][b]RaceMenu[/b] - its skee plugin performs the actual body changes[/*]
 [*][b]XPMSSE[/b] - the standard skeleton nodes[/*]
 [*][b]PapyrusUtil[/b] - used once, to read an old SLIF save during migration[/*]
 [/list]
 
 
 
-[size=4][b]📥 Installation[/b][/size]
+[size=4][b]Installation[/b][/size]
 
 [list]
 [*][b]Uninstall or disable SexLab Inflation Framework[/b] and its patches. SLIF NG replaces it file for file[/*]
 [*]Install with the FOMOD and answer its one question: which body did you build in BodySlide[/*]
 [*]Load your game. There is no step 3[/*]
-[*]If the save ran old SLIF, the import runs by itself and reports how many values it carried over[/*]
+[*]If the save ran old SLIF, open the MCM once and press [i]Old-SLIF import[/i] - it reports how many values it carried over[/*]
 [*]Going back is a plain mod-manager swap: applied values live under old SLIF's own RaceMenu key, so the original framework finds and overwrites them[/*]
 [/list]
 
 
 
-[size=4][b]🔄 What Changed vs Old SLIF[/b][/size]
+[size=4][b]What Changed vs Old SLIF[/b][/size]
 [spoiler]
 [list]
 [*][b]Engine[/b] - ~11,700 lines of Papyrus with per-step body rebuilds -> native C++, one coalesced apply per actor, unchanged values skipped[/*]
@@ -138,13 +126,13 @@ Any SLIF consumer not on that list either works (same calls) or fails [b]loudly[
 [*][b]Non-unique NPCs[/b] - transient scaling by default -> always persistent and self-healing[/*]
 [*][b]State[/b] - hundreds of StorageUtil keys -> one compact co-save record[/*]
 [*][b]Dropped[/b] - the grow/shrink/absorb spells, the actor scanner, the scrotum timer, the presets JSON API, 17 translations, and ~70 functions nothing calls[/*]
-[*][b]New[/b] - automatic migration, magnitude knobs, the actor diagnostics page, semantic regions, batched writes, a read API, foreign-key detection[/*]
+[*][b]New[/b] - the old-SLIF import, magnitude knobs, the actor diagnostics page, semantic regions, batched writes, a read API, foreign-key detection[/*]
 [/list]
 [/spoiler]
 
 
 
-[size=4][b]💻 For Mod Authors[/b][/size]
+[size=4][b]For Mod Authors[/b][/size]
 
 The [b]write API is old SLIF's, unchanged[/b] - [i]SLIF_Main.inflate[/i], [i]SLIF_Morph.morph[/i], the mod events, all pinned from 1.2.2 bytecode. If your mod worked against SLIF, it works here.
 
@@ -160,25 +148,23 @@ New on top:
 
 
 
-[size=4][b]❤️ Credits[/b][/size]
+[size=4][b]Credits[/b][/size]
 
 [list]
 [*][b][i]qotsafan[/i][/b] - author of [b]SexLab Inflation Framework[/b], and everyone who contributed to it over the years. SLIF NG is a reimplementation of their framework: the API, the node vocabulary, the six calculation types and their formulas are all theirs, kept deliberately intact so the ecosystem built on SLIF keeps running. None of this exists without that work[/*]
-[*][i]expired6978[/i] - RaceMenu / skee, which does the actual body changes[/*]
+[*]RaceMenu / skee, which does the actual body changes[/*]
 [*]The [b]SKSE[/b] team, and [b]CommonLibSSE-NG[/b] (Ryan-rsm-McKenzie, alandtse and contributors)[/*]
-[*][i]Ousnius[/i] & [i]Caliente[/i] - BodySlide, and the body authors whose slider sets the profiles target[/*]
-[*]The authors of the consumer mods this was tested against: Beeing Female, Fill Her Up, Sexlab Survival, Estrus Chaurus, Devious Devices, Devious Interests, Milk Mod Economy[/*]
 [/list]
 
 [i]Note:[/i] SLIF NG ships a clean-room plugin that reuses the [b]SexLab Inflation Framework.esp[/b] name and its FormIDs. That is not a copy of qotsafan's plugin - it is how existing mods detect the framework without needing a single patch.
 
 ---
 
-[size=3][b]📜 Source Code[/b][/size]
+[size=3][b]Source Code[/b][/size]
 [url=https://github.com/crajjjj/SLIFNG]GitHub Repository[/url] • [url=https://crajjjj.github.io/SLIFNG/]Documentation[/url]
 
 
-[size=3][b]⚖️ License[/b][/size]
+[size=3][b]License[/b][/size]
 SLIF NG is free software, licensed under the [url=https://www.gnu.org/licenses/gpl-3.0.html][b]GNU General Public License v3.0[/b][/url] (or, at your option, any later version), and comes with [b]no warranty[/b]. The SKSE plugin is built on [url=https://github.com/alandtse/CommonLibSSE-NG]CommonLibSSE-NG[/url], which is GPL-3.0, so this mod is distributed under the same terms.
 
 The complete corresponding source is in the GitHub repository above. The download also ships the full, unmodified license text as [i]Data\SLIFNG\LICENSE.txt[/i] and the Papyrus sources under [i]Data\source\scripts[/i]. In line with the GPL, you are free to use, modify and redistribute this mod, including modified versions, as long as you keep it under the GPL-3.0 and credit the original work.
