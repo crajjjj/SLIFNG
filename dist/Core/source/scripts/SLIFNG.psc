@@ -163,7 +163,7 @@ Function UpdateActorBounds(Actor kActor, String modName, String slifKey, Float m
 
 ; Diagnostics: write the full ledger (or one actor's entries) to SLIFNG.log -
 ; contributions, fold results, active mode. See SLIFNG_Debug.psc for
-; console-callable wrappers (cgf).
+; console-callable wrappers (ConsoleUtil Extended: `slifng dump`).
 ; Per-call diagnostics (every API entry + apply + a skee readback per slider).
 ; Dev builds default ON; turn it off for normal play.
 Function SetVerboseLogging(Bool enabled) Global Native

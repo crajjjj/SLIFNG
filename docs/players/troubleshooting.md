@@ -32,7 +32,7 @@ Red flags and what they mean:
 | `corrupt cosave record` | The record failed integrity checks and was discarded rather than crashing the load |
 | `is not a function or does not exist` (Papyrus.0.log) | Some mod calls an API entry SLIF NG does not implement - report it, this line is the detection channel |
 
-**Verbose logging** (MCM, or `cgf "SLIFNG_Debug.Verbose" true`) additionally logs every API call and every apply with a RaceMenu readback - the readback equalling the written value is skee confirming the write landed.
+**Verbose logging** (MCM, or `slifng verbose true`) additionally logs every API call and every apply with a RaceMenu readback - the readback equalling the written value is skee confirming the write landed.
 
 ## First stop: the Actor page
 
@@ -45,24 +45,34 @@ Nine problems out of ten are answered by MCM > SLIF NG > Actor for the affected 
 
 ## Console test drivers
 
-Every part of the pipeline can be exercised without any consumer mod, via SKSE's `cgf`:
+Every part of the pipeline can be exercised without any consumer mod. These are real console commands, provided by [ConsoleUtil Extended](https://www.nexusmods.com/skyrimspecialedition/mods/133569) - **install it, or none of them exist**. Every argument has a default, so `slifng inflate` on its own inflates the belly to 2.0:
 
 ```
-cgf "SLIFNG_Debug.Ping"                            liveness: DLL + scripts + registration
-cgf "SLIFNG_Debug.SmokeTest"                       scripted end-to-end run, results in the log
-cgf "SLIFNG_Debug.IPlayer" "TestMod" "slif_belly" 2.0
-cgf "SLIFNG_Debug.MPlayer" "TestMod" "PregnancyBelly" 0.6
-cgf "SLIFNG_Debug.RPlayer" "TestMod" "weight" 1.4   custom region (if the profile defines it)
-cgf "SLIFNG_Debug.UPlayer" "TestMod"                unregister the test mod
-cgf "SLIFNG_Debug.Mode" 1                           calculation type 0-5
-cgf "SLIFNG_Debug.Gradual" false                    incremental inflation on/off
-cgf "SLIFNG_Debug.Scale" 0.5                        overall magnitude
-cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5      per-target magnitude
-cgf "SLIFNG_Debug.ScaleA" "pregnancybelly" 0.5      per-actor (player) magnitude
-cgf "SLIFNG_Debug.Dump"                             whole ledger to the log
-cgf "SLIFNG_Debug.Report"                           the Actor page, as log text
-cgf "SLIFNG_Debug.Probe"                            what sliders skee knows about
+slifng ping                          liveness: DLL + scripts + registration
+slifng smoke                         scripted end-to-end run, results in the log
+slifng inflate slif_belly 2.0        node key (also "NPC Belly", slif_breast, slif_butt)
+slifng morph PregnancyBelly 0.6      a BodySlide slider directly
+slifng region weight 1.4             semantic region, if the profile defines it
+slifng clear                         unregister the test mod again
+slifng calc 1                        calculation type, 0-5
+slifng gradual false                 incremental inflation on/off
+slifng scale 0.5                     overall magnitude
+slifng scalet pregnancybelly 1.5     per-target magnitude
+slifng scalea pregnancybelly 0.5     per-actor magnitude, on the player
+slifng dump                          whole ledger to the log
+slifng report                        the Actor page, as log text
+slifng probe                         which sliders skee knows about
 ```
+
+A third argument sets the mod name a contribution is filed under
+(`slifng inflate slif_belly 2.0 MyTest`); it defaults to `ConsoleTest`.
+
+!!! warning "The log cannot tell you the body changed"
+    A matching skee readback in `SLIFNG.log` proves the **write** landed, not
+    that a single vertex moved - `GetMorph` reads skee's dictionary, not the
+    mesh. When you are testing whether inflation *works*, watch the character,
+    and watch her **dressed as well as nude**: body and armour are separate
+    meshes and do not necessarily refresh together.
 
 ## Known constraints
 

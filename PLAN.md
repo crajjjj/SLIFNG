@@ -192,7 +192,7 @@ design (same philosophy as BF NG's 3.5.14/15 state healing).
       EditorID is per-actor hard evidence). 3BA / BHUNP / plain CBBE do NOT:
       plugin presence says a body is INSTALLED, not that BodySlide BUILT it,
       and several can be installed at once. A probe now ships
-      (`cgf "SLIFNG_Debug.Probe"`) to settle whether skee's
+      (`slifng probe`) to settle whether skee's
       `VisitStrings`/`VisitMorphs` enumerate the slider names learned from the
       loaded morphs.tri:
         * if YES -> real detection is possible: pick the profile whose sliders

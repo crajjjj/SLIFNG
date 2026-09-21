@@ -1,25 +1,23 @@
 Scriptname SLIFNG_Debug Hidden
-{Console test drivers - every function is callable via SKSE's cgf console
-command with plain string/number args, so the whole pipeline can be exercised
-and verified from SLIFNG.log without any consumer mod or gameplay.
+{Console test drivers, reachable as real console commands through
+ConsoleUtil Extended - see dist\Core\skse\CustomConsole\SLIFNG_Debug.yaml,
+which maps each subcommand onto one of the globals below.
 
-  cgf "SLIFNG_Debug.Ping"
-  cgf "SLIFNG_Debug.IPlayer" "TestMod" "slif_belly" 2.0
-  cgf "SLIFNG_Debug.MPlayer" "TestMod" "PregnancyBelly" 0.6
-  cgf "SLIFNG_Debug.UPlayer" "TestMod"
-  cgf "SLIFNG_Debug.Mode" 1        ; 0 Top X (default) .. 5 Additive
-  cgf "SLIFNG_Debug.Verbose" false
-  cgf "SLIFNG_Debug.Gradual" true  ; incremental inflation on/off
-  cgf "SLIFNG_Debug.Scale" 0.5
-  cgf "SLIFNG_Debug.ScaleT" "pregnancybelly" 1.5
-  cgf "SLIFNG_Debug.ScaleA" "pregnancybelly" 0.5   ; player-only magnitude
-  cgf "SLIFNG_Debug.RPlayer" "TestMod" "weight" 1.4 ; region:<name> inflate
-  cgf "SLIFNG_Debug.Dump"
-  cgf "SLIFNG_Debug.Probe"       ; can skee tell us the body's sliders?
-  cgf "SLIFNG_Debug.Report"      ; player diagnostics
-  cgf "SLIFNG_Debug.ReportX"     ; crosshair target
-  cgf "SLIFNG_Debug.SmokeTest"
-}
+  slifng ping
+  slifng inflate slif_belly 2.0
+  slifng morph PregnancyBelly 0.6
+  slifng clear
+  slifng calc 5                 ; 0 Top X (default) .. 5 Additive
+  slifng gradual true
+  slifng smoke
+
+("slifng" is the alias; the full name SLIFNG_Debug works too. Args have
+defaults, so `slifng inflate` alone inflates the belly to 2.0.)
+
+These exist so the whole pipeline can be exercised without a consumer mod, and
+verified from SLIFNG.log. NOTE what the log can and cannot tell you: a matching
+skee readback proves the WRITE landed, not that the mesh changed. Anything about
+whether a body actually moved has to be seen on screen.}
 
 ; Liveness check: proves DLL + pex + registration all work.
 Function Ping() Global

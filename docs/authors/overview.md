@@ -36,7 +36,7 @@ consumer .pex ──(direct calls)─> SLIF_Main / SLIF_Morph ┴─> SLIFNG.psc
 | `SLIFNG.psc` | The native surface the shims call - also the author-facing extension API |
 | `SLIFNG_Migrate.psc` | The one-shot StorageUtil walk for old-SLIF saves |
 | `SLIFNG_Version.psc` | The single source of the packed mod version |
-| `SLIFNG_Debug.psc` | `cgf` console drivers |
+| `SLIFNG_Debug.psc` | console drivers, exposed as `slifng <sub>` via ConsoleUtil Extended |
 | `SLIF_Scanner.psc`, `SLIF_Timer.psc` | Stubs that keep SkyUI's config manager from aborting on a migrated save |
 
 ## Where to go next

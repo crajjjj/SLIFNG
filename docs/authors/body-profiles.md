@@ -13,7 +13,7 @@ Profiles live in `Data/SLIFNG/Bodies/*.ini`. They answer the one question skee c
     !!! warning "Do not declare both"
         A profile with `Race=` and `Plugin=` logs a warning at load: the plugin line is dead. Before 0.4.8 it was worse than dead — it made the profile claim *every* actor once its plugin was present, which is [issue #1](https://github.com/crajjjj/SLIFNG/issues/1): shipped `UBE.ini` carried both, so a load order with UBE resolved every Nord and Imperial to `UBE 2.0`.
 
-Reloading: edit the INI, then `cgf "SLIFNG_Debug.Body"`-style reload is not needed - just reload a save (profiles are read at data load; the MCM actor page shows what each actor resolved to).
+Reloading: no console reload is needed - just reload a save (profiles are read at data load; the MCM actor page shows what each actor resolved to).
 
 ## Schema
 

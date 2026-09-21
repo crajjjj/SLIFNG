@@ -62,7 +62,7 @@ dist/Bodies/              the FOMOD's per-body default.ini variants
 dist/fomod/               installer metadata
 CONTRACT.md               the pinned compatibility contract - read this first
 PLAN.md                   architecture and phase history
-TESTING.md                the log-driven smoke procedure (cgf drivers)
+TESTING.md                the smoke procedure (console drivers)
 ```
 
 ## Packaging a release
@@ -82,7 +82,9 @@ is not tracked.
 
 ## Testing
 
-There is no test suite in the usual sense; there is a **log-driven smoke procedure**. `TESTING.md` walks it: `cgf "SLIFNG_Debug.SmokeTest"` exercises the whole pipeline from the console with no consumer mod installed, and every assertion is a line you can grep in `SLIFNG.log`. The compatibility matrix in `PLAN.md` (P7) is the release gate.
+There is no test suite in the usual sense; there is a **smoke procedure**. `TESTING.md` walks it: `slifng smoke` exercises the whole pipeline from the console with no consumer mod installed (needs [ConsoleUtil Extended](https://www.nexusmods.com/skyrimspecialedition/mods/133569)), and most assertions are lines you can grep in `SLIFNG.log`. The compatibility matrix in `PLAN.md` (P7) is the release gate.
+
+**The log cannot confirm a body changed.** A matching skee `readback` proves the write landed, not that a vertex moved - `GetMorph` reads skee's dictionary, not the mesh. Any claim that inflation *visibly* works has to be seen on a character, dressed as well as nude; a bug that required unequipping armour to see a belly change survived every release precisely because the log read green throughout.
 
 ## Versioning
 

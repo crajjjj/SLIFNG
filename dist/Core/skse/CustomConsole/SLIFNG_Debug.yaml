@@ -1,0 +1,152 @@
+# ConsoleUtil Extended (CUE) command config for the SLIF NG test harness.
+# Requires: ConsoleUtil Extended  https://www.nexusmods.com/skyrimspecialedition/mods/133569
+# Drops into Data\SKSE\CustomConsole\ ; maps console subcommands onto the global
+# functions in SLIFNG_Debug.psc.
+#
+# Usage in console:  SLIFNG_Debug ping     (or the alias)  slifng ping
+#
+# Most of these report through SLIFNG.log rather than the console - open
+# Documents\My Games\Skyrim Special Edition\SKSE\SLIFNG.log afterwards. The
+# inflate/morph drivers also change the body, which is the point: a value in
+# the log is NOT evidence that anything moved on screen.
+version: 1
+name: SLIFNG_Debug
+alias: slifng
+script: SLIFNG_Debug
+help: SLIF NG test harness - inflate, morph, regions, diagnostics
+subs:
+  - name: ping
+    func: Ping
+    help: Liveness check - proves DLL, scripts and registration all work
+
+  - name: inflate
+    func: IPlayer
+    help: Inflate a node key on the player (1.0 neutral, 2.0 double)
+    args:
+      - name: key
+        type: string
+        default: slif_belly
+        help: slif_belly, slif_breast, slif_butt, or a raw node like "NPC Belly"
+      - name: value
+        type: float
+        default: 2.0
+        help: Node scale, 1.0 = neutral
+      - name: mod
+        type: string
+        default: ConsoleTest
+        help: Mod name the contribution is filed under
+
+  - name: morph
+    func: MPlayer
+    help: Set a BodySlide slider directly on the player (0.0 neutral)
+    args:
+      - name: slider
+        type: string
+        default: PregnancyBelly
+        help: Exact slider name, e.g. PregnancyBelly
+      - name: value
+        type: float
+        default: 0.5
+      - name: mod
+        type: string
+        default: ConsoleTest
+
+  - name: region
+    func: RPlayer
+    help: Drive a semantic region (whatever sliders the body profile lists)
+    args:
+      - name: region
+        type: string
+        default: weight
+      - name: value
+        type: float
+        default: 1.4
+      - name: mod
+        type: string
+        default: ConsoleTest
+
+  - name: clear
+    func: UPlayer
+    help: Unregister a mod's contributions on the player
+    args:
+      - name: mod
+        type: string
+        default: ConsoleTest
+
+  - name: calc
+    func: Mode
+    help: Calculation type - 0 Top X (default), 1 Highest, 2 Subtract+1, 3 Sqrt, 4 Average, 5 Additive
+    args:
+      - name: type
+        type: int
+        default: 0
+
+  - name: gradual
+    func: Gradual
+    help: Incremental inflation on/off - steps by increment instead of snapping
+    args:
+      - name: on
+        type: bool
+        default: true
+
+  - name: verbose
+    func: Verbose
+    help: Per-call logging on/off (every API call, every apply, skee readbacks)
+    args:
+      - name: on
+        type: bool
+        default: true
+
+  - name: scale
+    func: Scale
+    help: Overall user magnitude - 1.0 as mods intended, 0.0 suppressed
+    args:
+      - name: value
+        type: float
+        default: 1.0
+
+  - name: scalet
+    func: ScaleT
+    help: Per-target magnitude ("pregnancybelly", "slif_butt")
+    args:
+      - name: target
+        type: string
+        default: slif_belly
+      - name: value
+        type: float
+        default: 1.0
+
+  - name: scalea
+    func: ScaleA
+    help: Per-actor magnitude on the player
+    args:
+      - name: target
+        type: string
+        default: slif_belly
+      - name: value
+        type: float
+        default: 1.0
+
+  - name: dump
+    func: Dump
+    help: Whole ledger to SLIFNG.log - every actor, contribution and fold
+
+  - name: dumpp
+    func: DumpP
+    help: The player's ledger entries only
+
+  - name: report
+    func: Report
+    help: Full player diagnostics to the log (body, contributions, applied)
+
+  - name: reportx
+    func: ReportX
+    help: Same report for whatever is under the crosshair
+
+  - name: probe
+    func: Probe
+    help: Ask skee which sliders this body actually has - read SLIFNG.log
+
+  - name: smoke
+    func: SmokeTest
+    help: Scripted end-to-end run - the belly should visibly grow, then reset

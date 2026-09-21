@@ -123,7 +123,7 @@ aggregation math - lives at **https://crajjjj.github.io/SLIFNG/** (built from
   The spec everything in `dist/` must conform to.
 - **[PLAN.md](PLAN.md)** - architecture, phased plan, compatibility test
   matrix, risks.
-- **[TESTING.md](TESTING.md)** - log-driven smoke procedure (`cgf` console
+- **[TESTING.md](TESTING.md)** - smoke procedure (`slifng` console
   drivers, outcomes verified in `SLIFNG.log`).
 
 ## Building from source

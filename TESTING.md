@@ -1,10 +1,31 @@
-# SLIF NG — Smoke Testing (log-driven, minimal play time)
+# SLIF NG — Smoke Testing
 
-Everything below is verifiable from `Documents\My Games\Skyrim Special Edition\SKSE\SLIFNG.log`
+Most of what follows is verifiable from `Documents\My Games\Skyrim Special Edition\SKSE\SLIFNG.log`
 (`Skyrim VR` on VR). The whole pipeline logs at info level: every API call with
 its arguments and outcome, every apply with the fold mode, path taken
 (morph vs NiTransform fallback), the value skee reports BACK after the write
 (`readback`), and whether the actor's 3D was loaded.
+
+## What the log CANNOT tell you
+
+**A matching `readback` proves the write landed. It does not prove the body
+moved.** `GetMorph` reads skee's morph dictionary - a map lookup that returns
+whatever `SetMorph` put there, whether or not a vertex changed. Every apply can
+log perfectly while nothing happens on screen.
+
+Nor is the gap theoretical. One user reported a belly change only becoming
+visible after unequipping and re-equipping armour, with nothing in the log to
+show for it - and the most likely cause was never in our code at all: skee
+applies morphs per MESH, only where that mesh carries `BODYTRI` extra data, and
+BodySlide writes that per OUTFIT when "Build Morphs" is checked. An armour built
+without morphs cannot move, however correct the value we wrote. (That report is
+unconfirmed - it may equally have been their BodySlide build - which is itself
+the point: the log could not settle it either way.)
+
+So any step below that claims something *visibly* happens is a step you have to
+**watch**, on a character who is **dressed as well as nude** - body and armour
+are separate meshes with separate morph data. A test run that only greps the log
+has not tested the mod.
 
 ## Setup (once)
 
@@ -12,6 +33,11 @@ In MO2: enable **`SLIF NG (dev)`**, disable
 `[NoDelete][1300] SexLab Inflation Framework` and
 `[NoDelete][1301] SLIF-SE-1.2.2-r2-Modern-PPlus-Overwrite`. Sort, launch, load
 any save with a female player.
+
+The console drivers below need **[ConsoleUtil Extended](https://www.nexusmods.com/skyrimspecialedition/mods/133569)**;
+without it none of the `slifng` commands exist. They are declared in
+`dist/Core/skse/CustomConsole/SLIFNG_Debug.yaml`, and every argument has a
+default, so `slifng inflate` alone inflates the belly to 2.0.
 
 ## T0 — Load sanity (zero interaction)
 
@@ -35,8 +61,8 @@ Red flags: `interface missing` (RaceMenu problem), any `corrupt cosave`,
 Open the console and run:
 
 ```
-cgf "SLIFNG_Debug.Ping"          <- notification proves dll+pex+registration
-cgf "SLIFNG_Debug.SmokeTest"     <- scripted end-to-end run
+slifng ping          <- notification proves dll+pex+registration
+slifng smoke     <- scripted end-to-end run
 ```
 
 SmokeTest exercises, in order: belly inflate x2 (SmokeA); an overlapping
@@ -55,7 +81,7 @@ empties the ledger and clears everything.
 The calculation types are SLIF's own six, SLIF's numbering, SLIF's default
 (**0 = Top X**: largest + second/3 + third/6). Node folds skip non-positive
 contributions and fall back to neutral 1.0; direct morph contributions are a
-plain raw sum, always. `cgf "SLIFNG_Debug.Mode" N` switches at runtime.
+plain raw sum, always. `slifng calc N` switches at runtime.
 
 The highest-value assertions:
 
@@ -76,7 +102,7 @@ The highest-value assertions:
 ## T2 — Cosave round-trip
 
 ```
-cgf "SLIFNG_Debug.IPlayer" "SaveTest" "slif_belly" 1.8
+slifng inflate slif_belly 1.8 SaveTest
 ```
 Save, quit to desktop, relaunch, load that save. Expect:
 
@@ -87,7 +113,7 @@ Save, quit to desktop, relaunch, load that save. Expect:
 ```
 
 and the belly is big immediately on load. Clean up:
-`cgf "SLIFNG_Debug.UPlayer" "SaveTest"`.
+`slifng clear SaveTest`.
 
 ## T3 — Real consumers (the P7 matrix, needs play)
 
@@ -170,21 +196,21 @@ reference's 122.
 ## T5 — Incremental inflation (ON by default)
 
 ```
-cgf "SLIFNG_Debug.IPlayer" "RampTest" "slif_belly" 3.0
+slifng inflate slif_belly 3.0 RampTest
 ```
 
-Incremental is the shipped default (`cgf "SLIFNG_Debug.Gradual" false` for
+Incremental is the shipped default (`slifng gradual false` for
 instant). The belly must swell in visible steps (0.1 per quarter second by default -
 about 5 seconds to reach 3.0), not snap; `[Apply]` lines tick in the log with
 the display value climbing. `GetValue(player, "All Mods", "slif_belly")`
 mid-ramp returns the in-flight value, as the reference's queue did. Opening a
-menu pauses the swell. `cgf "SLIFNG_Debug.Gradual" false` mid-ramp must snap
+menu pauses the swell. `slifng gradual false` mid-ramp must snap
 straight to the fold. Hide/unregister during a ramp stays instant.
 
 ## T6 — SGO4 adoption surface (0.3.0)
 
 ```
-cgf "SLIFNG_Debug.RPlayer" "TestMod" "weight" 1.5
+slifng region weight 1.5
 ```
 With the [Weight] template commented IN in the body profile: the region's
 sliders move ((1.5 - 1) / FullScale x Max each) and the actor page shows a
@@ -192,13 +218,13 @@ sliders move ((1.5 - 1) / FullScale x Max each) and the actor page shows a
 `region 'region:weight': profile ... has no such section` and nothing else.
 
 ```
-cgf "SLIFNG_Debug.MPlayer" "TestMod" "PregnancyBelly" 0.8   ; incremental ON
+slifng morph PregnancyBelly 0.8   ; incremental ON
 ```
 The DIRECT morph now swells in steps too (0.1 per quarter second), not only
 node targets; `[Apply]` lines tick with the climbing value.
 
 ```
-cgf "SLIFNG_Debug.ScaleA" "pregnancybelly" 0.5
+slifng scalea pregnancybelly 0.5
 ```
 Halves the player's PregnancyBelly output without touching anyone else; the
 actor page gains "  this actor x pregnancybelly  0.5x". Survives save/load
@@ -212,12 +238,12 @@ our numbers explain, that row is why.
 ## Other console tools
 
 ```
-cgf "SLIFNG_Debug.Dump"                                  full ledger to log
-cgf "SLIFNG_Debug.DumpP"                                 player's entries only
-cgf "SLIFNG_Debug.MPlayer" "TestMod" "BreastsNewSH" 0.7  any morph by name
-cgf "SLIFNG_Debug.Mode" 1                                additive; 0 = highest
-cgf "SLIFNG_Debug.Verbose" false                         quieten per-call logs
-cgf "SLIFNG_Debug.IPlayer" "TestMod" "NPC Belly" 1.8     raw node name (FHU form)
+slifng dump                                  full ledger to log
+slifng dumpp                                 player's entries only
+slifng morph BreastsNewSH 0.7  any morph by name
+slifng calc 1                                additive; 0 = highest
+slifng verbose false                         quieten per-call logs
+slifng inflate "NPC Belly" 1.8     raw node name (FHU form)
 ```
 
 ## Note on logging cost

@@ -13,7 +13,7 @@ Under the hood the old Papyrus framework is gone. A native SKSE plugin (`BodyInf
 - [Bodies, Nodes & Morphs](players/bodies.md) - what a "node" and a "morph" actually are, and how the body choice changes what you see
 - [MCM Reference](players/mcm.md) - both pages, every option, and what the calculation types mean
 - [Supported Mods](players/compatibility.md) - which mods drive SLIF NG and through which door
-- [Troubleshooting & Console Tools](players/troubleshooting.md) - the log, the actor page, and the `cgf` test drivers
+- [Troubleshooting & Console Tools](players/troubleshooting.md) - the log, the actor page, and the `slifng` console drivers
 
 ## For Mod Authors
 
