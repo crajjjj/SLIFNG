@@ -11,8 +11,11 @@ Two pages. Settings is everything you can change; Actor is read-only diagnostics
 | **Engine API version** | The native surface version other mods compile against. |
 | **RaceMenu / skee** | `OK` when both skee interfaces were found; `morphs only` means node scaling is unavailable; `NOT FOUND` means RaceMenu is missing or too old. |
 | **Tracked actors** | How many actors currently have inflation state in the ledger. |
+| **Reset all tracked actors** | The Actor page's *Reset this actor*, applied to the whole ledger at once, behind a confirmation. Greyed out when the page was drawn with nothing to wipe. |
 | **Verbose logging** | Logs every API call and every apply with a RaceMenu readback. Great for diagnosis, noisy for play. |
 | **Dump to SLIFNG.log** | Writes the whole ledger - every actor, every contribution, every fold result - to the log. |
+
+*Reset all tracked actors* carries the per-actor reset's caveat, for everyone at once: mods may or may not re-send their values afterwards, so it clears stuck state rather than undoing anything. Two details are worth knowing before you use it. Values imported from an old-SLIF save go with everything else, and the import row stays `done`, so they cannot be brought back. And both rows are sampled when the page is drawn: a mod that registers an actor a second later leaves the count stale and the button still greyed, until you close the menu and reopen it.
 
 ### Behaviour column
 

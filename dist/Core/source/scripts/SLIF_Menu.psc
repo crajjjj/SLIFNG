@@ -15,23 +15,33 @@ is simply uninstalled does not do this: its form is gone, so SkyUI skips a plain
 None.) Shipping a real SKI_ConfigBase here is what keeps migrating users' menus
 alive.}
 
+; Option ids, all seeded to -1 rather than left at 0. SkyUI composes an id as
+; position + page*0x100, so position 0 of the first page IS 0: on a save whose
+; Actor page has never been drawn, an unseeded _oReset would match the first
+; option of the Settings page and OnOptionSelect would run the wrong branch -
+; today a confirmation to wipe an actor. Only a header sits there now, which is
+; not selectable, so this is a latch rather than a live bug - but the input
+; chain is a flat list of == comparisons and two of its branches are
+; destructive, so no id may ever collide by default.
+
 ; --- Settings page ---
-int _oVersion
-int _oEngine
-int _oActors
-int _oMode
-int _oGradual
-int _oSpeed
-int _oMaster
-int _oVerbose
-int _oDump
-int _oImport
+int _oVersion = -1
+int _oEngine = -1
+int _oActors = -1
+int _oResetAll = -1
+int _oMode = -1
+int _oGradual = -1
+int _oSpeed = -1
+int _oMaster = -1
+int _oVerbose = -1
+int _oDump = -1
+int _oImport = -1
 
 ; --- Actor page ---
-int _oTarget
-int _oRefresh
-int _oLog
-int _oReset
+int _oTarget = -1
+int _oRefresh = -1
+int _oLog = -1
+int _oReset = -1
 
 bool _verbose = true          ; mirrors the engine's dev default
 bool _useCrosshair = false    ; false = player, true = whatever you are looking at
@@ -104,7 +114,7 @@ Function RenderSettingsPage()
 	_oDump    = AddTextOption("$SLIFNG_Opt_Dump", "")
 
 	_oActors  = AddTextOption("$SLIFNG_Opt_Tracked", SLIFNG.TrackedActorCount())
-	AddEmptyOption()
+	_oResetAll = AddTextOption("$SLIFNG_Opt_ResetAll", "", ResetAllFlags())
 
 	AddHeaderOption("$SLIFNG_Hdr_Behaviour")
 	AddHeaderOption("$SLIFNG_Hdr_Migration")
@@ -169,6 +179,45 @@ String Function ModeName()
 		return names[0]
 	endIf
 	return names[mode]
+EndFunction
+
+; Nothing to wipe, nothing to click. Gated on the LIST the wipe will walk and
+; NOT on TrackedActorCount(), which the row beside it shows: the two can
+; disagree. The count is every formID in the ledger, while GetTrackedActors()
+; drops any whose form no longer resolves - a creature spawned with PlaceAtMe
+; and deleted later in the session. Gating on the count would leave the row
+; live with nothing it could reach, reporting a wipe that did nothing.
+Int Function ResetAllFlags()
+	Actor[] tracked = SLIFNG.GetTrackedActors()
+	if !tracked || tracked.length == 0
+		return OPTION_FLAG_DISABLED
+	endIf
+	return OPTION_FLAG_NONE
+EndFunction
+
+; ONE spelling of "stop inflating this actor". The Actor page's Reset and the
+; Settings page's all-actors wipe are the same operation, so they share this
+; rather than each carrying a copy of the "All Mods" literal and drifting
+; apart the next time the single-actor reset grows a step.
+Function ResetOneActor(Actor subject)
+	SLIFNG.UnregisterMod(subject, "All Mods")
+EndFunction
+
+; That wipe, for everyone. A Papyrus walk over the per-actor native: fine for a
+; menu click, and the engine still coalesces each actor's re-apply into one
+; task of its own. An empty native array can reach Papyrus as None, which
+; would abort this on .length, so it is checked before the loop and not just
+; relied on through the disabled flag.
+Function ResetAllActors()
+	Actor[] tracked = SLIFNG.GetTrackedActors()
+	if !tracked
+		return
+	endIf
+	Int i = 0
+	While i < tracked.length
+		ResetOneActor(tracked[i])
+		i += 1
+	EndWhile
 EndFunction
 
 String Function EngineStatus()
@@ -308,9 +357,19 @@ Event OnOptionSelect(int a_option)
 		; The wipe itself is instant; whether the shape comes back is up to
 		; the mods - some re-send every tick, some only on events.
 		if ShowMessage("$SLIFNG_Msg_ResetActor", true, "$Yes", "$No")
-			SLIFNG.UnregisterMod(SelectedActor(), "All Mods")
+			ResetOneActor(SelectedActor())
 			Debug.Notification("$SLIFNG_Notif_ActorCleared")
 			ForcePageReset()
+		endIf
+	elseIf a_option == _oResetAll
+		if ShowMessage("$SLIFNG_Msg_ResetAll", true, "$Yes", "$No")
+			; Greyed out BEFORE the walk, not by the redraw after it. Every
+			; UnregisterMod in the loop unlocks this script, so a row left live
+			; for the duration is a second, overlapping wipe one click away.
+			SetOptionFlags(_oResetAll, OPTION_FLAG_DISABLED)
+			ResetAllActors()
+			Debug.Notification("$SLIFNG_Notif_AllCleared")
+			ForcePageReset()   ; resample the count row and this row's state
 		endIf
 	elseIf a_option == _oGradual
 		SLIFNG.SetIncrementalInflation(!SLIFNG.IsIncrementalInflation())
@@ -365,6 +424,8 @@ Event OnOptionHighlight(int a_option)
 		SetInfoText("$SLIFNG_Info_Refresh")
 	elseIf a_option == _oReset
 		SetInfoText("$SLIFNG_Info_Reset")
+	elseIf a_option == _oResetAll
+		SetInfoText("$SLIFNG_Info_ResetAll")
 	elseIf a_option == _oLog
 		SetInfoText("$SLIFNG_Info_Log")
 	endIf
