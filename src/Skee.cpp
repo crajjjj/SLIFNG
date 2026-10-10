@@ -28,7 +28,11 @@ namespace SLIFNG::Skee
 		// Session-scoped, so it MUST be dropped on revert: loading a different
 		// save in the same session needs its own cleanup pass.
 		std::set<std::pair<RE::FormID, std::string>> g_cleanedLegacy;
-		std::mutex g_cleanedLock;
+		// (actor formID, lowercase node key) pairs whose bones were already swept
+		// of our own scale this session - see SweepNodeScale. Dropped on revert
+		// with the cache above, for the same reason.
+		std::set<std::pair<RE::FormID, std::string>> g_sweptNodes;
+		std::mutex g_cleanedLock;  // guards both sets
 
 		constexpr float kEpsilon = 0.0001f;
 
@@ -55,17 +59,21 @@ namespace SLIFNG::Skee
 		// OverrideVariant and FixedString-by-value; v3 has typed setters. Nothing
 		// outside here needs to know which RaceMenu is installed.
 
-		void DropNodeScale(RE::Actor* a_actor, bool a_firstPerson, bool a_female,
+		// Returns skee's "something was removed". Good enough to decide a log
+		// line, not to gate work on: nothing here has ever depended on it.
+		bool DropNodeScale(RE::Actor* a_actor, bool a_firstPerson, bool a_female,
 			const char* a_node, const char* a_key)
 		{
 			if (g_niTransform) {
-				g_niTransform->RemoveNodeTransformScale(a_actor, a_firstPerson, a_female, a_node, a_key);
-			} else if (g_niTransformLegacy) {
+				return g_niTransform->RemoveNodeTransformScale(a_actor, a_firstPerson, a_female, a_node, a_key);
+			}
+			if (g_niTransformLegacy) {
 				// index 0 is what OverrideVariant::SetFloat writes for a scale.
-				g_niTransformLegacy->RemoveNodeTransformComponent(a_actor, a_firstPerson, a_female,
+				return g_niTransformLegacy->RemoveNodeTransformComponent(a_actor, a_firstPerson, a_female,
 					SKEE::Legacy::FixedString(a_node), SKEE::Legacy::FixedString(a_key),
 					SKEE::Legacy::OverrideVariant::Scale, 0);
 			}
+			return false;
 		}
 
 		void PushNodeScale(RE::Actor* a_actor, bool a_firstPerson, bool a_female,
@@ -111,6 +119,55 @@ namespace SLIFNG::Skee
 				if (player) {
 					RefreshNode(a_actor, true, female, a_node);
 				}
+			}
+		}
+
+		// A key the actor's profile maps to sliders must hold NO bone scale under
+		// our key. Left in place it stacks under the morph and never comes back
+		// down: the node path is the only writer of bones, and a mapped key never
+		// reaches it. A scale gets there two ways - a profile that started
+		// mapping the key between two sessions of one save (0.4.15 moved
+		// slif_butt onto sliders on three bodies), and reference SLIF's own node
+		// output in a migrated save. Either way the slider write that follows
+		// supersedes it.
+		//
+		// Same drop + refresh as SetNodeScale at neutral. Once per actor and key
+		// per session: profiles load once, so nothing can put a scale back after
+		// the first pass, and this sits on the path every consumer tick takes.
+		void SweepNodeScale(RE::Actor* a_actor, const std::string& a_lowerTarget)
+		{
+			const auto* target = Vocabulary::Find(a_lowerTarget);
+			if (!target || !IsNodeReady()) {
+				return;  // a "region:" has no bone behind it
+			}
+			{
+				std::scoped_lock lock(g_cleanedLock);
+				if (!g_sweptNodes.emplace(a_actor->GetFormID(), a_lowerTarget).second) {
+					return;  // already swept this session
+				}
+			}
+			const bool female = IsFemale(a_actor);
+			const bool player = IsPlayer(a_actor);
+			bool dropped = false;
+			for (const auto* node : target->nodes) {
+				if (!node) {
+					continue;
+				}
+				dropped |= DropNodeScale(a_actor, false, female, node, kAppliedKey);
+				if (player) {
+					dropped |= DropNodeScale(a_actor, true, female, node, kAppliedKey);
+				}
+				if (a_actor->Is3DLoaded()) {
+					RefreshNode(a_actor, false, female, node);
+					if (player) {
+						RefreshNode(a_actor, true, female, node);
+					}
+				}
+			}
+			if (dropped) {
+				logger::info("[Apply] {:08X} key '{}': dropped a leftover bone scale, profile '{}' "
+							 "drives it with sliders",
+					a_actor->GetFormID(), a_lowerTarget, BodyProfile::ResolvedName(a_actor));
 			}
 		}
 
@@ -186,6 +243,7 @@ namespace SLIFNG::Skee
 						a_actor->GetFormID(), a_lowerTarget);
 					return false;
 				}
+				SweepNodeScale(a_actor, a_lowerTarget);
 				std::string detail;
 				for (const auto& blend : *blends) {
 					const float folded = WriteSlider(a_actor, Lower(blend.slider), blend.slider);
@@ -778,6 +836,7 @@ namespace SLIFNG::Skee
 	{
 		std::scoped_lock lock(g_cleanedLock);
 		g_cleanedLegacy.clear();
+		g_sweptNodes.clear();
 		logger::info("[Skee] legacy-cleanup cache reverted");
 	}
 }

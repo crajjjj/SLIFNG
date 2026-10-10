@@ -235,6 +235,28 @@ slider SLIF NG drives, the actor page's Applied section lists
 "  also <key>  <value>" rows. skee SUMS keys - if the body looks bigger than
 our numbers explain, that row is why.
 
+## T7 - A key that moves from bones to sliders (0.4.15)
+
+0.4.15 maps `slif_butt` to a slider on CBBE 3BA, BHUNP and UBE, where 0.4.14
+scaled bones. The engine must not leave the old bone scale under the new morph.
+
+On a 0.4.14 install (or with `[slif_butt]` deleted from the profile):
+
+```
+slifng inflate slif_butt 1.6
+```
+Save, quit, update (or restore the section), load. Expect ONE log line
+
+`[Apply] <actor> key 'slif_butt': dropped a leftover bone scale, profile '...' drives it with sliders`
+
+and a butt that is morph-sized, not bone-sized with a morph on top. The actor
+page reads `> drives BigButt`. Then `slifng inflate slif_butt 1.0` must return
+the body to neutral: a bone scale that survived would stay behind here, since
+nothing on the slider path ever writes a bone.
+
+The opposite direction is NOT handled: delete a section mid-save while its
+target is inflated and the slider value stays until the actor is reset.
+
 ## Other console tools
 
 ```

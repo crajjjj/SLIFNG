@@ -39,7 +39,7 @@ Morph3Max=-0.2        ; negative = the slider runs in reverse
 
 The applied share per slider is `(nodeValue - 1.0) * MorphMax / FullScale`, so a neutral actor gets exactly zero. Up to 16 `MorphN` entries per section; numbering must not skip.
 
-**A section you do not write means "this body cannot morph that"** and the target drives its skeleton bone instead - that is the supported way to say it, and it is why the node fallback is reachable at all. `slif_butt` and `slif_scrotum` ship unmapped on every profile for exactly this reason.
+**A section you do not write means "this body cannot morph that"** and the target drives its skeleton bone instead - that is the supported way to say it, and it is why the node fallback is reachable at all. `slif_scrotum` ships unmapped on every profile for exactly this reason, and so does `slif_butt` on the generic CBBE one; the CBBE 3BA, BHUNP and UBE profiles map `slif_butt` to a single size slider.
 
 ## Custom regions
 
@@ -111,7 +111,7 @@ Rules:
 
 | File | Matcher | Notes |
 |---|---|---|
-| `default.ini` | none (installer's choice) | CBBE 3BA / CBBE / BHUNP variant, or absent for node-only |
-| `UBE.ini` | `Race=UBE_` + `Plugin=UBE_AllRace.esp` | Always installed; slider names verified against the UBE 2.0 .osp, including the literal `" n|p"` suffix |
+| `default.ini` | none (installer's choice) | CBBE 3BA / CBBE / BHUNP variant, or absent for node-only. The 3BA and BHUNP variants map `slif_butt` to `BigButt` |
+| `UBE.ini` | `Race=UBE_` | Always installed; slider names verified against the UBE 2.0 .osp, including the literal `" n|p"` suffix. Maps `slif_butt` to `GluteSize p|n` |
 
 Slider names in the CBBE 3BA and UBE profiles are verified against their reference `.osp` files; BHUNP's are sourced from old SLIF's own UUNP table and unverified against a live body - if a slider does not exist in your `morphs.tri`, skee silently drops it, so wrong names degrade to "nothing happens", never to errors.

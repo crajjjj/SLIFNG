@@ -38,6 +38,8 @@ There are four, and the list is fixed: they are what old SLIF exposed, so they s
 
 Your installer choice lands as `Data/SLIFNG/Bodies/default.ini` - a small INI that says, per inflation target, which sliders this body drives and how strongly. A target the profile does not list falls back to the skeleton node.
 
+The shipped CBBE 3BA, BHUNP and UBE profiles map belly, breasts and butt to sliders; the generic CBBE one maps belly and breasts and leaves the butt on its bones. The scrotum is bone-scaled on every body. When a profile starts mapping a target that was bone-scaled before (an update, or an overlay of yours), the bone scale SLIF NG left on that actor is removed the next time the target is applied, so the two never stack.
+
 Profiles resolve **per actor**, not per game:
 
 1. **Race match first** - UBE 2.0 ships its own races, so UBE characters are detected reliably and get UBE's slider names even in a 3BA load order.
