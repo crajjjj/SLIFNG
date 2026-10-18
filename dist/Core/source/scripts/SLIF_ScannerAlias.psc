@@ -47,6 +47,13 @@ EndEvent
 
 Event OnPlayerLoadGame()
 	RegisterForModEvents()
+	; SKI_PlayerLoadGameAlias's one line. This alias is the only one on the menu
+	; quest, so nothing else re-runs SKI_ConfigBase.OnGameReload on a load - and
+	; the SkyUI registration events it arms do not survive a save. Without this
+	; the menu only ever registered in the session the quest started: a failed
+	; first try (128-menu cap, a quick reload) or a SkyUI reset
+	; (setstage SKI_ConfigManagerInstance 1) removed it for good.
+	(GetOwningQuest() as SKI_QuestBase).OnGameReload()
 	; P6 legacy migration is NOT here, and is no longer automatic anywhere: it
 	; is a button on the MCM's Settings page. Doing it from a load hook or from
 	; SkyUI's registration callbacks is what broke other mods' menus in 0.4.8 -

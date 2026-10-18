@@ -124,25 +124,6 @@ call surfaces there with its outcome; `oldModName` first-contacts log
 `[Skee] cleaned legacy key ...` once per actor per session. MME: a
 `[API] UnregisterMod(... mod='Milk Mod Economy')` on maid reset.
 
-## MCM pages not updating after a build?
-
-`Pages` is a script PROPERTY, so SkyUI stores it in the save the first time it
-registers the menu and `OnConfigInit` never fires again. A page added in a later
-build therefore stays invisible on an existing save. The fix is already in
-`SLIF_Menu.psc` - bump `GetVersion()` whenever `Pages` or `ModName` changes, and
-`OnVersionUpdate` re-runs `BuildPages()`.
-
-If a page is still missing after loading a save made with the older script,
-force SkyUI to re-read the menu from the console (a third guard also exists:
-`OnConfigOpen` rebuilds if `Pages.length` disagrees with the expected count,
-borrowed from SLO Aroused NG):
-
-```
-setstage SKI_ConfigManagerInstance 1
-```
-
-then wait for the "Registered new menus" notification and reopen the MCM.
-
 ## Which fill mode to use
 
 `TOP_TO_BOTTOM` only spills into the RIGHT column once the LEFT one is full, so
@@ -256,6 +237,25 @@ nothing on the slider path ever writes a bone.
 
 The opposite direction is NOT handled: delete a section mid-save while its
 target is inflated and the slider value stays until the actor is reset.
+
+## T8 - The MCM survives a SkyUI reset (0.4.16)
+
+`Pages` is rebuilt in every `OnConfigOpen`, so a page added in a later build
+shows on an existing save with no version step. Registration is the fragile
+part: SkyUI's registration events do not survive a save, and before 0.4.16
+nothing re-armed them on a load, so the menu registered only in the session its
+quest started. `SLIF_ScannerAlias.OnPlayerLoadGame` now calls
+`SKI_ConfigBase.OnGameReload`, which is SkyUI's own `SKI_PlayerLoadGameAlias`.
+
+Load a save that has run SLIF NG before (not the session it was installed in):
+
+```
+setstage SKI_ConfigManagerInstance 1
+```
+
+Wait for "MCM: Registered N new menu(s)" and open the MCM: SLIF NG must be in
+the list. Save, load, open it again: still there. On 0.4.15 the reset removed
+SLIF NG for good.
 
 ## Other console tools
 
