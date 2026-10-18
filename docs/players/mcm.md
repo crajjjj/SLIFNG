@@ -50,7 +50,7 @@ One multiplier over everything SLIF NG applies. `1.00x` shows exactly what mods 
 
 ### Migration column
 
-**Old-SLIF import** is a status row, not a button: the import runs by itself through the MCM version update on the first load of a save that ran old SLIF. `done (automatic)` / `nothing to import` are the normal states; `pending` only appears if the automatic pass could not run, and then the row is clickable as a manual fallback.
+**Old-SLIF import** is a button: on a save that ran old SLIF it reads `pending: N actor(s)`, and one click copies every mod's per-actor values into SLIF NG. It then reads `done` and greys out; on a save that never ran old SLIF it reads `nothing to import` and is disabled. It is never automatic: see [Getting started](getting-started.md) for why.
 
 ## Actor
 

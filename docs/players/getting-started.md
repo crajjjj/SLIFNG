@@ -19,7 +19,7 @@
     - UBE 2.0 support always installs and matches by race, so UBE characters get their own sliders even alongside a 3BA game
 3. Load your game and play. There is no step 3.
 
-If the save previously ran old SLIF, open the MCM and press **Import from old SLIF** on the Settings page once. Every mod's per-actor values are copied out of the old framework's storage into SLIF NG, and a notification reports how many were carried over; the button then greys itself out. On a save that never ran SLIF it reads `nothing found` and is disabled.
+If the save previously ran old SLIF, open the MCM and click **Old-SLIF import** on the Settings page once. Every mod's per-actor values are copied out of the old framework's storage into SLIF NG, and a notification reports how many were carried over; the row then reads `done` and greys itself out. On a save that never ran SLIF it reads `nothing to import` and is disabled.
 
     It is a button rather than an automatic step on purpose. Doing the walk automatically meant doing it inside SkyUI's menu-registration pass, and that could stop SkyUI registering the mods after SLIF NG - several users lost most of their MCM list to it in 0.4.8.
 

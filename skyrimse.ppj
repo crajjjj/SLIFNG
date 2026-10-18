@@ -22,8 +22,10 @@
         <Import>.\dist\Core\source\scripts</Import>
         <!-- vanilla + SKSE -->
         <Import>@ModsFolder\build\Scripts\Source\Scripts</Import>
-        <!-- SKI_ConfigBase for the MCM -->
-        <Import>@ModsFolder\build\SkyUI_5.1_SDK\Scripts\Source</Import>
+        <!-- SKI_ConfigBase for the MCM. SkyUI's FULL source, not the SDK stub:
+             SLIF_Menu.OnGameReload calls OnConfigManagerReset, which the stub
+             leaves out. -->
+        <Import>@ModsFolder\BaboDialoguePatch\dependencies\skyui-master\dist\Data\Scripts\Source</Import>
         <!-- StorageUtil for SLIFNG_Migrate (PapyrusUtil, shipped with SexLab) -->
         <Import>@ModsFolder\BaboDialoguePatch\dependencies\SexLabFrameworkSE_v163\scripts\Source</Import>
     </Imports>

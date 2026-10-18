@@ -152,27 +152,25 @@ skeleton nodes), contributions use a sub-header per target with short indented
 rows per mod, and the skee readback only gets a row when it DISAGREES with what
 we wrote.
 
-## T4 — Auto-migration (legacy save, via MCM versioning)
+## T4 - Legacy import button (legacy save)
 
-Load a save that ran reference SLIF (with SLIF NG replacing it). The save
-carries the reference MCM's stored config version 122; ours registers 200, so
-SkyUI fires SLIF_Menu.OnVersionUpdate, which runs the import. With no
-clicking at all, expect within a couple of seconds of load:
+Load a save that ran reference SLIF (with SLIF NG replacing it). Nothing must
+happen on its own: the import is a button since 0.4.12 (it ran from SkyUI's
+registration callbacks in 0.4.8 and cost users their MCM list). MCM > Settings
+> Old-SLIF import reads "pending: N actor(s)". Click it, and expect:
 
 ```
 [API] Inflate(... mod='Beeing Female', key='npc belly' ...)   <- the walk
 [API] SetMigrated(true)
 ```
 
-plus the notification "SLIF NG: imported N value(s) from the old SLIF save".
-MCM > Settings > Old-SLIF import must read "done (automatic)". A second load
-must log NOTHING new (the cosave flag guards it, and SkyUI stores 200 so the
-version update never re-fires). A fresh game flags itself via OnConfigInit
-and never scans again.
+plus the notification "SLIF NG: imported N contribution(s)". The row then
+reads "done" and greys out, and stays that way after a save and load (the
+cosave flag). On a save that never ran SLIF it reads "nothing to import".
 
-Regression to watch: the config revision must stay ABOVE 122 forever - SkyUI
-only fires version updates on an increase, and a migrating save starts at the
-reference's 122.
+Since 0.4.16 `OnVersionUpdate` really fires on a load where the version rose
+(before, nothing called `CheckVersion` after the first session). It is empty;
+an upgrade step added there runs on the next load of every existing save.
 
 ## T5 — Incremental inflation (ON by default)
 
@@ -238,24 +236,30 @@ nothing on the slider path ever writes a bone.
 The opposite direction is NOT handled: delete a section mid-save while its
 target is inflated and the slider value stays until the actor is reset.
 
-## T8 - The MCM survives a SkyUI reset (0.4.16)
+## T8 - The MCM comes back on its own (0.4.16)
 
-`Pages` is rebuilt in every `OnConfigOpen`, so a page added in a later build
-shows on an existing save with no version step. Registration is the fragile
-part: SkyUI's registration events do not survive a save, and before 0.4.16
-nothing re-armed them on a load, so the menu registered only in the session its
-quest started. `SLIF_ScannerAlias.OnPlayerLoadGame` now calls
-`SKI_ConfigBase.OnGameReload`, which is SkyUI's own `SKI_PlayerLoadGameAlias`.
+Before 0.4.16 nothing re-armed SkyUI's registration events on a load (they do
+not survive a save), so the menu registered only in the session its quest
+started. `SLIF_ScannerAlias.OnPlayerLoadGame` now calls the menu's
+`OnGameReload`, which also clears the saved config manager so a menu SkyUI
+already dropped registers again. Use a throwaway save: the reset below
+permanently removes the menu of any OTHER mod with this same bug.
 
-Load a save that has run SLIF NG before (not the session it was installed in):
+The upgrade path, which is the case the 0.4.16 reports are about. On a 0.4.15
+install, load a save that has run SLIF NG before (not the session it was
+installed in):
 
 ```
 setstage SKI_ConfigManagerInstance 1
 ```
 
-Wait for "MCM: Registered N new menu(s)" and open the MCM: SLIF NG must be in
-the list. Save, load, open it again: still there. On 0.4.15 the reset removed
-SLIF NG for good.
+Wait for "MCM: Registered N new menu(s)": SLIF NG is gone from the list. Save,
+quit, update to 0.4.16, load, and wait about a minute WITHOUT any console
+command: SLIF NG must be back, listed as "SLIF NG". The Papyrus log shows
+`SLIF_Menu ... Registered SLIF NG at MCM.`
+
+Then on 0.4.16, run the same `setstage` once more: SLIF NG must come back
+within a minute of the reset.
 
 ## Other console tools
 

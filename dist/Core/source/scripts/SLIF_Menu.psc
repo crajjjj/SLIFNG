@@ -62,6 +62,26 @@ Event OnConfigInit()
 	Debug.Notification("[SLIF NG] MCM menu initialized")
 EndEvent
 
+Event OnGameReload()
+	{Runs from OnInit and, through SLIF_ScannerAlias.OnPlayerLoadGame, on every
+	load. Two steps SKI_ConfigBase's own version lacks:
+
+	- Forget the saved config manager. A save whose entry SkyUI dropped while
+	  this menu's events were not armed (a SkyUI reset on 0.4.15 or earlier)
+	  still holds that manager, and OnConfigManagerReady returns early on it, so
+	  arming the events alone would never register the menu again. RegisterMod
+	  hands back the existing slot of a menu that is still listed, so this
+	  never adds a duplicate.
+	- Set ModName. A save migrated from reference SLIF keeps the old menu's
+	  untranslated key, and OnConfigInit never runs on it again.
+
+	OnConfigManagerReset is not in the SkyUI SDK stub, which is why
+	skyrimse.ppj compiles against SkyUI's full source.}
+	ModName = "SLIF NG"
+	OnConfigManagerReset("", "", 0.0, None)
+	parent.OnGameReload()
+EndEvent
+
 Event OnVersionUpdate(int a_version)
 EndEvent
 
@@ -134,10 +154,10 @@ Function RenderSettingsPage()
 	AddEmptyOption()
 EndFunction
 
-; A STATUS row, not a button: the import runs automatically on the first load
-; of a legacy save (SLIF_ScannerAlias.AutoMigrate). It stays clickable only in
-; the "pending" state, as a manual fallback if the automatic pass never got to
-; run (e.g. the alias failed to fill).
+; A BUTTON, live only while there is something to import. It ran automatically
+; in 0.4.8, from SkyUI's registration callbacks, and a misbehaving callback
+; there stops SkyUI registering every mod after it: users lost most of their
+; MCM list. Never move the import back onto a load or registration path.
 String Function ImportLabel()
 	if SLIFNG.HasMigrated()
 		return "$SLIFNG_Import_Done"

@@ -22,7 +22,7 @@ xmake f -m release && xmake        # -> dist/Core/skse/plugins/BodyInflationNG.d
 Sources live in `dist/Core/source/scripts/`, compiled output in `dist/Core/Scripts/`. A `skyrimse.ppj` ships for pyro-style builds; either way the import path needs:
 
 - the vanilla + SKSE sources
-- the **SkyUI 5.1 SDK** (for `SKI_ConfigBase` - `SLIF_Menu`)
+- **SkyUI's full script source** (for `SKI_ConfigBase` - `SLIF_Menu`). The SDK stub is not enough: `SLIF_Menu.OnGameReload` calls `OnConfigManagerReset`, which the stub leaves out
 - **PapyrusUtil**'s `StorageUtil.psc` (for `SLIFNG_Migrate` and the `SLIF_Morph` mirror)
 
 !!! warning "Always rebuild the whole script set"

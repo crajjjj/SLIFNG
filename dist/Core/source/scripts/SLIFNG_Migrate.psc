@@ -26,8 +26,8 @@ EndFunction
 
 ; Imports every actor reference SLIF tracked. Returns the number of
 ; contributions moved across. Safe to run twice (values overwrite, they do not
-; accumulate). Runs AUTOMATICALLY on the first load of a legacy save
-; (SLIF_ScannerAlias.AutoMigrate); the MCM row only reports the outcome.
+; accumulate). Run from the MCM's Settings page button, never automatically
+; (see the note above ImportLabel in SLIF_Menu.psc).
 Int Function Run() Global
 	Int moved = 0
 	moved += ImportNodeSide()

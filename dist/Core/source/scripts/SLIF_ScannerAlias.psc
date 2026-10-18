@@ -47,18 +47,27 @@ EndEvent
 
 Event OnPlayerLoadGame()
 	RegisterForModEvents()
-	; SKI_PlayerLoadGameAlias's one line. This alias is the only one on the menu
-	; quest, so nothing else re-runs SKI_ConfigBase.OnGameReload on a load - and
-	; the SkyUI registration events it arms do not survive a save. Without this
-	; the menu only ever registered in the session the quest started: a failed
-	; first try (128-menu cap, a quick reload) or a SkyUI reset
-	; (setstage SKI_ConfigManagerInstance 1) removed it for good.
-	(GetOwningQuest() as SKI_QuestBase).OnGameReload()
+	ReloadMenu()
 	; P6 legacy migration is NOT here, and is no longer automatic anywhere: it
 	; is a button on the MCM's Settings page. Doing it from a load hook or from
 	; SkyUI's registration callbacks is what broke other mods' menus in 0.4.8 -
 	; see the note above ImportLabel in SLIF_Menu.psc.
 EndEvent
+
+; SKI_PlayerLoadGameAlias's job. This alias is the only one on the menu quest,
+; so nothing else re-runs the menu's OnGameReload on a load, and the SkyUI
+; registration events it arms do not survive a save. Without this the menu
+; registered only in the session the quest started: a failed first try
+; (128-menu cap, a quick reload) or a SkyUI reset removed it for good.
+; A function of its own because it names SLIF_Menu, a SkyUI-derived type: with
+; SkyUI missing that type fails to link, which disables the function naming
+; it. Here that is this helper, not the SLIF event re-registration above.
+Function ReloadMenu()
+	SLIF_Menu menu = GetOwningQuest() as SLIF_Menu
+	if menu
+		menu.OnGameReload()
+	endIf
+EndFunction
 
 ; -- inflate side -------------------------------------------------------------
 ; WARNING: the event carries (modName, node); SLIF_Main.unregisterNode takes
