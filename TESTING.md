@@ -169,8 +169,9 @@ reads "done" and greys out, and stays that way after a save and load (the
 cosave flag). On a save that never ran SLIF it reads "nothing to import".
 
 Since 0.4.16 `OnVersionUpdate` really fires on a load where the version rose
-(before, nothing called `CheckVersion` after the first session). It is empty;
-an upgrade step added there runs on the next load of every existing save.
+(before, nothing called `CheckVersion` after the first session), so an upgrade
+step added there runs on the next load of every existing save. It holds one,
+at 416: see T8.
 
 ## T5 — Incremental inflation (ON by default)
 
@@ -241,8 +242,10 @@ target is inflated and the slider value stays until the actor is reset.
 Before 0.4.16 nothing re-armed SkyUI's registration events on a load (they do
 not survive a save), so the menu registered only in the session its quest
 started. `SLIF_ScannerAlias.OnPlayerLoadGame` now calls the menu's
-`OnGameReload`, which also clears the saved config manager so a menu SkyUI
-already dropped registers again. Use a throwaway save: the reset below
+`OnGameReload` on every load, like SkyUI's own `SKI_PlayerLoadGameAlias`: it
+re-arms the listeners and registers only if the menu is not registered. The
+416 step in `OnVersionUpdate` clears the saved config manager ONCE, so a menu
+SkyUI already dropped registers again. Use a throwaway save: the reset below
 permanently removes the menu of any OTHER mod with this same bug.
 
 The upgrade path, which is the case the 0.4.16 reports are about. On a 0.4.15

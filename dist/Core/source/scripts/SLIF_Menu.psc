@@ -62,27 +62,25 @@ Event OnConfigInit()
 	Debug.Notification("[SLIF NG] MCM menu initialized")
 EndEvent
 
-Event OnGameReload()
-	{Runs from OnInit and, through SLIF_ScannerAlias.OnPlayerLoadGame, on every
-	load. Two steps SKI_ConfigBase's own version lacks:
-
-	- Forget the saved config manager. A save whose entry SkyUI dropped while
-	  this menu's events were not armed (a SkyUI reset on 0.4.15 or earlier)
-	  still holds that manager, and OnConfigManagerReady returns early on it, so
-	  arming the events alone would never register the menu again. RegisterMod
-	  hands back the existing slot of a menu that is still listed, so this
-	  never adds a duplicate.
-	- Set ModName. A save migrated from reference SLIF keeps the old menu's
-	  untranslated key, and OnConfigInit never runs on it again.
-
-	OnConfigManagerReset is not in the SkyUI SDK stub, which is why
-	skyrimse.ppj compiles against SkyUI's full source.}
-	ModName = "SLIF NG"
-	OnConfigManagerReset("", "", 0.0, None)
-	parent.OnGameReload()
-EndEvent
-
 Event OnVersionUpdate(int a_version)
+	{Fires once per update, on the first load after it (SLIF_ScannerAlias calls
+	OnGameReload on every load, as SkyUI's SKI_PlayerLoadGameAlias does), and
+	once on a new game. Own properties and own functions only: never move
+	heavy work such as the legacy import in here (see ImportLabel).}
+	; a_version is the new version, CurrentVersion is the old version
+	If (a_version >= 416 && CurrentVersion < 416)
+		Debug.Trace(self + ": Updating script to version 416")
+		; Up to 0.4.15 nothing re-armed SkyUI's events on a load, so a menu SkyUI
+		; dropped later (a reset, the 128-menu cap) still holds its old config
+		; manager, and OnConfigManagerReady returns early on it for good. Forget
+		; it once and the next ready event registers the menu; RegisterMod hands
+		; back the existing slot if the menu is still listed. Not in the SkyUI
+		; SDK stub, which is why skyrimse.ppj compiles against SkyUI's full source.
+		OnConfigManagerReset("", "", 0.0, None)
+		; A save migrated from reference SLIF holds the old menu's untranslated
+		; key, and OnConfigInit never runs on it again.
+		ModName = "SLIF NG"
+	EndIf
 EndEvent
 
 Event OnConfigOpen()
