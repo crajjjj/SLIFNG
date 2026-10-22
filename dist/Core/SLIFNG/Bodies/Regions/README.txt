@@ -43,21 +43,28 @@ ships its egg sliders under one set of names on every body it supports).
 
 A slider may fill over a WINDOW of the range instead of the whole of it, with
 MorphNStart / MorphNEnd as fractions of FullScale: zero below Start, Max from
-End on, a straight line between. That is how one region fills several sliders
-in sequence - Ovibody.ini stacks its six egg groups up the belly this way:
+End on, a straight line between. It may also switch OFF again over a second
+window, MorphNOffStart / MorphNOffEnd. Together they put a sequence on one
+key - Ovibody.ini grows every egg over the first unit and then lets them
+leave one at a time over the second:
 
     [Oviposition]
     FullScale=1.0
-    Morph1=Oviposition_1
+    Morph1=Egg_1
     Morph1Max=1.0
     Morph1Start=0.0
-    Morph1End=0.25
-    Morph2=Oviposition_2
+    Morph1End=1.0
+    Morph1OffStart=1.0
+    Morph1OffEnd=1.05
+    Morph2=Egg_2
     Morph2Max=1.0
-    Morph2Start=0.15
-    Morph2End=0.4
+    Morph2Start=0.0
+    Morph2End=1.0
+    Morph2OffStart=1.05
+    Morph2OffEnd=1.1
 
-Without Start/End a slider keeps the plain line through neutral, unclamped.
+Without any window keys a slider keeps the plain line through neutral,
+unclamped. A section takes up to 32 MorphN entries.
 
 Consumers then address the section as "region:<name>", case-insensitively:
 
