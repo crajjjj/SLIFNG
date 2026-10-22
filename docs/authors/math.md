@@ -37,7 +37,13 @@ If the actor's body profile maps a node target to sliders, the node value is tra
 sliderShare = (nodeValue - 1.0) * (MorphMax / FullScale)
 ```
 
-per listed slider (see [Body Profile Format](body-profiles.md)). A target the profile does not list drives the skeleton bone directly instead.
+per listed slider (see [Body Profile Format](body-profiles.md)). A slider with a [fill window](body-profiles.md#fill-windows) instead takes
+
+```
+sliderShare = MorphMax * clamp((nodeValue - 1.0 - Start) / (End - Start), 0, 1)
+```
+
+with `Start` and `End` in deviation units. A target the profile does not list drives the skeleton bone directly instead.
 
 ## Slider targets: one value per mod, then the same fold
 

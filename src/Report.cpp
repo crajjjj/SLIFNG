@@ -145,7 +145,7 @@ namespace SLIFNG::Report
 					// sliders; same arithmetic the apply path uses.
 					const float deviation = ledger.Aggregate(formID, target) - 1.0f;
 					for (const auto& blend : *blends) {
-						Row(out, "  > drives " + blend.slider, Num(deviation * blend.weight));
+						Row(out, "  > drives " + blend.slider, Num(blend.Share(deviation)));
 					}
 				} else {
 					Row(out, "  > drives",
