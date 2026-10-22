@@ -81,6 +81,7 @@ namespace SLIFNG::BodyProfile
 				float offEnd = -1.0f;
 				bool found = false;
 				bool windowed = false;
+				bool endGiven = false;
 				for (const auto& [k, v] : a_pairs) {
 					if (k == nameKey) {
 						slider = v;
@@ -93,6 +94,7 @@ namespace SLIFNG::BodyProfile
 					} else if (k == endKey) {
 						end = ParseFloat(v, 1.0f);
 						windowed = true;
+						endGiven = true;
 					} else if (k == offStartKey) {
 						offStart = ParseFloat(v, -1.0f);
 					} else if (k == offEndKey) {
@@ -107,7 +109,7 @@ namespace SLIFNG::BodyProfile
 				const float denom = a_fullScale > 0.0001f ? a_fullScale : 1.0f;
 				Blend blend{ slider, maxValue / denom };
 				if (windowed) {
-					if (end <= 0.0f) {
+					if (!endGiven) {
 						end = 1.0f;  // Start alone: fill from there to FullScale
 					}
 					if (end <= start) {
