@@ -19,7 +19,8 @@ Under the hood the old Papyrus framework is gone. A native SKSE plugin (`BodyInf
 
 - [Overview & Architecture](authors/overview.md) - the ledger, the shims, and how an inflate becomes a body change
 - [Write API](authors/write-api.md) - old SLIF's surface, pinned from bytecode, plus the SLIF NG extensions (batch calls, semantic regions)
-- [Query API](authors/query-api.md) - reading the store from Papyrus or from another SKSE plugin
+- [Query API](authors/query-api.md) - reading the store from Papyrus
+- [C++ API](authors/cpp-api.md) - the same reads from another SKSE plugin: handshake, a specific mod's row, version gating
 - [Aggregation Math](authors/math.md) - the six calculation types, the per-mod slider fold, clamps and defaults
 - [Body Profile Format](authors/body-profiles.md) - the INI schema, per-actor resolution, custom regions
 - [Building from Source](authors/building.md) - xmake, the Papyrus compiler, repo layout

@@ -47,7 +47,8 @@ nav:
   - For Mod Authors:
     - Overview & Architecture: authors/overview.md
     - Write API (SLIF-compatible): authors/write-api.md
-    - Query API (Papyrus & C++): authors/query-api.md
+    - Query API (Papyrus): authors/query-api.md
+    - C++ API (SKSE plugins): authors/cpp-api.md
     - Aggregation Math: authors/math.md
     - Body Profile Format: authors/body-profiles.md
     - Building from Source: authors/building.md

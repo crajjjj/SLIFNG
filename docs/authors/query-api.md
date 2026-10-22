@@ -1,4 +1,4 @@
-# Query API (Papyrus & C++)
+# Query API (Papyrus)
 
 Old SLIF was effectively write-only. SLIF NG adds a read surface, served from one shared core in the DLL, so the Papyrus answer and the C++ answer can never disagree.
 
@@ -204,32 +204,7 @@ So offset math stays in the consumer. What SLIF NG guarantees is that the three 
 
 ## C++ (other SKSE plugins)
 
-Copy [`src/API/SLIFNG_API.h`](https://github.com/crajjjj/SLIFNG/blob/main/src/API/SLIFNG_API.h) into your project — it is self-contained (only a forward declaration of `RE::Actor`) — and exchange the interface over SKSE messaging, the same handshake pattern skee itself uses:
-
-```cpp
-#include "SLIFNG_API.h"
-
-// at kPostPostLoad or later
-SLIFNG_API::InterfaceExchangeMessage msg;
-SKSE::GetMessagingInterface()->Dispatch(
-    SLIFNG_API::InterfaceExchangeMessage::kMessageType,
-    &msg, sizeof(msg), "SLIFNG");
-
-if (msg.query) {  // null when SLIF NG is not installed - no link-time coupling
-    const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
-    const bool  busy  = msg.query->IsTracked(actor);
-}
-if (msg.query && msg.query->Version() >= 2) {   // a newer interface: ask, then cast
-    auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
-    const bool hasWeight = q2->HasTarget(actor, "region:weight");
-}
-```
-
-`IQueryInterface1` carries `Version`, `IsTracked`, `TrackedActorCount`, `GetValue`, `GetMinValue`, `GetMaxValue`, `GetApplied`, `GetCombinedMorph`, `GetCalculationType` and `IsIncrementalInflation`; `IQueryInterface2` adds `HasTarget`. Both are **read-only by design** — mutations go through the pinned Papyrus surface, which is the compatibility contract. The pointer stays valid for the process lifetime and every call is thread-safe (the store is mutex-guarded).
-
-Interfaces are versioned by **addition**: an existing `IQueryInterfaceN` is never edited, so a plugin built against an older header keeps working untouched. The **exchange struct never grows** — it stays one pointer, and the handshake stays an exact size match, so a dispatch from any header version is accepted by any SLIF NG. You reach a newer interface by asking the one you were handed for its version and casting: the implementation derives the whole chain by single inheritance, so the pointer is identical and `Version()` is what makes the cast sound.
-
-**Gate on `Version() >= N`, never on equality.** (SLIF NG 0.3.0's header described this number as a breaking-change counter; it is a monotonic "newest interface served", so `== 1` would lock a consumer out of every later build.)
+The same read surface is served to SKSE plugins over SKSE messaging, with no link-time dependency and the same semantics as above. It has its own page: [C++ API (SKSE plugins)](cpp-api.md), covering the handshake, reading a specific mod's row, version gating and sinking `SLIFNG_Settled` natively.
 
 ## Legacy StorageUtil mirror
 

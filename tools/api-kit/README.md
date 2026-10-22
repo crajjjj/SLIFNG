@@ -80,6 +80,9 @@ cannot tell the two apart - `SLIFNG.GetVersion()` is what distinguishes them.
 
 ## C++ (SKSE plugins)
 
+Full guide, with a worked example reading another mod's row:
+<https://crajjjj.github.io/SLIFNG/authors/cpp-api/>.
+
 `cpp/SLIFNG_API.h` is a **reference, not a library**: no `.lib`, no import library, and it
 depends on nothing but a forward declaration of `RE::Actor`, so copying it into your project
 adds zero build-time dependency. Fetch the interface over SKSE messaging at
@@ -144,6 +147,7 @@ Mod names compare case-insensitively, and `"All Mods"` reads the aggregate.
 ## Where the documentation is
 
 - Author guide: <https://crajjjj.github.io/SLIFNG/authors/>
+- C++ API page: <https://crajjjj.github.io/SLIFNG/authors/cpp-api/>
 - Player guide and MCM reference: <https://crajjjj.github.io/SLIFNG/>
 - **`CONTRACT.md`** in the repo is the authoritative description of the frozen SLIF surface -
   what was pinned from the reference implementation's bytecode, and why.

@@ -42,7 +42,8 @@ consumer .pex ──(direct calls)─> SLIF_Main / SLIF_Morph ┴─> SLIFNG.psc
 ## Where to go next
 
 - [Write API](write-api.md) - everything that changes state
-- [Query API](query-api.md) - everything that reads it, from Papyrus or C++
+- [Query API](query-api.md) - everything that reads it, from Papyrus
+- [C++ API](cpp-api.md) - the same reads from an SKSE plugin
 - [Aggregation Math](math.md) - exactly how contributions become one value
 - [Body Profile Format](body-profiles.md) - the INI schema and custom regions
 - The full pinned contract, with provenance and the bug-for-bug quirks: [CONTRACT.md](https://github.com/crajjjj/SLIFNG/blob/main/CONTRACT.md)
