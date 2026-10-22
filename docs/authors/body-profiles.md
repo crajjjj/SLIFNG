@@ -39,6 +39,25 @@ Morph3Max=-0.2        ; negative = the slider runs in reverse
 
 The applied share per slider is `(nodeValue - 1.0) * MorphMax / FullScale`, so a neutral actor gets exactly zero. Up to 16 `MorphN` entries per section; numbering must not skip.
 
+### Fill windows
+
+A slider may fill over a **window** of the range instead of the whole of it, with `MorphNStart` and `MorphNEnd` as fractions of `FullScale`:
+
+```ini
+[Oviposition]
+FullScale=1.0
+Morph1=Oviposition_1
+Morph1Max=1.0
+Morph1Start=0.0       ; rises from 0 at this deviation ...
+Morph1End=0.25        ; ... to Max at this one, and holds Max beyond it
+Morph2=Oviposition_2
+Morph2Max=1.0
+Morph2Start=0.15
+Morph2End=0.4
+```
+
+Inside the window the share is `MorphMax * (deviation - Start) / (End - Start)`, clamped to `0..MorphMax`; below `Start` it is zero, above `End` it is `MorphMax`. Either key alone implies the other end of the range (`Start` only fills to `FullScale`, `End` only starts at neutral). A slider without a window keeps the plain line through neutral, unclamped both ways, so every existing profile reads as before. Windows are how one region fills several sliders in sequence: the shipped `Ovibody.ini` overlay stacks six egg groups up the belly, each starting as the previous one is most of the way in. During an incremental-inflation ramp the window follows the *shown* value, so a group opens exactly when the ramp reaches it.
+
 **A section you do not write means "this body cannot morph that"** and the target drives its skeleton bone instead - that is the supported way to say it, and it is why the node fallback is reachable at all. `slif_scrotum` ships unmapped on every profile for exactly this reason, and so does `slif_butt` on the generic CBBE one; the CBBE 3BA, BHUNP and UBE profiles map `slif_butt` to a single size slider.
 
 ## Custom regions
@@ -113,5 +132,6 @@ Rules:
 |---|---|---|
 | `default.ini` | none (installer's choice) | CBBE 3BA / CBBE / BHUNP variant, or absent for node-only. The 3BA and BHUNP variants map `slif_butt` to `BigButt` |
 | `UBE.ini` | `Race=UBE_` | Always installed; slider names verified against the UBE 2.0 .osp, including the literal `" n|p"` suffix. Maps `slif_butt` to `GluteSize p|n` |
+| `Regions/Ovibody.ini` | overlay, `Profile=*` | Always installed. Defines `region:oviposition` on every body as the six Ovibody egg groups (`Oviposition_1..6`, the same names on Ovibody's 3BA, GT Softbody and UBE 2.0 sets), filled bottom-up over windows of the range; `1.0 + progress`, `2.0` = the full clutch. Inert until a body is built from an Ovibody set with Build Morphs |
 
 Slider names in the CBBE 3BA and UBE profiles are verified against their reference `.osp` files; BHUNP's are sourced from old SLIF's own UUNP table and unverified against a live body - if a slider does not exist in your `morphs.tri`, skee silently drops it, so wrong names degrade to "nothing happens", never to errors.

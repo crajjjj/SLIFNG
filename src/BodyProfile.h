@@ -41,6 +41,24 @@ namespace SLIFNG::BodyProfile
 	{
 		std::string slider;  // BodySlide slider name, original case (skee gets this)
 		float weight;        // slider value per 1.0 of node-scale deviation
+		// Optional fill WINDOW, in deviation units (MorphNStart / MorphNEnd, given
+		// as fractions of FullScale). A windowed slider rests at 0 until the
+		// deviation reaches `start`, rises linearly to `max` at `end` and holds
+		// there. end <= start means no window: the legacy line through neutral,
+		// unclamped both ways. Windows let one region fill several sliders in
+		// SEQUENCE (Ovibody's egg groups, lowest first) instead of all at once.
+		float max{ 0.0f };
+		float start{ 0.0f };
+		float end{ 0.0f };
+
+		[[nodiscard]] float Share(float a_deviation) const
+		{
+			if (end <= start) {
+				return a_deviation * weight;
+			}
+			const float t = std::clamp((a_deviation - start) / (end - start), 0.0f, 1.0f);
+			return t * max;
+		}
 	};
 
 	struct Target

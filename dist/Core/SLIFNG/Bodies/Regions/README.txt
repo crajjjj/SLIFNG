@@ -38,7 +38,26 @@ the parent folder), or "*" for every body.
 A mod supporting several bodies ships one file per body - "MyMod-3BA.ini",
 "MyMod-UBE.ini" - each naming its own Profile=. Sliders are body-specific, so
 there is rarely one answer for all of them; "*" is for the uncommon case of a
-slider spelled the same everywhere.
+slider spelled the same everywhere (the shipped Ovibody.ini is one: Ovibody
+ships its egg sliders under one set of names on every body it supports).
+
+A slider may fill over a WINDOW of the range instead of the whole of it, with
+MorphNStart / MorphNEnd as fractions of FullScale: zero below Start, Max from
+End on, a straight line between. That is how one region fills several sliders
+in sequence - Ovibody.ini stacks its six egg groups up the belly this way:
+
+    [Oviposition]
+    FullScale=1.0
+    Morph1=Oviposition_1
+    Morph1Max=1.0
+    Morph1Start=0.0
+    Morph1End=0.25
+    Morph2=Oviposition_2
+    Morph2Max=1.0
+    Morph2Start=0.15
+    Morph2End=0.4
+
+Without Start/End a slider keeps the plain line through neutral, unclamped.
 
 Consumers then address the section as "region:<name>", case-insensitively:
 

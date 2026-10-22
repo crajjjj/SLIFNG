@@ -42,29 +42,49 @@ namespace SLIFNG::BodyProfile
 			return p;
 		}
 
+		float ParseFloat(const std::string& a_value, float a_default)
+		{
+			try {
+				return std::stof(a_value);
+			} catch (...) {
+				return a_default;
+			}
+		}
+
 		// [slif_belly]
 		//   FullScale = 7.5        <- node deviation at which the sliders hit Max
 		//   Morph1    = PregnancyBelly
 		//   Morph1Max = 1.0        <- slider value at FullScale (BF NG's semantics)
-		void ParseTargetSection(Target& a_target, float a_fullScale,
+		// Optional per slider, as FRACTIONS of FullScale:
+		//   Morph1Start = 0.25     <- the slider stays at 0 until here ...
+		//   Morph1End   = 0.5      <- ... and sits at Max from here on
+		// Either one alone implies the other end of the range (0 / 1).
+		void ParseTargetSection(Target& a_target, float a_fullScale, const std::string& a_section,
 			const std::vector<std::pair<std::string, std::string>>& a_pairs)
 		{
 			for (int i = 1; i <= 16; ++i) {
 				const std::string nameKey = std::format("morph{}", i);
 				const std::string maxKey = nameKey + "max";
+				const std::string startKey = nameKey + "start";
+				const std::string endKey = nameKey + "end";
 				std::string slider;
 				float maxValue = 1.0f;
+				float start = 0.0f;
+				float end = 0.0f;
 				bool found = false;
+				bool windowed = false;
 				for (const auto& [k, v] : a_pairs) {
 					if (k == nameKey) {
 						slider = v;
 						found = true;
 					} else if (k == maxKey) {
-						try {
-							maxValue = std::stof(v);
-						} catch (...) {
-							maxValue = 1.0f;
-						}
+						maxValue = ParseFloat(v, 1.0f);
+					} else if (k == startKey) {
+						start = ParseFloat(v, 0.0f);
+						windowed = true;
+					} else if (k == endKey) {
+						end = ParseFloat(v, 1.0f);
+						windowed = true;
 					}
 				}
 				if (!found || slider.empty()) {
@@ -73,7 +93,21 @@ namespace SLIFNG::BodyProfile
 				// Convert "value at full scale" into "value per 1.0 of deviation",
 				// which is the unit the apply path works in.
 				const float denom = a_fullScale > 0.0001f ? a_fullScale : 1.0f;
-				a_target.morphs.push_back({ slider, maxValue / denom });
+				Blend blend{ slider, maxValue / denom };
+				if (windowed) {
+					if (end <= 0.0f) {
+						end = 1.0f;  // Start alone: fill from there to FullScale
+					}
+					if (end <= start) {
+						logger::warn("[BodyProfile] [{}] {}: window {}..{} is empty - ignored",
+							a_section, slider, start, end);
+					} else {
+						blend.max = maxValue;
+						blend.start = start * denom;
+						blend.end = end * denom;
+					}
+				}
+				a_target.morphs.push_back(std::move(blend));
 			}
 		}
 
@@ -110,7 +144,7 @@ namespace SLIFNG::BodyProfile
 					}
 				} else {
 					Target t;
-					ParseTargetSection(t, fullScale, pairs);
+					ParseTargetSection(t, fullScale, section, pairs);
 					a_out.targets.emplace(section, std::move(t));
 				}
 				pairs.clear();

@@ -334,9 +334,11 @@ namespace SLIFNG
 					if (Lower(blend.slider) == a_sliderLower) {
 						// The ramp factor keeps a mid-ramp node dragging its
 						// derived slider shares along, so bone and slider
-						// swell in step during incremental inflation.
-						combined += (contribution.Effective() - 1.0f) * blend.weight *
-						            RampFactorLocked(a_actor, target);
+						// swell in step during incremental inflation. The
+						// share is taken of the SHOWN deviation, so a fill
+						// window opens exactly when the ramp reaches it.
+						combined += blend.Share((contribution.Effective() - 1.0f) *
+						                        RampFactorLocked(a_actor, target));
 						any = true;
 					}
 				}
