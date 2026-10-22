@@ -37,26 +37,32 @@ Morph3=BreastsSmall
 Morph3Max=-0.2        ; negative = the slider runs in reverse
 ```
 
-The applied share per slider is `(nodeValue - 1.0) * MorphMax / FullScale`, so a neutral actor gets exactly zero. Up to 16 `MorphN` entries per section; numbering must not skip.
+The applied share per slider is `(nodeValue - 1.0) * MorphMax / FullScale`, so a neutral actor gets exactly zero. Up to 32 `MorphN` entries per section (16 before 0.4.17); numbering must not skip.
 
 ### Fill windows
 
-A slider may fill over a **window** of the range instead of the whole of it, with `MorphNStart` and `MorphNEnd` as fractions of `FullScale`:
+A slider may fill over a **window** of the range instead of the whole of it, and may switch **off** again over a second window further up, with the four keys given as fractions of `FullScale`:
 
 ```ini
 [Oviposition]
 FullScale=1.0
-Morph1=Oviposition_1
+Morph1=Egg_1
 Morph1Max=1.0
 Morph1Start=0.0       ; rises from 0 at this deviation ...
-Morph1End=0.25        ; ... to Max at this one, and holds Max beyond it
-Morph2=Oviposition_2
+Morph1End=1.0         ; ... to Max at this one, and holds Max beyond it ...
+Morph1OffStart=1.0    ; ... until here, where it fades back ...
+Morph1OffEnd=1.05     ; ... to 0, and stays off above
+Morph2=Egg_2
 Morph2Max=1.0
-Morph2Start=0.15
-Morph2End=0.4
+Morph2Start=0.0
+Morph2End=1.0
+Morph2OffStart=1.05
+Morph2OffEnd=1.1
 ```
 
-Inside the window the share is `MorphMax * (deviation - Start) / (End - Start)`, clamped to `0..MorphMax`; below `Start` it is zero, above `End` it is `MorphMax`. Either key alone implies the other end of the range (`Start` only fills to `FullScale`, `End` only starts at neutral). A slider without a window keeps the plain line through neutral, unclamped both ways, so every existing profile reads as before. Windows are how one region fills several sliders in sequence: the shipped `Ovibody.ini` overlay stacks six egg groups up the belly, each starting as the previous one is most of the way in. During an incremental-inflation ramp the window follows the *shown* value, so a group opens exactly when the ramp reaches it.
+Inside the fill window the share is `MorphMax * (deviation - Start) / (End - Start)`, clamped to `0..MorphMax`; below `Start` it is zero, above `End` it is `MorphMax`. Either key alone implies the other end of the range (`Start` only fills to `FullScale`, `End` only starts at neutral). An off window multiplies that by `1 - (deviation - OffStart) / (OffEnd - OffStart)`, clamped the same way, and needs both of its keys. A slider with neither keeps the plain line through neutral, unclamped both ways, so every existing profile reads as before.
+
+Together they let one key carry a sequence. The shipped `Ovibody.ini` overlay uses them for a clutch of eggs: from `1.0` to `2.0` every egg grows together, from `2.0` to `3.0` the eggs leave one at a time, each over its own twentieth of that unit. During an incremental-inflation ramp the windows follow the *shown* value, so an egg switches off exactly when the ramp reaches its window.
 
 **A section you do not write means "this body cannot morph that"** and the target drives its skeleton bone instead - that is the supported way to say it, and it is why the node fallback is reachable at all. `slif_scrotum` ships unmapped on every profile for exactly this reason, and so does `slif_butt` on the generic CBBE one; the CBBE 3BA, BHUNP and UBE profiles map `slif_butt` to a single size slider.
 
@@ -132,6 +138,6 @@ Rules:
 |---|---|---|
 | `default.ini` | none (installer's choice) | CBBE 3BA / CBBE / BHUNP variant, or absent for node-only. The 3BA and BHUNP variants map `slif_butt` to `BigButt` |
 | `UBE.ini` | `Race=UBE_` | Always installed; slider names verified against the UBE 2.0 .osp, including the literal `" n|p"` suffix. Maps `slif_butt` to `GluteSize p|n` |
-| `Regions/Ovibody.ini` | overlay, `Profile=*` | Always installed. Defines `region:oviposition` on every body as the six Ovibody egg groups (`Oviposition_1..6`, the same names on Ovibody's 3BA, GT Softbody and UBE 2.0 sets), filled bottom-up over windows of the range; `1.0 + progress`, `2.0` = the full clutch. Inert until a body is built from an Ovibody set with Build Morphs |
+| `Regions/Ovibody.ini` | overlay, `Profile=*` | Always installed. Defines `region:oviposition` on every body as Ovibody's twenty eggs (`Egg_1..20`, the same names on Ovibody's 3BA, GT Softbody and UBE 2.0 "Separate" sets): `1.0` to `2.0` grows them all together, `2.0` to `3.0` switches them off one at a time, lowest first. A commented six-group variant inside the file serves Ovibody's "Simple" option. Inert until a body is built from an Ovibody set with Build Morphs |
 
 Slider names in the CBBE 3BA and UBE profiles are verified against their reference `.osp` files; BHUNP's are sourced from old SLIF's own UUNP table and unverified against a live body - if a slider does not exist in your `morphs.tri`, skee silently drops it, so wrong names degrade to "nothing happens", never to errors.

@@ -45,19 +45,30 @@ namespace SLIFNG::BodyProfile
 		// as fractions of FullScale). A windowed slider rests at 0 until the
 		// deviation reaches `start`, rises linearly to `max` at `end` and holds
 		// there. end <= start means no window: the legacy line through neutral,
-		// unclamped both ways. Windows let one region fill several sliders in
-		// SEQUENCE (Ovibody's egg groups, lowest first) instead of all at once.
+		// unclamped both ways.
 		float max{ 0.0f };
 		float start{ 0.0f };
 		float end{ 0.0f };
+		// Optional OFF window further up the range (MorphNOffStart / OffEnd): the
+		// slider fades back to 0 across it and stays off above. Rise and off
+		// together make a slider that comes and goes along one key, which is how
+		// a region can grow every egg at once (1..2) and then let them leave one
+		// at a time (2..3): each egg's own off window.
+		float offStart{ 0.0f };
+		float offEnd{ 0.0f };
 
 		[[nodiscard]] float Share(float a_deviation) const
 		{
+			float share;
 			if (end <= start) {
-				return a_deviation * weight;
+				share = a_deviation * weight;
+			} else {
+				share = std::clamp((a_deviation - start) / (end - start), 0.0f, 1.0f) * max;
 			}
-			const float t = std::clamp((a_deviation - start) / (end - start), 0.0f, 1.0f);
-			return t * max;
+			if (offEnd > offStart) {
+				share *= 1.0f - std::clamp((a_deviation - offStart) / (offEnd - offStart), 0.0f, 1.0f);
+			}
+			return share;
 		}
 	};
 

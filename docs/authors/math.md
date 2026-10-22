@@ -40,10 +40,11 @@ sliderShare = (nodeValue - 1.0) * (MorphMax / FullScale)
 per listed slider (see [Body Profile Format](body-profiles.md)). A slider with a [fill window](body-profiles.md#fill-windows) instead takes
 
 ```
-sliderShare = MorphMax * clamp((nodeValue - 1.0 - Start) / (End - Start), 0, 1)
+sliderShare = MorphMax * clamp((dev - Start) / (End - Start), 0, 1)
+            * (1 - clamp((dev - OffStart) / (OffEnd - OffStart), 0, 1))   ; only with an off window
 ```
 
-with `Start` and `End` in deviation units. A target the profile does not list drives the skeleton bone directly instead.
+with `dev = nodeValue - 1.0` and the window edges in deviation units. A target the profile does not list drives the skeleton bone directly instead.
 
 ## Slider targets: one value per mod, then the same fold
 
