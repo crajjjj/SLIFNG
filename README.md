@@ -90,8 +90,9 @@ New on top of it:
   `IsTracked`, `GetTrackedActors`, `GetNodeTargets`, `GetMorphTargets`,
   `GetModsDriving`, plus the value getters (`GetValue`, `GetApplied`,
   `GetContribution`, `GetCombinedMorph`). *C++ (SKSE plugins)*: copy
-  [src/API/SLIFNG_API.h](src/API/SLIFNG_API.h) into your project and exchange
-  the interface over SKSE messaging (same handshake pattern as skee).
+  [src/API/SLIFNG_API.h](src/API/SLIFNG_API.h) into your project and fetch
+  the interface through the `SLIFNG_GetQueryInterface` export
+  (`GetModuleHandleA` + `GetProcAddress`; older builds: SKSE messaging).
   Read-only by design; both mirrors answer from the same core, so they can
   never disagree.
 - **`SLIFNG_Settled`**, a mod event fired when a target *stops* changing -
