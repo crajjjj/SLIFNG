@@ -524,7 +524,7 @@ namespace SLIFNG::Skee
 		logger::error("[Skee]   RaceMenu registers its listener early, so had it loaded at all we");
 		logger::error("[Skee]   would have reached it. This is not a load-order or timing problem.");
 		logger::error("[Skee]   READ THIS FILE - skee logs its own reason for refusing to load:");
-		logger::error("[Skee]     Documents\My Games\Skyrim Special Edition\SKSE\skee64.log");
+		logger::error("[Skee]     Documents\\My Games\\Skyrim Special Edition\\SKSE\\skee64.log");
 		logger::error("[Skee]   It names the cause outright: 'unsupported runtime version', a missing");
 		logger::error("[Skee]   SKSE interface, or an interface too old (i.e. SKSE needs updating).");
 		logger::error("[Skee]   If that file does NOT exist, SKSE never loaded skee64.dll: check it");

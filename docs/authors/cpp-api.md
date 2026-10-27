@@ -2,7 +2,7 @@
 
 The C++ query interface is the native mirror of the [Query API](query-api.md): the same read surface, served from the same core inside `BodyInflationNG.dll`, so a C++ caller and a Papyrus caller can never get different answers. It is **read-only by design**. Writes go through the pinned Papyrus surface (`SLIF_Main.inflate` / `SLIF_Morph.morph`, see the [Write API](write-api.md)), because that is the one entry point every SLIF consumer shares.
 
-There is no library to link, no import `.lib`, and nothing to include from SLIF NG's sources. The whole integration is: copy one header, send one SKSE message once, keep the pointer it hands back.
+There is no library to link, no import `.lib`, and nothing to include from SLIF NG's sources. The whole integration is: copy one header, look up one exported function once, keep the pointer it hands back.
 
 ## What you need
 
@@ -15,7 +15,7 @@ It depends on nothing but `<cstdint>` and a forward declaration of `RE::Actor`, 
 
 ## The handshake
 
-SLIF NG hands out its interface over SKSE plugin messaging, the same exchange pattern RaceMenu uses for skee. You dispatch an `InterfaceExchangeMessage` addressed to `"SLIFNG"`, and SLIF NG fills in the `query` pointer before the call returns.
+`BodyInflationNG.dll` exports one plain C function, `SLIFNG_GetQueryInterface`, that returns the interface. You find the DLL with `GetModuleHandleA`, look the function up with `GetProcAddress` and call it. Nothing is linked, so when SLIF NG is not installed `GetModuleHandleA` returns null and your plugin carries on without it. The export exists since SLIF NG 0.4.18; for older builds see [Older SLIF NG: SKSE messaging](#older-slif-ng-skse-messaging).
 
 ```cpp
 #include "SLIFNG_API.h"
@@ -26,20 +26,17 @@ namespace
 
     void OnSKSEMessage(SKSE::MessagingInterface::Message* a_msg)
     {
-        if (a_msg->type != SKSE::MessagingInterface::kPostPostLoad) {
+        if (a_msg->type != SKSE::MessagingInterface::kPostLoad) {
             return;
         }
-        SLIFNG_API::InterfaceExchangeMessage msg;
-        auto* messaging = SKSE::GetMessagingInterface();
-        messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
-            &msg, sizeof(msg), "SLIFNG");
-        if (!msg.query) {
-            // SKSE can lose a message addressed by name (see "Fallback" below);
-            // a broadcast reaches SLIF NG without that lookup.
-            messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
-                &msg, sizeof(msg), nullptr);
+        if (auto* dll = GetModuleHandleA(SLIFNG_API::kModuleName)) {
+            auto get = reinterpret_cast<SLIFNG_API::GetQueryInterfaceFn>(
+                GetProcAddress(dll, SLIFNG_API::kGetQueryInterfaceExport));
+            if (get) {
+                g_slif = get();
+            }
         }
-        g_slif = msg.query;  // stays nullptr when SLIF NG is not installed
+        // g_slif stays nullptr when SLIF NG is not installed
     }
 }
 
@@ -51,21 +48,48 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 }
 ```
 
-Four details carry the whole thing:
+Three details carry the whole thing:
 
-- **When.** Dispatch from your SKSE message handler at `kPostPostLoad` or `kDataLoaded`, not from your own `SKSEPlugin_Load` and not at `kPostLoad`. SLIF NG subscribes in its own `kPostLoad` handler, the first moment every plugin DLL has loaded, so it is listening from `kPostPostLoad` on.
-- **Who.** `"SLIFNG"` is the plugin's declared SKSE name, the one in its version data. It is not the DLL file name (`BodyInflationNG.dll`) and not the ESP.
-- **Fallback.** When the addressed dispatch leaves `query` null, send the same message once more with no receiver (`nullptr`). SKSE turns a receiver name into a plugin handle by counting the plugins that loaded, but it numbers the handles before loading, so a DLL that SKSE accepted and then failed to load shifts every name after it by one. When that DLL sorts before `BodyInflationNG.dll`, a message addressed to `"SLIFNG"` goes to the wrong handle and SKSE logs `Failed to dispatch message to SLIFNG`. A broadcast skips the name lookup. Other plugins receive it too and ignore it, since the message type is SLIF NG's own.
-- **Keep it.** Do the exchange once and store the pointer. It points at a static object inside the DLL and is valid for the rest of the process. There is nothing to release.
+- **When.** Any time from `kPostLoad` on (`kPostPostLoad` and `kDataLoaded` work too). By `kPostLoad` SKSE has loaded every plugin DLL. Not from your own `SKSEPlugin_Load`: SKSE loads DLLs one after another in file-name order, so if yours sorts before `BodyInflationNG.dll`, SLIF NG is not loaded yet and `GetModuleHandleA` returns null.
+- **Which DLL.** `kModuleName` is `"BodyInflationNG.dll"`, the file SLIF NG ships. `GetModuleHandleA` only finds a DLL that SKSE loaded successfully, so a SLIF NG that failed to load reads as absent, which is what you want.
+- **Keep it.** Call once and store the pointer. It points at a static object inside the DLL and is valid for the rest of the process. There is nothing to release.
 
 !!! tip "Did it work?"
-    SLIF NG logs every exchange it answers. With the handshake in place, `SLIFNG.log` (in the SKSE log folder, next to your own plugin's log) contains:
+    SLIF NG logs every handshake it answers. `SLIFNG.log` (in the SKSE log folder, next to your own plugin's log) contains:
 
     ```
-    [API] query interface v2 handed to 'YourPluginName'
+    [API] query interface v2 handed out through SLIFNG_GetQueryInterface
     ```
 
-    where the name is normally your plugin's declared name (after the fallback broadcast in the case above, SKSE may report another plugin's name, which is harmless). If `msg.query` is null with SLIF NG installed **and** that line is missing, the message never arrived: see [Troubleshooting](#troubleshooting).
+    If `g_slif` is null with SLIF NG installed **and** that line is missing, see [Troubleshooting](#troubleshooting).
+
+### Older SLIF NG: SKSE messaging
+
+SLIF NG 0.4.17 and older have no export, so `GetProcAddress` returns null there. Those builds, and every newer one, also hand out the interface over SKSE plugin messaging, the exchange RaceMenu uses for skee: you dispatch an `InterfaceExchangeMessage` and SLIF NG fills in its `query` pointer before the call returns.
+
+```cpp
+// at kPostPostLoad or later, when the export was not found
+SLIFNG_API::InterfaceExchangeMessage msg;
+auto* messaging = SKSE::GetMessagingInterface();
+messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
+    &msg, sizeof(msg), "SLIFNG");
+if (!msg.query && GetModuleHandleA(SLIFNG_API::kModuleName)) {
+    // a broadcast (no receiver) skips SKSE's name lookup, see below
+    messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
+        &msg, sizeof(msg), nullptr);
+}
+g_slif = msg.query;
+```
+
+`"SLIFNG"` is the plugin's declared SKSE name, not the DLL file name and not the ESP. SLIF NG writes `[API] query interface v2 handed to '<sender>'` for every message it answers.
+
+Prefer the export when you can, because SKSE does not always deliver this message:
+
+- **SKSE 2.1.1 and older** (SE 1.5.97 and the first AE builds) **with SLIF NG 0.4.17 or older.** To hear from your plugin, SLIF NG has to subscribe to it. Those builds subscribed while their own DLL was loading, and these SKSE versions only had listener slots for the DLLs loaded so far plus at most five spares. A plugin whose file name sorts further after `BodyInflationNG.dll` was never subscribed, so no message from it reaches SLIF NG, broadcast or not. SLIF NG 0.4.18 subscribes at `kPostLoad`, after every DLL has loaded.
+- **SKSE 2.1.2 and newer, when a DLL fails to load.** SKSE numbers the plugins when it scans the folder, drops any DLL that then fails to load, and looks a receiver name up by its position in the shortened list. Every name after the failed DLL resolves one short. If the failed DLL sorts before `BodyInflationNG.dll`, `"SLIFNG"` points at the wrong plugin: the dispatch fails and CommonLib writes `Failed to dispatch message to SLIFNG` to **your** plugin's log, or, when the wrong plugin happens to listen to you, it receives the message and nothing is logged at all. Either way `query` stays null. The broadcast skips the name lookup and goes to every plugin listening to you. The others get a message type they do not know; the `GetModuleHandleA` check keeps the broadcast from going out when SLIF NG is not installed. The sender name SLIF NG logs is looked up the same shifted way, so it can be another plugin's name.
+- **SKSE 2.1.2 and newer, the last DLLs in file order.** When some DLLs fail to load, SKSE finds no sender name for that many plugins at the end of the file-name order, and refuses every dispatch from them, broadcast included. Only the export reaches SLIF NG from there.
+
+To find a DLL that failed to load, read the `loaded correctly (handle N)` lines in `skse64.log`: a gap in the handle numbers is a DLL that failed during load. A `couldn't load plugin` line alone does not prove it, because SKSE also writes that line while scanning the folder, before any numbers are given out.
 
 ## Reading values
 
@@ -152,7 +176,7 @@ if (g_slif && g_slif->Version() >= 2) {
 The cast is sound because the implementation derives the whole chain by single inheritance, so the pointer value is identical and `Version()` is the proof. Two rules:
 
 - **Gate on `>=`, never on `==`.** The number is a monotonic "newest served", not a breaking-change counter. A consumer that wrote `Version() == 1` locks itself out of every later build.
-- **Never add a field to `InterfaceExchangeMessage`.** The exchange struct is frozen at one pointer and the handshake is an exact size match (`sizeof(msg)`), so a dispatch from any header version is accepted by any SLIF NG. A bigger struct would be rejected, and you would read SLIF NG as absent.
+- **Never add a field to `InterfaceExchangeMessage`.** The messaging exchange struct is frozen at one pointer and that handshake is an exact size match (`sizeof(msg)`), so a dispatch from any header version is accepted by any SLIF NG. A bigger struct would be rejected, and you would read SLIF NG as absent.
 
 ## What is not in C++
 
@@ -199,10 +223,11 @@ It fires once per target when that target stops changing on an actor, so filter 
 
 | Symptom | Cause |
 |---|---|
-| `msg.query` is null, SLIF NG installed, no `handed to` line in `SLIFNG.log` | Dispatched before `kPostPostLoad` (from your own `SKSEPlugin_Load`, or at `kPostLoad`), or the receiver is not `"SLIFNG"`, or `sizeof(msg)` is not one pointer because the struct was extended |
-| `Failed to dispatch message to SLIFNG` in your own log, SLIF NG 0.4.17 or older, Skyrim SE 1.5.97 | Those builds subscribed while their own DLL loaded, and SKSE 2.0.x only had room in its listener table for the DLLs loaded so far plus five. A DLL whose file name sorts more than five plugins after `BodyInflationNG.dll` was never reached. Fixed in 0.4.18 |
-| `Failed to dispatch message to SLIFNG` in your own log, Skyrim AE | A DLL that sorts before `BodyInflationNG.dll` failed to load (look for `couldn't load plugin` or `reported as incompatible during load` in `skse64.log`), which shifts SKSE's name lookup. The broadcast fallback in [the handshake](#the-handshake) reaches SLIF NG anyway |
-| `msg.query` is null and `SLIFNG.log` does not exist | SLIF NG's DLL is not running (plain SLIF SE, or the plugin failed to load) |
+| `GetModuleHandleA` returns null, `SLIFNG.log` exists | Called from your own `SKSEPlugin_Load` while your DLL sorts before `BodyInflationNG.dll`. Move the call to `kPostLoad` or later |
+| `GetModuleHandleA` returns null and `SLIFNG.log` does not exist | SLIF NG's DLL is not running (plain SLIF SE, or the plugin failed to load) |
+| `GetProcAddress` returns null | SLIF NG 0.4.17 or older, which has no export. Fall back to [SKSE messaging](#older-slif-ng-skse-messaging) |
+| Messaging: `msg.query` is null, SLIF NG installed, no `handed to` line in `SLIFNG.log` | Dispatched before `kPostPostLoad`, or the receiver is not `"SLIFNG"`, or `sizeof(msg)` is not one pointer because the struct was extended, or SKSE did not deliver it (the three cases under [Older SLIF NG](#older-slif-ng-skse-messaging)). Use the export |
+| Messaging: `Failed to dispatch message to SLIFNG` in your own log | CommonLib's warning when SKSE delivered the message to nobody. See [Older SLIF NG](#older-slif-ng-skse-messaging) for why; the export is not affected |
 | `GetValue` always returns your default | The mod name or target is spelled differently from what the writer sent (check the `[API] Inflate(... mod=..., key=...)` lines), or the actor is not tracked, or the key is dead (`slif_breast01` style) |
 | Crash calling `HasTarget` | Cast to `IQueryInterface2` without checking `Version() >= 2` on an older SLIF NG |
 | Value differs from the Papyrus `GetValue` | It cannot, both run the same core. Compare like with like: a mod's own row and `"All Mods"` differ by design |

@@ -85,26 +85,31 @@ Full guide, with a worked example reading another mod's row:
 
 `cpp/SLIFNG_API.h` is a **reference, not a library**: no `.lib`, no import library, and it
 depends on nothing but a forward declaration of `RE::Actor`, so copying it into your project
-adds zero build-time dependency. Fetch the interface over SKSE messaging at
-`kPostPostLoad` or later:
+adds zero build-time dependency. Fetch the interface through its C export at `kPostLoad` or
+later (SLIF NG 0.4.18+):
 
 ```cpp
-SLIFNG_API::InterfaceExchangeMessage msg;
-auto* messaging = SKSE::GetMessagingInterface();
-messaging->Dispatch(
-    SLIFNG_API::InterfaceExchangeMessage::kMessageType, &msg, sizeof(msg), "SLIFNG");
-if (!msg.query) {                      // SKSE can misroute a message addressed by name;
-    messaging->Dispatch(               // a broadcast still reaches SLIF NG
-        SLIFNG_API::InterfaceExchangeMessage::kMessageType, &msg, sizeof(msg), nullptr);
+SLIFNG_API::IQueryInterface1* slif = nullptr;
+if (auto* dll = GetModuleHandleA(SLIFNG_API::kModuleName)) {    // null = not installed
+    auto get = reinterpret_cast<SLIFNG_API::GetQueryInterfaceFn>(
+        GetProcAddress(dll, SLIFNG_API::kGetQueryInterfaceExport));
+    if (get) {                         // null = SLIF NG 0.4.17 or older
+        slif = get();
+    }
 }
-if (msg.query) {                       // null = SLIF NG not installed
-    const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
+if (slif) {
+    const float belly = slif->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 }
-if (msg.query && msg.query->Version() >= 2) {   // a newer interface: ask, then cast
-    auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+if (slif && slif->Version() >= 2) {    // a newer interface: ask, then cast
+    auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(slif);
     const bool hasWeight = q2->HasTarget(actor, "region:weight");
 }
 ```
+
+SLIF NG 0.4.17 and older have no export and hand the interface out over SKSE messaging
+instead (`InterfaceExchangeMessage`, also still served by newer builds). SKSE does not always
+deliver that message, so prefer the export; the C++ API page covers the messaging fallback
+and when it fails.
 
 The interface is **read-only by design** - mutations go through the Papyrus surface above,
 which is the one pinned, SLIF-compatible entry point. The returned pointer is valid for the
