@@ -104,6 +104,17 @@ namespace SLIFNG::APIServer
 		// Sender nullptr = listen to dispatches from EVERY plugin; the message
 		// type filters ours. SKSE's own lifecycle messages come from "SKSE"
 		// with small integer types, so they fall through harmlessly.
+		//
+		// WHEN matters. "Every plugin" is a one-time walk over SKSE's listener
+		// table as it stands right now. SKSE 2.0.x (SE 1.5.97) grows
+		// that table as DLLs load in file-name order, so a call from
+		// SKSEPluginLoad covers only the DLLs before us plus 5 spare slots, and
+		// BodyInflationNG.dll sorts early: every consumer past that was never
+		// subscribed, and its targeted dispatch to "SLIFNG" failed in SKSE
+		// ("Failed to dispatch message to SLIFNG"). At kPostLoad every DLL has
+		// loaded and the table is full on every runtime. Call it once: SKSE's
+		// duplicate skip in this walk desyncs its own index, so a second walk
+		// can leave one plugin out.
 		if (SKSE::GetMessagingInterface()->RegisterListener(nullptr, OnPluginMessage)) {
 			logger::info("[API] inter-plugin query listener registered (dispatch "
 						 "InterfaceExchangeMessage to \"SLIFNG\")");

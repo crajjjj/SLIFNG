@@ -105,6 +105,10 @@ namespace
 	void OnMessage(MessagingInterface::Message* a_msg)
 	{
 		switch (a_msg->type) {
+		case MessagingInterface::kPostLoad:
+			// Every DLL is loaded, so the all-senders API listener reaches them all.
+			SLIFNG::APIServer::Install();
+			break;
 		case MessagingInterface::kPostPostLoad:
 			// skee publishes its interface map by now.
 			SLIFNG::Skee::Initialize();
@@ -157,7 +161,6 @@ SKSEPluginLoad(const LoadInterface* skse)
 	Init(skse);
 	InitializeSerialization();
 	InitializePapyrus();
-	SLIFNG::APIServer::Install();
 	if (!GetMessagingInterface()->RegisterListener(OnMessage)) {
 		report_and_fail("Failed to register messaging listener.");
 	}

@@ -90,8 +90,13 @@ adds zero build-time dependency. Fetch the interface over SKSE messaging at
 
 ```cpp
 SLIFNG_API::InterfaceExchangeMessage msg;
-SKSE::GetMessagingInterface()->Dispatch(
+auto* messaging = SKSE::GetMessagingInterface();
+messaging->Dispatch(
     SLIFNG_API::InterfaceExchangeMessage::kMessageType, &msg, sizeof(msg), "SLIFNG");
+if (!msg.query) {                      // SKSE can misroute a message addressed by name;
+    messaging->Dispatch(               // a broadcast still reaches SLIF NG
+        SLIFNG_API::InterfaceExchangeMessage::kMessageType, &msg, sizeof(msg), nullptr);
+}
 if (msg.query) {                       // null = SLIF NG not installed
     const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 }
