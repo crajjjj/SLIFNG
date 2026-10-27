@@ -54,7 +54,7 @@ src/                      the SKSE plugin
   Ramp.{h,cpp}            incremental inflation (the native drain-loop replacement)
   Papyrus.cpp             the native surface SLIFNG.psc binds to
   Query.h                 the shared read core (Papyrus + C++ answers)
-  APIServer.cpp           serves API/SLIFNG_API.h over SKSE messaging
+  APIServer.cpp           serves API/SLIFNG_API.h (C export + SKSE messaging)
   API/SLIFNG_API.h        the public header other plugins copy
 dist/Core/                the shippable mod (ESP, SEQ, scripts, DLL, profiles)
   Interface/Translations/ the MCM's strings, one file per language

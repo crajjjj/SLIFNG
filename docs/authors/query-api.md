@@ -204,7 +204,7 @@ So offset math stays in the consumer. What SLIF NG guarantees is that the three 
 
 ## C++ (other SKSE plugins)
 
-The same read surface is served to SKSE plugins over SKSE messaging, with no link-time dependency and the same semantics as above. It has its own page: [C++ API (SKSE plugins)](cpp-api.md), covering the handshake, reading a specific mod's row, version gating and sinking `SLIFNG_Settled` natively.
+The same read surface is served to SKSE plugins through a plain C export of `BodyInflationNG.dll`, with no link-time dependency and the same semantics as above. It has its own page: [C++ API (SKSE plugins)](cpp-api.md), covering the handshake, reading a specific mod's row, version gating and sinking `SLIFNG_Settled` natively.
 
 ## Legacy StorageUtil mirror
 

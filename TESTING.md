@@ -264,6 +264,24 @@ command: SLIF NG must be back, listed as "SLIF NG". The Papyrus log shows
 Then on 0.4.16, run the same `setstage` once more: SLIF NG must come back
 within a minute of the reset.
 
+## T9 - The C++ handshake (0.4.18)
+
+0.4.18 adds the `SLIFNG_GetQueryInterface` export, moves the messaging
+listener to `kPostLoad`, and retries the skee request as a broadcast. Without a
+consumer plugin, check the log after a plain launch:
+
+- `[API] inter-plugin query listener registered` appears exactly once.
+- `[Skee] BodyMorph interface v...` appears as in T0: the skee request still
+  lands.
+- The DLL lists the export: `llvm-objdump -p BodyInflationNG.dll` shows
+  `SLIFNG_GetQueryInterface` next to the three `SKSEPlugin_*` exports.
+
+With a consumer plugin installed (any SKSE DLL that reads SLIF NG from C++),
+`SLIFNG.log` shows `[API] query interface v2 handed out through
+SLIFNG_GetQueryInterface` when it uses the export, or `handed to '<name>'` when
+it uses messaging, and the consumer reads non-default values on an inflated
+actor.
+
 ## Other console tools
 
 ```

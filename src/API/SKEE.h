@@ -400,11 +400,23 @@ namespace SKEE
     inline IInterfaceMap* GetInterfaceMap()
     {
         InterfaceExchangeMessage msg;
-        SKSE::GetMessagingInterface()->Dispatch(
+        auto* messaging = SKSE::GetMessagingInterface();
+        messaging->Dispatch(
             InterfaceExchangeMessage::kMessage_ExchangeInterface,
             &msg,
             sizeof(InterfaceExchangeMessage*),
             "skee");  // receiver id is lowercase in RaceMenu/skee
+        if (!msg.interfaceMap) {
+            // SKSE 2.1.2+ turns a receiver name into its position in the list of
+            // loaded DLLs, and a DLL that failed to load shifts every name after it
+            // by one, so "skee" can miss. skee listens to every sender (skee64
+            // main.cpp, RegisterListener(nullptr)), so a broadcast still reaches it.
+            messaging->Dispatch(
+                InterfaceExchangeMessage::kMessage_ExchangeInterface,
+                &msg,
+                sizeof(InterfaceExchangeMessage*),
+                nullptr);
+        }
         return msg.interfaceMap;
     }
 

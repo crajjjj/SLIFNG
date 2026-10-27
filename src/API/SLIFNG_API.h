@@ -8,31 +8,29 @@
 // use the Papyrus surface (SLIF_Main.inflate / SLIF_Morph.morph), which is the
 // pinned SLIF-compatible entry point for all mutations.
 //
-// USAGE (from your plugin, at SKSE::MessagingInterface::kPostPostLoad or
-// later, so SLIF NG has registered its listener):
+// USAGE (from your plugin, at SKSE::MessagingInterface::kPostLoad or later,
+// once every SKSE DLL has loaded; SLIF NG 0.4.18 and later):
 //
 //   #include "SLIFNG_API.h"
 //
-//   SLIFNG_API::InterfaceExchangeMessage msg;
-//   SKSE::GetMessagingInterface()->Dispatch(
-//       SLIFNG_API::InterfaceExchangeMessage::kMessageType,
-//       &msg, sizeof(msg), "SLIFNG");
-//   if (!msg.query) {  // SKSE can misroute a message addressed by name; a
-//                      // broadcast (no receiver) still reaches SLIF NG
-//       SKSE::GetMessagingInterface()->Dispatch(
-//           SLIFNG_API::InterfaceExchangeMessage::kMessageType,
-//           &msg, sizeof(msg), nullptr);
+//   SLIFNG_API::IQueryInterface1* slif = nullptr;
+//   if (auto* dll = GetModuleHandleA(SLIFNG_API::kModuleName)) {  // null: not installed
+//       auto get = reinterpret_cast<SLIFNG_API::GetQueryInterfaceFn>(
+//           GetProcAddress(dll, SLIFNG_API::kGetQueryInterfaceExport));
+//       if (get) {  // null: SLIF NG 0.4.17 or older, see InterfaceExchangeMessage
+//           slif = get();
+//       }
 //   }
-//   if (msg.query) {
-//       const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
+//   if (slif) {
+//       const float belly = slif->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 //   }
 //   // a newer interface: ask, then cast (see InterfaceExchangeMessage below)
-//   if (msg.query && msg.query->Version() >= 2) {
-//       auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(msg.query);
+//   if (slif && slif->Version() >= 2) {
+//       auto* q2 = static_cast<SLIFNG_API::IQueryInterface2*>(slif);
 //       const bool hasWeight = q2->HasTarget(actor, "region:weight");
 //   }
 //
-// msg.query stays null when SLIF NG is not installed - no link-time coupling.
+// The pointer stays null when SLIF NG is not installed - no link-time coupling.
 // The pointer is valid for the lifetime of the game process; every call is
 // thread-safe (the store is mutex-guarded), though RE::Actor* arguments must
 // of course be valid when you pass them.
@@ -111,6 +109,31 @@ namespace SLIFNG_API
 		virtual bool HasTarget(RE::Actor* a_actor, const char* a_target) const = 0;
 	};
 
+	// The handshake (0.4.18): a plain C export of BodyInflationNG.dll that
+	// returns the query interface. Resolve it at runtime as in USAGE above;
+	// never link against it. It exists because SKSE messaging cannot be made
+	// reliable from SLIF NG's side: SKSE 2.1.2+ resolves a receiver name to a
+	// list position that a DLL failing to load shifts by one, and on the same
+	// builds the last DLLs in file order cannot dispatch at all. The export
+	// works on every runtime, from kPostLoad on.
+	inline constexpr const char* kModuleName = "BodyInflationNG.dll";
+	inline constexpr const char* kGetQueryInterfaceExport = "SLIFNG_GetQueryInterface";
+	using GetQueryInterfaceFn = IQueryInterface1* (*)();
+
+	// The older handshake over SKSE messaging, still served for SLIF NG 0.4.17
+	// and older (and for consumers already written against it). Dispatch at
+	// kPostPostLoad or later; when `query` stays null, send it again with no
+	// receiver (nullptr), which skips SKSE's name lookup:
+	//
+	//   SLIFNG_API::InterfaceExchangeMessage msg;
+	//   auto* messaging = SKSE::GetMessagingInterface();
+	//   messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
+	//       &msg, sizeof(msg), "SLIFNG");
+	//   if (!msg.query && GetModuleHandleA(SLIFNG_API::kModuleName)) {
+	//       messaging->Dispatch(SLIFNG_API::InterfaceExchangeMessage::kMessageType,
+	//           &msg, sizeof(msg), nullptr);
+	//   }
+	//
 	// The exchange struct NEVER grows: SLIF NG 0.3.0 shipped a server that
 	// size-checks the dispatch exactly, so adding a field here would make that
 	// build reject the message and hand a consumer nothing at all. Reach a newer
