@@ -17,6 +17,12 @@
 //   SKSE::GetMessagingInterface()->Dispatch(
 //       SLIFNG_API::InterfaceExchangeMessage::kMessageType,
 //       &msg, sizeof(msg), "SLIFNG");
+//   if (!msg.query) {  // SKSE can misroute a message addressed by name; a
+//                      // broadcast (no receiver) still reaches SLIF NG
+//       SKSE::GetMessagingInterface()->Dispatch(
+//           SLIFNG_API::InterfaceExchangeMessage::kMessageType,
+//           &msg, sizeof(msg), nullptr);
+//   }
 //   if (msg.query) {
 //       const float belly = msg.query->GetValue(actor, "All Mods", "slif_belly", 1.0f);
 //   }

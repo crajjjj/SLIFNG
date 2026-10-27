@@ -4,7 +4,7 @@
 
 namespace SLIFNG::APIServer
 {
-	// Register the plugin-to-plugin message listener. Call once from
-	// SKSEPluginLoad, after SKSE::Init.
+	// Register the plugin-to-plugin message listener. Call ONCE, from the
+	// kPostLoad handler (not SKSEPluginLoad - see APIServer.cpp for why).
 	void Install();
 }
