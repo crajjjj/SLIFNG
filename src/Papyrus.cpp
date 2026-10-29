@@ -109,7 +109,9 @@ namespace SLIFNG::Papyrus
 			// the reference's RemoveNodeScale was instant too). Unloaded actors
 			// skip the ramp: nobody is watching, and the 3D-load hook applies
 			// the final value when they stream in.
-			if (ledger.GetGradual() && a_actor->Is3DLoaded() &&
+			// A ramp needs a positive step to ever arrive; 0 or a negative
+			// increment applies instantly instead of never.
+			if (ledger.GetGradual() && a_increment > 0.0f && a_actor->Is3DLoaded() &&
 				!ledger.IsHidden(a_actor->GetFormID(), key)) {
 				Ramp::Begin(a_actor, key, before, a_increment);
 				return true;
@@ -152,7 +154,7 @@ namespace SLIFNG::Papyrus
 			// full UpdateModelWeight per 0.01 step, on the VM) done natively:
 			// the display override lives in slider space and Tick steps it
 			// toward the slider fold.
-			if (ledger.GetGradual() && a_actor->Is3DLoaded()) {
+			if (ledger.GetGradual() && a_increment > 0.0f && a_actor->Is3DLoaded()) {
 				Ramp::Begin(a_actor, target, before, a_increment);
 				return true;
 			}
@@ -439,7 +441,7 @@ namespace SLIFNG::Papyrus
 					continue;
 				}
 				++changed;
-				if (gradual && !ledger.IsHidden(formID, key)) {
+				if (gradual && increment > 0.0f && !ledger.IsHidden(formID, key)) {
 					Ramp::Begin(a_actor, key, before, increment);
 				} else if (std::find(batch.begin(), batch.end(), key) == batch.end()) {
 					batch.push_back(key);
@@ -490,7 +492,7 @@ namespace SLIFNG::Papyrus
 					continue;
 				}
 				++changed;
-				if (gradual) {
+				if (gradual && increment > 0.0f) {
 					Ramp::Begin(a_actor, target, before, increment);
 				} else if (std::find(batch.begin(), batch.end(), target) == batch.end()) {
 					batch.push_back(target);

@@ -297,16 +297,24 @@ actor.
 re-adding them. From the console, on a nude player:
 
 ```
+slifng inflate slif_belly 1.5
 slifng morph PregnancyBelly 0.6
 slifng morph BreastsFantasy 0.4
-slifng morphreset PregnancyBelly   belly flat, breasts stay
-slifng morphreset                  breasts flat too (whole row)
-slifng dumpp                       no ConsoleTest rows left
+slifng morphreset PregnancyBelly   that slider back down, breasts stay
+slifng morphreset                  breasts down too; the node belly stays
+slifng dumpp                       ConsoleTest morph rows at 0, slif_belly 1.5
 ```
 
-No `resetActor not found on object slif_morph` line in the Papyrus log. With
-Bimbos installed and its "Use SLIF for morphs" on, press Reapply Morphs to
-Actors in its MCM several times: the body must stay the same size.
+With incremental inflation on (the default) each reset ramps down instead of
+snapping; with it off, it snaps. No `resetActor not found on object
+slif_morph` line in the Papyrus log.
+
+With Bimbos installed and its "Use SLIF for morphs" on, press Reapply Morphs
+to Actors in its MCM several times, with incremental inflation on: the body
+must neither grow nor dip flat and regrow between presses.
+
+Increment 0 (0.4.19): a write with `increment = 0.0` must apply instantly with
+incremental inflation on, not stay unapplied.
 
 ## Other console tools
 

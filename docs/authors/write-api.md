@@ -122,10 +122,10 @@ Function resetActor(Actor kActor, string modName = "All Mods", string morphName 
 
 `morphName` is a pass-through BodySlide slider name — no vocabulary, and its original case reaches skee. The cross-mod direct total is mirrored into StorageUtil as `slif_<morphName>` for legacy readers.
 
-`resetActor` is present for compatibility (Bimbos of Skyrim clears its morphs with it). It unregisters one morph, or the mod's whole row when `morphName == ""`. The reference's `value` argument is ignored, as on `SLIF_Main.resetActor`: a morph is neutral at `0.0`, which is what callers send.
+`resetActor` is present for compatibility (Bimbos of Skyrim clears its morphs with it). It writes `value` into one of your morphs, or into every one when `morphName == ""`, exactly as the reference did; your node inflation is untouched. With incremental inflation on, a reset ramps like any other change, so a reset followed at once by new values retargets the ramp instead of flattening the body first.
 
-!!! warning "`SLIF_Morph.unregisterActor` and `resetActor` with no name clear your node inflation too"
-    The reference cleared only the morph side. One ledger row per mod holds both here, so these drop everything you drive on that actor. Use `unregisterMorph` if you want one slider gone and the rest kept.
+!!! warning "`SLIF_Morph.unregisterActor` clears your node inflation too"
+    The reference cleared only the morph side. One ledger row per mod holds both here, so this drops everything you drive on that actor. Use `unregisterMorph` if you want one slider gone and the rest kept.
 
 ## Semantic regions
 

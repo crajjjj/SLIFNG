@@ -17,10 +17,14 @@
 //    second of game time, however many body rebuilds that time is spread over.
 //  * The goal is re-read every tick, so a consumer that changes its mind
 //    mid-ramp simply retargets the ramp - no queue to flush.
-//  * hideNode stays instant (a chastity belt snaps shut), unregister stays
-//    instant (the reference's RemoveNodeScale was instant too), and direct
-//    morphs stay instant; sliders DERIVED from a ramping node follow the ramp
-//    through the display override.
+//  * Direct morphs ramp too, in slider space (their display override sits on
+//    the "morph:<slider>" target); sliders DERIVED from a ramping node follow
+//    the node's ramp through its display override.
+//  * hideNode stays instant (a chastity belt snaps shut) and unregister stays
+//    instant (the reference's RemoveNodeScale was instant too). A write of the
+//    neutral value is NOT an unregister: it ramps like any other change.
+//  * A request with no positive increment applies instantly (the callers
+//    check), since a ramp of step 0 would never arrive.
 //  * Ramps are session state: a save mid-ramp reloads at the fold, which is
 //    where the ramp was headed anyway.
 //

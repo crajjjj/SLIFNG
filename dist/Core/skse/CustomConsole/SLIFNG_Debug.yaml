@@ -80,7 +80,7 @@ subs:
       - name: slider
         type: string
         default: all
-        help: One slider to reset, or "all" for the mod's whole row
+        help: One slider to reset, or "all" for every slider of the mod
       - name: mod
         type: string
         default: ConsoleTest

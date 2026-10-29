@@ -146,9 +146,10 @@ Event OnSLIF_unregisterMorph(Form Sender, String modName, String morphName)
 	SLIF_Morph.unregisterMorph(Sender as Actor, morphName, modName)
 EndEvent
 
-; resetMorphActor: a named morph resets that morph; an empty name means "all of
-; this mod's morphs", which for us is that mod's whole row on the actor.
-Event OnSLIF_resetMorphActor(Form Sender, String modName, String morphName = "", float value = 1.0, String oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0)
+; resetMorphActor: a named morph resets that morph, an empty name all of this
+; mod's morphs, each written to `value`. Its default is the MORPH neutral 0.0,
+; not the node event's 1.0.
+Event OnSLIF_resetMorphActor(Form Sender, String modName, String morphName = "", float value = 0.0, String oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0)
 	SLIF_Morph.resetActor(Sender as Actor, modName, morphName, value, oldModName, minimum, maximum, multiplier, increment)
 EndEvent
 
