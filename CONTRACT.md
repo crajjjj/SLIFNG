@@ -102,6 +102,7 @@ Routing for the rest, where SLIF NG differs from the reference:
 | `SLIF_morph`, `SLIF_unregisterMorph`, `SLIF_hideNode`, `SLIF_showNode`, `SLIF_resetActor` | the matching global | Identical behaviour |
 | `SLIF_registerActor`, `SLIF_updateActor`, the `set*` family | `SLIFNG.UpdateActorBounds` | The reference used these to create a row and seed bounds before any value arrived; SLIF NG creates the row on first write, so only the bounds half has work to do. Per-ACTOR, since every one of these events carries a `Sender` - `UpdateModBounds` is the load-order-wide form behind `updateActorList` and would move everyone's bounds |
 | `SLIF_unregisterMorphActor` | `unregisterActor` | **Wider than the reference**, which cleared only the morph side. One row per mod holds both, and leaving half the inflation stuck is the worse reading of "stop inflating this actor" |
+| `SLIF_resetMorphActor` | `SLIF_Morph.resetActor` | A named morph is unregistered; an empty name clears the mod's whole row, wider than the reference in the same way as `SLIF_unregisterMorphActor` |
 | `SLIF_registerMorphActor`, `SLIF_updateMorphActor`, `SLIF_setMorphDefaultValues` | no-op | Morph bounds arrive with the value on `SLIF_Morph.morph`, so pre-registration has nothing left to do. Registered so the sender is not left guessing |
 
 ## 3. Direct global calls (arity baked into caller `.pex` — must match EXACTLY)
@@ -171,6 +172,14 @@ Float Function GetValue(Actor kActor, string modName, string morphName, float de
 Float Function GetMinValue(Actor kActor, string modName, string morphName, float default = 0.0) Global
 Float Function GetMaxValue(Actor kActor, string modName, string morphName, float default = 100.0) Global
 ; caller: Sexlab Survival
+
+; --- added 2026-10-29 (0.4.19), a consumer outside the survey load order ------
+
+Function resetActor(Actor kActor, string modName = "All Mods", string morphName = "", float value = 0.0, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+; caller: Bimbos of Skyrim 1.9.1.4 (CC_BimboMorphHandler.clearBimboMorphs bakes
+;         (actor, "CCBimbo", "", 0.0, "", -1.0, -1.0, -1.0, -1.0), then
+;         re-adds each slider onto GetValue). Missing before 0.4.19, so the
+;         clear aborted and every re-apply stacked the morphs.
 ```
 
 `gender` and `perspective` are accepted and ignored (reference behavior for the

@@ -73,6 +73,19 @@ subs:
         type: string
         default: ConsoleTest
 
+  - name: morphreset
+    func: MResetPlayer
+    help: Old SLIF's SLIF_Morph.resetActor on the player (what Bimbos of Skyrim calls)
+    args:
+      - name: modName
+        type: string
+        default: ConsoleTest
+        help: Mod name the contributions are filed under
+      - name: morphName
+        type: string
+        default: all
+        help: One slider to reset, or "all" for the mod's whole row
+
   - name: calc
     func: Mode
     help: Calculation type - 0 Top X (default), 1 Highest, 2 Subtract+1, 3 Sqrt, 4 Average, 5 Additive
