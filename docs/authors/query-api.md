@@ -112,7 +112,7 @@ EndEvent
 - `value` — the settled value, identical to `GetApplied(sender, target)`
 - `sender` — the Actor
 
-**It is deliberately not per step.** The ramp ticks ten times a second; an event per step would be a flood, and every listener would immediately debounce it back into exactly this. This is the moment consumers actually want: *she has finished changing, act now*.
+**It is deliberately not per step.** The ramp steps up to ten times a second; an event per step would be a flood, and every listener would immediately debounce it back into exactly this. This is the moment consumers actually want: *she has finished changing, act now*.
 
 It fires **once per target**, so an actor whose belly and breasts both settle sends two events. Filter on `target` — there is no way to ask for a subset.
 
