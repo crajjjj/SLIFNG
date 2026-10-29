@@ -126,8 +126,8 @@ String Function DrivenBy(Actor kActor, String target) Global Native
 
 ; ---- SLIFNG_Settled (mod event) ---------------------------------------------
 ; Sent when a target STOPS CHANGING on an actor - a plain write, the last step
-; of a ramp, an unregister, or a magnitude change. NOT once per ramp step: at
-; ten steps a second that would be a flood, and this is the moment consumers
+; of a ramp, an unregister, or a magnitude change. NOT once per ramp step: at up
+; to ten steps a second that would be a flood, and this is the moment consumers
 ; actually want ("she has finished growing, reposition and fire").
 ;
 ;   RegisterForModEvent("SLIFNG_Settled", "OnSlifSettled")

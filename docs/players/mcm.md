@@ -36,7 +36,7 @@ It applies across mods to nodes and to sliders alike; one mod's own node and mor
 
 #### Incremental inflation
 
-On (default): bodies step toward new sizes - each mod's own increment, 0.1 by default, per quarter second - instead of snapping. Runs natively, costs the script engine nothing, pauses while the game is paused. Hiding a node (chastity belts) and unregistering stay instant. Off: everything applies instantly, old SLIF's shipped behaviour.
+On (default): bodies step toward new sizes - each mod's own increment, 0.1 by default, per quarter second - instead of snapping. Runs natively, costs the script engine nothing, pauses while the game is paused. Every step rebuilds the body, so a dense body (UBE with a body preset, for one) steps less often, in bigger steps, to keep the frame rate up; the ramp takes about as long either way. Hiding a node (chastity belts) and unregistering stay instant. Off: everything applies instantly, old SLIF's shipped behaviour.
 
 #### Inflation speed
 

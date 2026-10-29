@@ -187,6 +187,15 @@ mid-ramp returns the in-flight value, as the reference's queue did. Opening a
 menu pauses the swell. `slifng gradual false` mid-ramp must snap
 straight to the fold. Hide/unregister during a ramp stays instant.
 
+Rebuild budget (0.4.19): the frame rate must not visibly drop while the
+belly swells, on any body. Each ramp ends with one line
+`[Ramp] <id> settled after N s: K step(s), rebuild avg X ms, worst Y ms`;
+with verbose logging every step also logs `[Ramp] <id> step over N ms: ...,
+rebuild X ms, budget Y ms`. A light body (3BA, BHUNP) shows steps about
+100 ms apart; a dense one (UBE with a body preset) shows fewer, bigger steps
+whose rebuild times add up to about a tenth of the ramp. The settle time stays
+close to the unthrottled one (here about 5 s) either way.
+
 ## T6 — SGO4 adoption surface (0.3.0)
 
 ```
