@@ -77,14 +77,14 @@ subs:
     func: MResetPlayer
     help: Old SLIF's SLIF_Morph.resetActor on the player (what Bimbos of Skyrim calls)
     args:
-      - name: modName
-        type: string
-        default: ConsoleTest
-        help: Mod name the contributions are filed under
-      - name: morphName
+      - name: slider
         type: string
         default: all
         help: One slider to reset, or "all" for the mod's whole row
+      - name: mod
+        type: string
+        default: ConsoleTest
+        help: Mod name the contributions are filed under
 
   - name: calc
     func: Mode
