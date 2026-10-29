@@ -42,7 +42,7 @@ Function UPlayer(String modName) Global
 EndFunction
 
 ; The legacy morph reset, through the same 9-arg shim Bimbos of Skyrim calls.
-; "all" stands for the empty name (the whole row), which is awkward to type.
+; "all" stands for the empty name (every slider of the mod), awkward to type.
 Function MResetPlayer(String morphName, String modName) Global
 	if morphName == "all"
 		morphName = ""

@@ -102,7 +102,7 @@ Routing for the rest, where SLIF NG differs from the reference:
 | `SLIF_morph`, `SLIF_unregisterMorph`, `SLIF_hideNode`, `SLIF_showNode`, `SLIF_resetActor` | the matching global | Identical behaviour |
 | `SLIF_registerActor`, `SLIF_updateActor`, the `set*` family | `SLIFNG.UpdateActorBounds` | The reference used these to create a row and seed bounds before any value arrived; SLIF NG creates the row on first write, so only the bounds half has work to do. Per-ACTOR, since every one of these events carries a `Sender` - `UpdateModBounds` is the load-order-wide form behind `updateActorList` and would move everyone's bounds |
 | `SLIF_unregisterMorphActor` | `unregisterActor` | **Wider than the reference**, which cleared only the morph side. One row per mod holds both, and leaving half the inflation stuck is the worse reading of "stop inflating this actor" |
-| `SLIF_resetMorphActor` | `SLIF_Morph.resetActor` | A named morph is unregistered; an empty name clears the mod's whole row, wider than the reference in the same way as `SLIF_unregisterMorphActor` |
+| `SLIF_resetMorphActor` | `SLIF_Morph.resetActor` | Identical behaviour: each of the mod's morphs (or the named one) is written to `value`. The handler's own `value` default is `0.0`, the morph neutral |
 | `SLIF_registerMorphActor`, `SLIF_updateMorphActor`, `SLIF_setMorphDefaultValues` | no-op | Morph bounds arrive with the value on `SLIF_Morph.morph`, so pre-registration has nothing left to do. Registered so the sender is not left guessing |
 
 ## 3. Direct global calls (arity baked into caller `.pex` — must match EXACTLY)
@@ -180,6 +180,10 @@ Function resetActor(Actor kActor, string modName = "All Mods", string morphName 
 ;         (actor, "CCBimbo", "", 0.0, "", -1.0, -1.0, -1.0, -1.0), then
 ;         re-adds each slider onto GetValue). Missing before 0.4.19, so the
 ;         clear aborted and every re-apply stacked the morphs.
+; Writes `value` into each of the mod's morphs, as the reference did; it must
+; NOT unregister. An unregister cancels the ramp and snaps the body flat, and
+; the re-add then ramps up from zero: with incremental inflation on, every
+; Bimbos re-apply would visibly collapse and regrow the body.
 ```
 
 `gender` and `perspective` are accepted and ignored (reference behavior for the

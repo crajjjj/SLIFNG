@@ -30,8 +30,8 @@ EndFunction
 ; morphName is a PASS-THROUGH BodySlide slider name - no vocabulary.
 ; value 0.0 = neutral and MUST clear the contribution (CONTRACT sec.4.1).
 Function morph(Actor kActor, string modName, string morphName, float value, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
-	; increment is stored for parity; direct morphs apply instantly even in
-	; incremental mode (sliders DERIVED from a ramping node follow the ramp).
+	; With incremental inflation on, a direct morph ramps in slider space by
+	; `increment` per quarter second, like a node does.
 	if SLIFNG.Morph(kActor, modName, morphName, value, minimum, maximum, multiplier, increment, oldModName)
 		MirrorCombined(kActor, morphName)
 	endif
@@ -62,25 +62,36 @@ EndFunction
 ; slider on top of GetValue. Without this function that clear aborted in the VM
 ; and each "Reapply Morphs" stacked the morphs instead of rebuilding them.
 ;
-; The reference wrote every morph of the mod (or the named one) to `value`.
-; Morphs are neutral at 0.0, the value callers send, so this unregisters
-; instead, like SLIF_Main.resetActor. An empty name clears the mod's whole row,
-; node side too, as unregisterActor above does. The mirrors are refreshed
-; here, unlike there, because a reset is often a clear with no re-add after it.
+; The reference's semantics, kept: every morph the mod holds on the actor (or
+; the named one) is WRITTEN to `value` through morph() above, bounds and
+; oldModName included. Not unregistered: an unregister cancels a ramp and snaps
+; the body flat, so with incremental inflation on, Bimbos' clear-then-re-add
+; would collapse and regrow the body on every re-apply. A write ramps from what
+; the body shows, so the re-add a moment later only retargets that ramp. The
+; mod's node inflation is untouched, as in the reference; "All Mods" writes
+; every mod's morphs.
 Function resetActor(Actor kActor, string modName = "All Mods", string morphName = "", float value = 0.0, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+	String[] morphs
 	if morphName != ""
-		unregisterMorph(kActor, morphName, modName)
-		return
+		morphs = new String[1]
+		morphs[0] = morphName
+	else
+		morphs = SLIFNG.GetMorphTargets(kActor)
 	endif
-	String[] morphs = SLIFNG.GetMorphTargets(kActor)
-	SLIFNG.UnregisterMod(kActor, modName)
-	if morphs
-		Int i = 0
-		While i < morphs.length
-			MirrorCombined(kActor, morphs[i])
-			i += 1
+	Int i = 0
+	While morphs && i < morphs.length
+		String[] mods = SLIFNG.GetModsDriving(kActor, "morph:" + morphs[i])
+		Int j = 0
+		While mods && j < mods.length
+			if modName == "All Mods"
+				morph(kActor, mods[j], morphs[i], value, oldModName, minimum, maximum, multiplier, increment)
+			elseif mods[j] == modName
+				morph(kActor, modName, morphs[i], value, oldModName, minimum, maximum, multiplier, increment)
+			endif
+			j += 1
 		EndWhile
-	endif
+		i += 1
+	EndWhile
 EndFunction
 
 ; ---- read surface (pinned caller: Sexlab Survival) ----

@@ -24,10 +24,19 @@ namespace SLIFNG::Ramp
 		// near-zero move would only spend the budget the real first step needs.
 		constexpr float kMinStepMs = 0.5f * static_cast<float>(kStepInterval.count());
 
+		struct Target
+		{
+			// The triggering contribution's increment.
+			float increment = 0.0f;
+			// When this target joined. A step spends the actor's whole bank, but
+			// a target that joined mid-bank is owed only the time since then, or
+			// it would jump the wait it never sat through.
+			Clock::time_point began = Clock::now();
+		};
+
 		struct ActorRamp
 		{
-			// target -> the triggering contribution's increment
-			std::unordered_map<std::string, float> targets;
+			std::unordered_map<std::string, Target> targets;
 			// Game time banked since this actor last stepped. A step spends all
 			// of it, so a step the budget held back lands further, not later.
 			float owedMs = 0.0f;
@@ -54,9 +63,12 @@ namespace SLIFNG::Ramp
 			return std::chrono::duration<float, std::milli>(a_duration).count();
 		}
 
+		// Not capped like the ramps' banks: every millisecond since the last
+		// refill was one without our rebuilds, idle or paused, so it repays debt
+		// in full, and kBudgetCapMs already bounds what it can bank.
 		void RefillBudget(Clock::time_point a_now)
 		{
-			const float elapsed = (std::min)(Ms(a_now - g_budgetAt), Ms(kMaxTickGap));
+			const float elapsed = Ms(a_now - g_budgetAt);
 			g_budgetAt = a_now;
 			g_budgetMs = (std::min)(g_budgetMs + elapsed * kRebuildShare, kBudgetCapMs);
 		}
@@ -88,11 +100,18 @@ namespace SLIFNG::Ramp
 			}
 		}
 
+		struct WorkTarget
+		{
+			std::string target;
+			float increment;
+			float owedMs;
+		};
+
 		struct Work
 		{
 			RE::FormID formID;
 			float owedMs;
-			std::vector<std::pair<std::string, float>> targets;
+			std::vector<WorkTarget> targets;
 		};
 
 		// One step of every ramp the budget allows. MAIN THREAD (posted via the
@@ -105,9 +124,10 @@ namespace SLIFNG::Ramp
 			// Menus/console freeze game time; a body visibly swelling behind the
 			// journal would look wrong, so ramps hold their breath too. The
 			// paused time is not ramp time: move every clock past it, or the
-			// first tick after the menu would spend it in one jump.
+			// first tick after the menu would spend it in one jump. It does
+			// repay rebuild debt, since nothing rebuilt while the menu was up.
 			if (auto* ui = RE::UI::GetSingleton(); ui && ui->GameIsPaused()) {
-				g_budgetAt = now;
+				RefillBudget(now);
 				std::scoped_lock lock(g_lock);
 				for (auto& [formID, ramp] : g_active) {
 					ramp.lastBanked = now;
@@ -124,7 +144,12 @@ namespace SLIFNG::Ramp
 				for (auto& [formID, ramp] : g_active) {
 					ramp.owedMs += (std::min)(Ms(now - ramp.lastBanked), Ms(kMaxTickGap));
 					ramp.lastBanked = now;
-					work.push_back({ formID, ramp.owedMs, { ramp.targets.begin(), ramp.targets.end() } });
+					auto& item = work.emplace_back(Work{ formID, ramp.owedMs, {} });
+					item.targets.reserve(ramp.targets.size());
+					for (const auto& [target, entry] : ramp.targets) {
+						item.targets.push_back({ target, entry.increment,
+							(std::min)(ramp.owedMs, Ms(now - entry.began)) });
+					}
 				}
 			}
 			// Longest-waiting first, so a tight budget is shared round-robin
@@ -137,11 +162,16 @@ namespace SLIFNG::Ramp
 				if (!actor || !actor->Is3DLoaded()) {
 					// Nobody is watching: snap to the fold and let the 3D-load
 					// hook apply the final value whenever the actor streams in.
+					// Clear what the entry holds NOW, not the snapshot: a Begin
+					// since then added a target whose display would otherwise
+					// outlive its ramp and show a stale size on the next load.
 					std::scoped_lock lock(g_lock);
-					for (const auto& [target, increment] : targets) {
-						ledger.ClearDisplay(formID, target);
+					if (const auto it = g_active.find(formID); it != g_active.end()) {
+						for (const auto& [target, entry] : it->second.targets) {
+							ledger.ClearDisplay(formID, target);
+						}
+						g_active.erase(it);
 					}
-					g_active.erase(formID);
 					continue;
 				}
 				if (owedMs < kMinStepMs || g_budgetMs <= 0.0f) {
@@ -154,11 +184,10 @@ namespace SLIFNG::Ramp
 				// time converts "per quarter second" (the increment's contractual
 				// unit) into this step's distance, so the cadence and the budget
 				// set smoothness and only the speed multiplier sets speed.
-				const float speed = ledger.GetRampSpeed() * owedMs /
-				                    static_cast<float>(kIncrementPeriod.count());
+				const float speed = ledger.GetRampSpeed() / static_cast<float>(kIncrementPeriod.count());
 				std::vector<std::string> touched;
-				for (const auto& [target, increment] : targets) {
-					const float step = increment * speed;
+				for (const auto& [target, increment, targetOwedMs] : targets) {
+					const float step = increment * speed * targetOwedMs;
 					// Re-read the goal every tick: a consumer changing its mind
 					// mid-ramp retargets the ramp instead of fighting it.
 					float goal;
@@ -211,9 +240,7 @@ namespace SLIFNG::Ramp
 				std::scoped_lock lock(g_lock);
 				if (const auto it = g_active.find(formID); it != g_active.end()) {
 					auto& ramp = it->second;
-					// Only what this step spent: a Begin that raced the apply
-					// starts a fresh bank, it does not inherit a zeroed one.
-					ramp.owedMs = (std::max)(ramp.owedMs - owedMs, 0.0f);
+					ramp.owedMs = 0.0f;  // the step spent the whole bank
 					++ramp.steps;
 					ramp.costMs += costMs;
 					ramp.worstMs = (std::max)(ramp.worstMs, costMs);
@@ -272,8 +299,9 @@ namespace SLIFNG::Ramp
 		}
 		{
 			std::scoped_lock lock(g_lock);
-			// A new actor entry starts its bank and its clock now.
-			g_active[a_actor->GetFormID()].targets[a_lowerTarget] = a_step;
+			// A new actor entry starts its bank and its clock now, a new target
+			// its own clock; a retarget keeps the clock it already has.
+			g_active[a_actor->GetFormID()].targets[a_lowerTarget].increment = a_step;
 		}
 		EnsureTicker();
 	}
@@ -313,7 +341,7 @@ namespace SLIFNG::Ramp
 		auto& ledger = Ledger::GetSingleton();
 		std::scoped_lock lock(g_lock);
 		for (const auto& [formID, ramp] : g_active) {
-			for (const auto& [target, increment] : ramp.targets) {
+			for (const auto& [target, entry] : ramp.targets) {
 				ledger.ClearDisplay(formID, target);
 			}
 		}
