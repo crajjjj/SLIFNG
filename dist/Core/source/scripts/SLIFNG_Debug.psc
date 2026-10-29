@@ -24,13 +24,16 @@ Function Ping() Global
 	Debug.Notification("SLIF NG v" + SLIFNG.GetVersion() + " mode " + SLIFNG.GetAggregationMode())
 EndFunction
 
+; Parameter order MUST match the arg order in SLIFNG_Debug.yaml: ConsoleUtil
+; Extended passes the args positionally, never by name.
+
 ; Node-key inflate on the player (value 1.0 = neutral, 2.0 = double).
-Function IPlayer(String modName, String slifKey, Float value) Global
+Function IPlayer(String slifKey, Float value, String modName) Global
 	SLIFNG.Inflate(Game.GetPlayer(), modName, slifKey, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 
 ; Direct morph on the player (value 0.0 = neutral).
-Function MPlayer(String modName, String morphName, Float value) Global
+Function MPlayer(String morphName, Float value, String modName) Global
 	SLIFNG.Morph(Game.GetPlayer(), modName, morphName, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 
@@ -40,7 +43,7 @@ EndFunction
 
 ; The legacy morph reset, through the same 9-arg shim Bimbos of Skyrim calls.
 ; "all" stands for the empty name (the whole row), which is awkward to type.
-Function MResetPlayer(String modName, String morphName) Global
+Function MResetPlayer(String morphName, String modName) Global
 	if morphName == "all"
 		morphName = ""
 	endif
@@ -80,7 +83,7 @@ EndFunction
 
 ; Semantic region on the player: drives whatever sliders the body profile's
 ; [<region>] section lists (nothing, logged, if the profile lacks it).
-Function RPlayer(String modName, String region, Float value) Global
+Function RPlayer(String region, Float value, String modName) Global
 	SLIFNG.Inflate(Game.GetPlayer(), modName, "region:" + region, value, -1.0, -1.0, -1.0, -1.0, "")
 EndFunction
 

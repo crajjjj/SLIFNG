@@ -299,9 +299,9 @@ re-adding them. From the console, on a nude player:
 ```
 slifng morph PregnancyBelly 0.6
 slifng morph BreastsFantasy 0.4
-slifng morphreset ConsoleTest PregnancyBelly   belly flat, breasts stay
-slifng morphreset                              breasts flat too (whole row)
-slifng dumpp                                   no ConsoleTest rows left
+slifng morphreset PregnancyBelly   belly flat, breasts stay
+slifng morphreset                  breasts flat too (whole row)
+slifng dumpp                       no ConsoleTest rows left
 ```
 
 No `resetActor not found on object slif_morph` line in the Papyrus log. With

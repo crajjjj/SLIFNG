@@ -53,6 +53,7 @@ slifng smoke                         scripted end-to-end run, results in the log
 slifng inflate slif_belly 2.0        node key (also "NPC Belly", slif_breast, slif_butt)
 slifng morph PregnancyBelly 0.6      a BodySlide slider directly
 slifng region weight 1.4             semantic region, if the profile defines it
+slifng morphreset PregnancyBelly     old SLIF's morph reset; "all" or nothing = every slider
 slifng clear                         unregister the test mod again
 slifng calc 1                        calculation type, 0-5
 slifng gradual false                 incremental inflation on/off
