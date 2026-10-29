@@ -291,6 +291,23 @@ SLIFNG_GetQueryInterface` when it uses the export, or `handed to '<name>'` when
 it uses messaging, and the consumer reads non-default values on an inflated
 actor.
 
+## T10 - The legacy morph reset (0.4.19)
+
+`SLIF_Morph.resetActor` is what Bimbos of Skyrim clears its morphs with before
+re-adding them. From the console, on a nude player:
+
+```
+slifng morph PregnancyBelly 0.6
+slifng morph BreastsFantasy 0.4
+slifng morphreset ConsoleTest PregnancyBelly   belly flat, breasts stay
+slifng morphreset                              breasts flat too (whole row)
+slifng dumpp                                   no ConsoleTest rows left
+```
+
+No `resetActor not found on object slif_morph` line in the Papyrus log. With
+Bimbos installed and its "Use SLIF for morphs" on, press Reapply Morphs to
+Actors in its MCM several times: the body must stay the same size.
+
 ## Other console tools
 
 ```

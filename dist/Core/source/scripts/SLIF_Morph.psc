@@ -57,6 +57,32 @@ Function unregisterActor(Actor kActor, string modName = "All Mods") Global
 	SLIFNG.UnregisterMod(kActor, modName)
 EndFunction
 
+; Pinned caller: Bimbos of Skyrim, whose clearBimboMorphs bakes the 9-arg call
+; (actor, "CCBimbo", "", 0.0, "", -1.0, -1.0, -1.0, -1.0) and then re-adds every
+; slider on top of GetValue. Without this function that clear aborted in the VM
+; and each "Reapply Morphs" stacked the morphs instead of rebuilding them.
+;
+; The reference wrote every morph of the mod (or the named one) to `value`.
+; Morphs are neutral at 0.0, the value callers send, so this unregisters
+; instead, like SLIF_Main.resetActor. An empty name clears the mod's whole row,
+; node side too, as unregisterActor above does. The mirrors are refreshed
+; here, unlike there, because a reset is often a clear with no re-add after it.
+Function resetActor(Actor kActor, string modName = "All Mods", string morphName = "", float value = 0.0, string oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0) Global
+	if morphName != ""
+		unregisterMorph(kActor, morphName, modName)
+		return
+	endif
+	String[] morphs = SLIFNG.GetMorphTargets(kActor)
+	SLIFNG.UnregisterMod(kActor, modName)
+	if morphs
+		Int i = 0
+		While i < morphs.length
+			MirrorCombined(kActor, morphs[i])
+			i += 1
+		EndWhile
+	endif
+EndFunction
+
 ; ---- read surface (pinned caller: Sexlab Survival) ----
 ; "All Mods" is the aggregate pseudo-mod. An absent key returns `default`.
 Float Function GetValue(Actor kActor, string modName, string morphName, float default = 0.0) Global

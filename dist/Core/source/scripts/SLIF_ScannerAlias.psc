@@ -149,11 +149,7 @@ EndEvent
 ; resetMorphActor: a named morph resets that morph; an empty name means "all of
 ; this mod's morphs", which for us is that mod's whole row on the actor.
 Event OnSLIF_resetMorphActor(Form Sender, String modName, String morphName = "", float value = 1.0, String oldModName = "", float minimum = -1.0, float maximum = -1.0, float multiplier = -1.0, float increment = -1.0)
-	if morphName == ""
-		SLIF_Main.unregisterActor(Sender as Actor, modName)
-	else
-		SLIF_Morph.unregisterMorph(Sender as Actor, morphName, modName)
-	endIf
+	SLIF_Morph.resetActor(Sender as Actor, modName, morphName, value, oldModName, minimum, maximum, multiplier, increment)
 EndEvent
 
 ; WIDER than the reference: it cleared only the morph side, leaving the same

@@ -14,6 +14,7 @@ SLIF NG's compatibility surface was pinned by decompiling old SLIF 1.2.2 and eve
 | **Devious Devices NG** | `hideNode` / `showNode` with raw node names | Belly pinned flat under a chastity belt, restored on unequip; the hide wins over every other mod until released |
 | **Devious Interests** | `SLIF_Morph.unregisterMorph` | Drops only its own contribution; other mods' morphs on the same slider survive |
 | **Milk Mod Economy** | `unregisterActor`, without ever registering | A safe no-op that still clears stale old-SLIF output - which is exactly why MME calls it |
+| **Bimbos of Skyrim** | Direct morphs under `CCBimbo` (`SLIF_Morph.morph` on top of `GetValue`), cleared with `SLIF_Morph.resetActor` before every re-apply | Needs SLIF NG 0.4.19 or later: on older builds the clear failed, so each re-apply (the MCM's Reapply Morphs, suppression) grew the body again instead of rebuilding it. Only used while its MCM option "Use SLIF for morphs" is on |
 
 ## Unsurveyed mods
 

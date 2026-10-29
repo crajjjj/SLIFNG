@@ -114,12 +114,18 @@ Function morphMultiple(Actor kActor, string modName, string[] morphNames, float[
 
 Function unregisterMorph(Actor kActor, string morphName, string modName = "All Mods") Global
 Function unregisterActor(Actor kActor, string modName = "All Mods") Global
+
+Function resetActor(Actor kActor, string modName = "All Mods", string morphName = "", \
+    float value = 0.0, string oldModName = "", float minimum = -1.0, float maximum = -1.0, \
+    float multiplier = -1.0, float increment = -1.0) Global
 ```
 
 `morphName` is a pass-through BodySlide slider name — no vocabulary, and its original case reaches skee. The cross-mod direct total is mirrored into StorageUtil as `slif_<morphName>` for legacy readers.
 
-!!! warning "`SLIF_Morph.unregisterActor` clears your node inflation too"
-    The reference cleared only the morph side. One ledger row per mod holds both here, so this drops everything you drive on that actor. Use `unregisterMorph` if you want one slider gone and the rest kept.
+`resetActor` is present for compatibility (Bimbos of Skyrim clears its morphs with it). It unregisters one morph, or the mod's whole row when `morphName == ""`. The reference's `value` argument is ignored, as on `SLIF_Main.resetActor`: a morph is neutral at `0.0`, which is what callers send.
+
+!!! warning "`SLIF_Morph.unregisterActor` and `resetActor` with no name clear your node inflation too"
+    The reference cleared only the morph side. One ledger row per mod holds both here, so these drop everything you drive on that actor. Use `unregisterMorph` if you want one slider gone and the rest kept.
 
 ## Semantic regions
 

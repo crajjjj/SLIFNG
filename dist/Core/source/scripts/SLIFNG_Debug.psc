@@ -38,6 +38,15 @@ Function UPlayer(String modName) Global
 	SLIFNG.UnregisterMod(Game.GetPlayer(), modName)
 EndFunction
 
+; The legacy morph reset, through the same 9-arg shim Bimbos of Skyrim calls.
+; "all" stands for the empty name (the whole row), which is awkward to type.
+Function MResetPlayer(String modName, String morphName) Global
+	if morphName == "all"
+		morphName = ""
+	endif
+	SLIF_Morph.resetActor(Game.GetPlayer(), modName, morphName, 0.0, "", -1.0, -1.0, -1.0, -1.0)
+EndFunction
+
 ; SLIF's calculation types, SLIF's numbering: 0 Top X (the default),
 ; 1 Highest wins, 2 Subtract and add one, 3 Square root, 4 Average, 5 Additive.
 Function Mode(Int mode) Global
